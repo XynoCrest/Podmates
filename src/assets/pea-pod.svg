@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <path
+    d="M28 96
+       C34 52 78 28 128 34
+       C168 39 206 62 220 92
+       C208 128 168 150 122 154
+       C74 158 30 136 28 96 Z"
+    stroke="currentColor"
+    stroke-width="8"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M22 88 C16 78 18 62 32 54"
+    stroke="currentColor"
+    stroke-width="8"
+    stroke-linecap="round"
+  />
+  <circle cx="78" cy="94" r="16" stroke="currentColor" stroke-width="7" />
+  <circle cx="116" cy="90" r="16" stroke="currentColor" stroke-width="7" />
+  <circle cx="154" cy="94" r="16" stroke="currentColor" stroke-width="7" />
+  <circle cx="188" cy="102" r="15" stroke="currentColor" stroke-width="7" />
+</svg>
