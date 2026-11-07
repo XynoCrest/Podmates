@@ -1,59 +1,44 @@
 import { useState } from "react";
-import Splash from "./screens/Splash.jsx";
-import Streaks from "./screens/Streaks.jsx";
+import Home from "./screens/Home.jsx";
 import Camera from "./screens/Camera.jsx";
-import GroupChat from "./screens/GroupChat.jsx";
+import Icon from "./components/icons.jsx";
 
 const tabs = [
-  { id: "streaks", label: "Streaks" },
-  { id: "community", label: "Community" },
-  { id: "me", label: "Me" },
+  { id: "chat", icon: "chat", label: "Chats" },
+  { id: "camera", icon: "camera", label: "Camera" },
+  { id: "home", icon: "home", label: "Home" },
+  { id: "me", icon: "person", label: "Profile" },
 ];
 
 export default function App() {
-  const [started, setStarted] = useState(
-    typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).has("app")
-  );
-  const [tab, setTab] = useState("streaks");
+  const [tab, setTab] = useState("home");
   const [camera, setCamera] = useState(false);
-  const [chat, setChat] = useState(null);
 
   return (
     <div className="stage">
       <div className="phone">
-        {!started ? (
-          <Splash onStart={() => setStarted(true)} />
-        ) : camera ? (
-          <Camera onClose={() => setCamera(false)} />
-        ) : chat ? (
-          <GroupChat habit={chat} onBack={() => setChat(null)} />
+        {tab === "home" ? (
+          <Home onOpenPod={() => setTab("chat")} />
         ) : (
-          <div className="screen">
-            {tab === "streaks" ? (
-              <Streaks
-                onCheckIn={() => setCamera(true)}
-                onOpenChat={(habit) => setChat(habit)}
-              />
-            ) : (
-              <div className="placeholder">
-                <p>{tab} comes next. Streaks is the first page.</p>
-              </div>
-            )}
-            <nav className="tabbar">
-              {tabs.map((item) => (
-                <button
-                  key={item.id}
-                  className={`tab${tab === item.id ? " on" : ""}`}
-                  onClick={() => setTab(item.id)}
-                >
-                  <span>{item.id === "streaks" ? "🔥" : item.id === "community" ? "💬" : "●"}</span>
-                  {item.label}
-                </button>
-              ))}
-            </nav>
+          <div className="feed" style={{ display: "grid", placeItems: "center" }}>
+            <p className="row-sub">{tab} coming next</p>
           </div>
         )}
+
+        <nav className="nav">
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              className={tab === item.id ? "on" : undefined}
+              aria-label={item.label}
+              onClick={() => (item.id === "camera" ? setCamera(true) : setTab(item.id))}
+            >
+              <Icon name={item.icon} />
+            </button>
+          ))}
+        </nav>
+
+        {camera ? <Camera onClose={() => setCamera(false)} /> : null}
       </div>
     </div>
   );

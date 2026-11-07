@@ -2,31 +2,19 @@ export default function PeaPod({ className }) {
   return (
     <svg
       className={className}
-      viewBox="0 0 220 170"
+      viewBox="0 0 160 84"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <path
-        d="M46 58 C34 46 26 34 34 24"
-        stroke="currentColor"
-        strokeWidth="7.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M52 64
-           C78 28 148 22 184 56
-           C206 76 204 108 174 126
-           C138 150 78 142 54 108
-           C42 88 42 74 52 64 Z"
-        stroke="currentColor"
-        strokeWidth="7.5"
-        strokeLinejoin="round"
-      />
-      <circle cx="86" cy="86" r="15" stroke="currentColor" strokeWidth="6.5" />
-      <circle cx="118" cy="78" r="15" stroke="currentColor" strokeWidth="6.5" />
-      <circle cx="150" cy="82" r="15" stroke="currentColor" strokeWidth="6.5" />
-      <circle cx="176" cy="96" r="13.5" stroke="currentColor" strokeWidth="6.5" />
+      <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 44C12 38 6 28 10 18c3-7 10-9 14-5" />
+        <path d="M20 46c6-14 24-26 50-30 26-4 56 2 78 14-16 18-44 32-74 36-26 3-58-4-54-20Z" />
+        <circle cx="52" cy="44" r="11.5" />
+        <circle cx="78" cy="39" r="11.5" />
+        <circle cx="104" cy="34" r="11.5" />
+        <circle cx="128" cy="30" r="10" />
+      </g>
     </svg>
   );
 }
