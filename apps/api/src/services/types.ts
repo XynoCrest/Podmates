@@ -12,6 +12,8 @@ export interface SettleOptions {
   /** Also close today (local demo "end the day now"). Default: only days that have ended. */
   throughToday?: boolean
   now?: Date
+  /** One pod failing (bad data, a transient error) shouldn't stop the others: report it here and carry on. Without it, the first error is thrown. */
+  onError?: (podId: string, err: unknown) => void
 }
 
 /** Everything routes need from the outside world — faked in app.test.ts. */

@@ -8,7 +8,7 @@ import { settleDay, type MemberDay, type TreeState } from '@podmates/tree-engine
 import { addDays, daysToSettle, endOfLocalDay } from './dates'
 import type { SettleOptions } from './types'
 
-export async function settleDue(db: DbClient, { podId, throughToday = false, now = new Date() }: SettleOptions = {}) {
+export async function settleDue(db: DbClient, { podId, throughToday = false, now = new Date(), onError }: SettleOptions = {}) {
   let query = db.from('pods').select('id, timezone, trees!inner(hp, max_hp, growth, status, last_settled_date)')
   if (podId) query = query.eq('id', podId)
   const { data: pods, error } = await query
@@ -17,13 +17,31 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
   const settled: SettledDay[] = []
   const touchedUsers = new Set<string>()
 
-  for (const pod of pods ?? []) {
+  try {
+    for (const pod of pods ?? []) {
+      try {
+        await settlePod(pod)
+      } catch (err) {
+        if (!onError) throw err
+        onError(pod.id, err)
+      }
+    }
+  } finally {
+    // Even if a pod failed, refresh the profiles of everyone whose streak already changed.
+    if (touchedUsers.size) {
+      const { error: pErr } = await db.rpc('refresh_profile_stats', { p_user_ids: [...touchedUsers] })
+      if (pErr) throw pErr
+    }
+  }
+  return settled
+
+  async function settlePod(pod: NonNullable<typeof pods>[number]) {
     const t = pod.trees
-    if (!t) continue
+    if (!t) return
     const today = podDate(now, pod.timezone)
     const through = throughToday ? today : addDays(today, -1)
     const days = daysToSettle(t.last_settled_date, through)
-    if (!days.length) continue
+    if (!days.length) return
 
     const { data: members, error: mErr } = await db
       .from('pod_members')
@@ -101,10 +119,4 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       })
     }
   }
-
-  if (touchedUsers.size) {
-    const { error: pErr } = await db.rpc('refresh_profile_stats', { p_user_ids: [...touchedUsers] })
-    if (pErr) throw pErr
-  }
-  return settled
 }

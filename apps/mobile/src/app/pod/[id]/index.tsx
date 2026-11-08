@@ -89,7 +89,7 @@ export default function PodChat() {
           </>
         ) : null
       }
-      composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />}
+      composer={<Composer onSend={(t) => send.mutateAsync(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />}
       header={
       <Header
         title={

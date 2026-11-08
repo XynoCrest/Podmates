@@ -39,10 +39,11 @@ export default function CameraScreen() {
 
   const goSend = (uri: string) => {
     setPendingCapture(uri)
-    router.push({ pathname: '/send', params: { podId: podId ?? '' } })
     // "Snap now" opens this tab with a pod; forget it once used, so tapping the Snap tab later
-    // picks pods by open window instead of the old one.
+    // picks pods by open window instead of the old one. setParams acts on the focused screen,
+    // so clear it here, before the Send sheet opens on top (it gets the pod as its own param).
     if (podId) router.setParams({ podId: undefined })
+    router.push({ pathname: '/send', params: { podId: podId ?? '' } })
   }
 
   async function shoot() {

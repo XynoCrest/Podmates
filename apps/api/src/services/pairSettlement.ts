@@ -15,6 +15,8 @@ export interface PairSettleOptions {
   /** Also close today (local demo "end the day now"). */
   throughToday?: boolean
   now?: Date
+  /** Report a failing pair and carry on with the rest (default: throw). */
+  onError?: (pair: string, err: unknown) => void
 }
 
 interface SharedPod {
@@ -60,13 +62,24 @@ export async function pairToday(db: DbClient, x: string, y: string, now = new Da
 }
 
 /** Settles every pair-day that has ended. Returns how many pair-days were written. */
-export async function settlePairsDue(db: DbClient, { pair, throughToday = false, now = new Date() }: PairSettleOptions = {}) {
+export async function settlePairsDue(db: DbClient, { pair, throughToday = false, now = new Date(), onError }: PairSettleOptions = {}) {
   const only = pair ? pairKey(...pair) : undefined
   const pairs = await sharedPods(db, only)
   let settledDays = 0
 
   for (const { a, b, pods } of pairs) {
     if (only && (a !== only[0] || b !== only[1])) continue
+    try {
+      settledDays += await settlePair(a, b, pods)
+    } catch (err) {
+      if (!onError) throw err
+      onError(`${a}:${b}`, err)
+    }
+  }
+  return settledDays
+
+  async function settlePair(a: string, b: string, pods: SharedPod[]): Promise<number> {
+    let settledDays = 0
     // A pair-day ends once it has ended in every pod they share.
     const today = pods.map((p) => podDate(now, p.timeZone)).sort()[0]!
     const through = throughToday ? today : addDays(today, -1)
@@ -98,7 +111,7 @@ export async function settlePairsDue(db: DbClient, { pair, throughToday = false,
     }
 
     const days = daysToSettle(last, through)
-    if (!days.length) continue
+    if (!days.length) return 0
 
     const { data: contributions, error: cErr } = await db
       .from('contributions')
@@ -130,6 +143,6 @@ export async function settlePairsDue(db: DbClient, { pair, throughToday = false,
       last = day
       settledDays++
     }
+    return settledDays
   }
-  return settledDays
 }
