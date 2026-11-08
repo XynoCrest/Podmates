@@ -27,9 +27,9 @@ export default function CommunityScreen() {
           data={c.id ? feed.data : []}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => <PostCard post={item} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           ListHeaderComponent={
-            <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, marginBottom: 10 }}>
+            <View style={{ padding: 18, gap: 13, backgroundColor: colors.surface, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <CommunityIcon emoji={c.emoji} color={c.color} size={56} />
                 <View style={{ flex: 1 }}>

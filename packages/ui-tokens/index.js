@@ -1,8 +1,9 @@
 /**
- * Podmates design tokens. Dark-first: every reference surface (chat list, camera,
- * profile, feed, tree) reads best on a near-black canvas, and snaps pop on it.
+ * Podmates design tokens. Dark-first: chat, camera, profile, feed, and tree
+ * surfaces use an evergreen charcoal canvas, with snaps kept prominent.
  *
- * Colour is reserved for the game's three currencies and the tree, so each reads at a glance:
+ * A quiet evergreen base keeps the app grounded. Colour is reserved for the game's currencies
+ * and the tree, so each reads at a glance:
  *   leaf   → the tree, health, "done today"       energy → ⚡ energy points
  *   star   → ⭐ stars (perfect pod days)           flame  → 🔥 streaks, open snap window
  *   danger → wilting tree, destructive actions
@@ -12,31 +13,31 @@
  * kept for a future web console; the app uses the raw values.
  */
 const colors = {
-  canvas: '#0B0C0F',
-  surface: '#15171C',
-  raised: '#1E2128',
-  sunken: '#08090B',
-  line: '#2A2E37',
-  ink: { DEFAULT: '#F3F4F6', muted: '#A3A8B4', subtle: '#6C7280', inverse: '#0B0C0F' },
-  leaf: { DEFAULT: '#7BD64B', soft: '#16271A', deep: '#4E9A2C' },
-  energy: { DEFAULT: '#FFC83D', soft: '#2B2412', deep: '#C9951C' },
-  star: { DEFAULT: '#B9A2FF', soft: '#211C33', deep: '#8668E6' },
-  flame: { DEFAULT: '#FF8A3D', soft: '#2E1C12', deep: '#D9651C' },
-  danger: { DEFAULT: '#FF5D63', soft: '#2E1416', deep: '#C93B41' },
-  sky: { DEFAULT: '#5AB2FF', soft: '#122233', deep: '#2F86D6' },
+  canvas: '#111813',
+  surface: '#1A231C',
+  raised: '#242F26',
+  sunken: '#0D130F',
+  line: '#303C32',
+  ink: { DEFAULT: '#F0F1E9', muted: '#B0B9AE', subtle: '#7E8A7F', inverse: '#111813' },
+  leaf: { DEFAULT: '#A1BD8A', soft: '#29372B', deep: '#789666' },
+  energy: { DEFAULT: '#E4C77C', soft: '#373321', deep: '#B99C53' },
+  star: { DEFAULT: '#C0B4D7', soft: '#332D3E', deep: '#9787B4' },
+  flame: { DEFAULT: '#D99875', soft: '#3B2D25', deep: '#B67554' },
+  danger: { DEFAULT: '#D98280', soft: '#3A2928', deep: '#B66563' },
+  sky: { DEFAULT: '#9AB9C4', soft: '#29363A', deep: '#7295A1' },
 }
 
 /** Story ring gradient (unseen snaps). */
-const ring = ['#FFC83D', '#FF8A3D', '#F0457D']
+const ring = ['#E4C77C', '#D99875', '#AE7C8E']
 
 /** Avatar backgrounds, picked by profiles.avatar_color. */
 const avatar = {
-  leaf: '#3F8F2A',
-  sky: '#2F6FB0',
-  star: '#6A4FC9',
-  flame: '#C2581C',
-  rose: '#B23A63',
-  teal: '#1F8A84',
+  leaf: '#526D50',
+  sky: '#526F78',
+  star: '#70627F',
+  flame: '#93664F',
+  rose: '#8E5C63',
+  teal: '#4C7770',
 }
 
 const radii = { card: 20, control: 14, chip: 999, snap: 6 }

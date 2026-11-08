@@ -1,27 +1,79 @@
 import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import { View } from 'react-native'
+import { Platform, View } from 'react-native'
 import { Icon, PressableScale, Text } from '@/components/ui'
 import { compact, timeAgo } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 import { useVote, type Post } from '../hooks'
 
-/** Apollo-style card: title first, media full-bleed, community · author, stats, and vote arrows on the right. */
 export function PostCard({ post, full }: { post: Post; full?: boolean }) {
   const open = () => router.push({ pathname: '/post/[id]', params: { id: post.id } })
   return (
-    <View style={{ backgroundColor: colors.surface, paddingTop: 14 }}>
-      <PressableScale onPress={full ? undefined : open} disabled={full} scaleTo={0.99} accessibilityLabel={post.title}>
-        <View style={{ gap: 10 }}>
-          <Text style={{ paddingHorizontal: 16, fontSize: full ? 21 : 18, lineHeight: full ? 27 : 24, fontWeight: full ? '700' : '500', color: colors.ink.DEFAULT }}>{post.title}</Text>
+    <View
+      style={{
+        marginHorizontal: 12,
+        borderWidth: 1,
+        borderColor: colors.line,
+        borderRadius: 18,
+        overflow: 'hidden',
+        backgroundColor: colors.surface,
+      }}
+    >
+      <View style={{ paddingHorizontal: 15, paddingTop: 15 }}>
+        <PressableScale
+          onPress={() => router.push({ pathname: '/community/[slug]', params: { slug: post.community.slug } })}
+          accessibilityRole="button"
+          accessibilityLabel={`${post.community.name} community, posted by ${post.author.username}`}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+            <CommunityIcon emoji={post.community.emoji} color={post.community.color} size={34} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '700' }}>
+                {post.community.name}
+              </Text>
+              <Text numberOfLines={1} style={{ fontSize: 12, color: colors.ink.muted }}>
+                by {post.author.username} · {timeAgo(post.createdAt)}
+              </Text>
+            </View>
+          </View>
+        </PressableScale>
+      </View>
+      <PressableScale
+        onPress={full ? undefined : open}
+        disabled={full}
+        scaleTo={0.99}
+        accessibilityRole={full ? undefined : 'button'}
+        accessibilityLabel={full ? undefined : `Open post: ${post.title}`}
+      >
+        <View style={{ gap: 9, paddingHorizontal: 15, paddingTop: 13, paddingBottom: post.imageUrl ? 14 : 4 }}>
+          <Text
+            style={{
+              fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }),
+              fontSize: full ? 23 : 19,
+              lineHeight: full ? 30 : 25,
+              fontWeight: '700',
+              letterSpacing: -0.3,
+              color: colors.ink.DEFAULT,
+            }}
+          >
+            {post.title}
+          </Text>
           {post.body && (full || !post.imageUrl) ? (
-            <Text numberOfLines={full ? undefined : 3} style={{ paddingHorizontal: 16, fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>
+            <Text numberOfLines={full ? undefined : 3} style={{ fontSize: 14, lineHeight: 21, color: colors.ink.muted }}>
               {post.body}
             </Text>
           ) : null}
-          {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={{ width: '100%', aspectRatio: 3 / 2, backgroundColor: colors.raised }} contentFit="cover" transition={200} /> : null}
         </View>
+        {post.imageUrl ? (
+          <Image
+            source={{ uri: post.imageUrl }}
+            style={{ width: '100%', aspectRatio: 3 / 2, backgroundColor: colors.raised }}
+            contentFit="cover"
+            transition={200}
+            accessibilityLabel={`Image for ${post.title}`}
+          />
+        ) : null}
       </PressableScale>
       <PostMeta post={post} />
     </View>
@@ -42,47 +94,88 @@ function PostMeta({ post }: { post: Post }) {
     haptics.select()
     vote.mutate({ post, value })
   }
-  const scoreColor = post.myVote === 1 ? colors.flame.DEFAULT : post.myVote === -1 ? colors.sky.DEFAULT : colors.ink.subtle
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
-      <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
-        <PressableScale onPress={() => router.push({ pathname: '/community/[slug]', params: { slug: post.community.slug } })} scaleTo={0.98} accessibilityLabel={post.community.name}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <CommunityIcon emoji={post.community.emoji} color={post.community.color} size={22} />
-            <Text numberOfLines={1} style={{ fontSize: 15, color: colors.ink.muted, flexShrink: 1 }}>
-              <Text style={{ fontWeight: '600', color: colors.ink.muted }}>{post.community.name}</Text> by {post.author.username}
-            </Text>
-          </View>
-        </PressableScale>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <Meta icon="arrowUp" label={compact(post.score)} color={scoreColor} />
+    <View style={{ paddingHorizontal: 11, paddingTop: 4, paddingBottom: 9 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <Text numeric style={{ fontSize: 13, color: colors.ink.muted }}>
+            Score {compact(post.score)}
+          </Text>
           <Meta icon="comment" label={compact(post.commentCount)} />
-          <Meta icon="clock" label={timeAgo(post.createdAt)} />
         </View>
+        <VoteButton
+          icon="thumbsUp"
+          label="Thumbs up"
+          active={post.myVote === 1}
+          onPress={() => cast(1)}
+          activeColor={colors.leaf.DEFAULT}
+          activeBackground={colors.leaf.soft}
+        />
+        <VoteButton
+          icon="thumbsDown"
+          label="Thumbs down"
+          active={post.myVote === -1}
+          onPress={() => cast(-1)}
+          activeColor={colors.danger.DEFAULT}
+          activeBackground={colors.danger.soft}
+        />
       </View>
-      <Arrow icon="more" label="More" onPress={() => {}} color={colors.ink.subtle} />
-      <Arrow icon="arrowUp" label="Upvote" onPress={() => cast(1)} color={post.myVote === 1 ? colors.flame.DEFAULT : colors.ink.subtle} active={post.myVote === 1} />
-      <Arrow icon="arrowDown" label="Downvote" onPress={() => cast(-1)} color={post.myVote === -1 ? colors.sky.DEFAULT : colors.ink.subtle} active={post.myVote === -1} />
+      {vote.error ? (
+        <Text accessibilityRole="alert" style={{ paddingHorizontal: 4, paddingTop: 3, color: colors.danger.DEFAULT, fontSize: 12 }}>
+          Couldn’t save your reaction. Try again.
+        </Text>
+      ) : null}
     </View>
   )
 }
 
-function Meta({ icon, label, color = colors.ink.subtle }: { icon: 'arrowUp' | 'comment' | 'clock'; label: string; color?: string }) {
+function Meta({ icon, label }: { icon: 'comment'; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Icon name={icon} size={14} color={color} weight="medium" />
-      <Text numeric style={{ fontSize: 15, color }}>
+      <Icon name={icon} size={14} color={colors.ink.subtle} weight="medium" />
+      <Text numeric style={{ fontSize: 13, color: colors.ink.muted }}>
         {label}
       </Text>
     </View>
   )
 }
 
-function Arrow({ icon, label, onPress, color, active }: { icon: 'arrowUp' | 'arrowDown' | 'more'; label: string; onPress: () => void; color: string; active?: boolean }) {
+function VoteButton({
+  icon,
+  label,
+  onPress,
+  active,
+  activeColor,
+  activeBackground,
+}: {
+  icon: 'thumbsUp' | 'thumbsDown'
+  label: string
+  onPress: () => void
+  active: boolean
+  activeColor: string
+  activeBackground: string
+}) {
   return (
-    <PressableScale onPress={onPress} scaleTo={0.85} accessibilityLabel={label} accessibilityState={{ selected: !!active }} hitSlop={4}>
-      <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? colors.raised : 'transparent' }}>
-        <Icon name={icon} size={20} color={color} weight={active ? 'bold' : 'regular'} />
+    <PressableScale
+      onPress={onPress}
+      scaleTo={0.92}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Tap again to remove your reaction."
+      accessibilityState={{ selected: active }}
+      hitSlop={4}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: active ? activeBackground : 'transparent',
+        }}
+      >
+        <Icon name={icon} size={20} color={active ? activeColor : colors.ink.subtle} weight={active ? 'semibold' : 'regular'} />
       </View>
     </PressableScale>
   )

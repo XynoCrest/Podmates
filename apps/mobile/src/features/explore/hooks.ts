@@ -171,6 +171,7 @@ export function useVote() {
     },
     onSettled: (_d, _e, { post }) => {
       void queryClient.invalidateQueries({ queryKey: qk.post(post.id) })
+      void queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 }

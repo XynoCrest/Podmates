@@ -1,11 +1,13 @@
 import { colors } from '@podmates/ui-tokens'
-import { Text as RNText, StyleSheet, type TextProps, type TextStyle } from 'react-native'
+import { Platform, Text as RNText, StyleSheet, type TextProps, type TextStyle } from 'react-native'
 
-// Size-specific tracking: large type tightens, small type opens up slightly (Apple's tracking tables).
+const DISPLAY_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' })
+
+// Display serif gives headings a distinct voice; body text stays in the platform sans.
 const VARIANTS = StyleSheet.create({
-  display: { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: colors.ink.DEFAULT },
-  title: { fontSize: 26, lineHeight: 30, fontWeight: '700', letterSpacing: -0.6, color: colors.ink.DEFAULT },
-  headline: { fontSize: 19, lineHeight: 24, fontWeight: '600', color: colors.ink.DEFAULT },
+  display: { fontFamily: DISPLAY_FONT, fontSize: 34, lineHeight: 40, fontWeight: '700', letterSpacing: -0.8, color: colors.ink.DEFAULT },
+  title: { fontFamily: DISPLAY_FONT, fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.6, color: colors.ink.DEFAULT },
+  headline: { fontFamily: DISPLAY_FONT, fontSize: 19, lineHeight: 25, fontWeight: '600', color: colors.ink.DEFAULT },
   body: { fontSize: 16, lineHeight: 22, color: colors.ink.DEFAULT },
   callout: { fontSize: 15, lineHeight: 20, color: colors.ink.DEFAULT },
   subhead: { fontSize: 14, lineHeight: 19, color: colors.ink.muted },

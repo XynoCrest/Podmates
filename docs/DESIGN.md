@@ -1,9 +1,10 @@
 # Design
 
-Dark-first, so snaps pop and the app sits comfortably next to the apps it borrows from. Colour is
-reserved for meaning: **leaf** = tree/health/done, **energy** (yellow) = ⚡, **star** (lilac) = ⭐,
-**flame** (orange) = 🔥 streaks and *open snap window*, **danger** = wilting. Tokens live in
-`packages/ui-tokens`. Type is the system font (SF Pro) with size-specific tracking (`components/ui/Text.tsx`).
+Dark-first, with an evergreen charcoal canvas, warm raised surfaces, and muted colour reserved for
+meaning: **leaf** = tree/health/done, **energy** = ⚡, **star** = ⭐, **flame** = 🔥 streaks and
+*open snap window*, **danger** = wilting. Tokens live in `packages/ui-tokens`. Headings use a
+platform serif (Georgia on iOS, system serif on Android); body and controls use the platform sans.
+Type variants live in `components/ui/Text.tsx`.
 
 | Screen | Reference | What we kept |
 |---|---|---|
@@ -14,7 +15,7 @@ reserved for meaning: **leaf** = tree/health/done, **energy** (yellow) = ⚡, **
 | Camera | Snapchat | Full-bleed preview, big ring shutter in thumb reach, flash/flip top-right, library left. The pill top-left says which pod's window is open. |
 | Send to | Snapchat "Send To" | Native formSheet; pods grouped by habit, each labelled On time / Late / Done. |
 | Profile | Instagram (2025) | Avatar + three stats (Energy · Stars · Streak), bio, Edit / Share / add-person buttons, one **icon tab per habit**, 3:4 portrait grid. |
-| Explore | Apollo | "Home ⌄" pill (Home / Popular), sort pill, community chips, cards: title → full-bleed media → "Community by user", ↑ score · 💬 · 🕒, then ••• ↑ ↓ on the right, black gutters between cards. |
+| Explore | Podmates editorial feed | Clear Community heading, joined/discover groups, explicit feed and sort controls, individually outlined post surfaces, community and author bylines, and thumb reactions with selected/error states. |
 
 Motion and feedback follow Apple's guidance: press feedback on touch-down (`PressableScale`, 0.97),
 one haptic per action (`lib/haptics.ts`), native sheets and modals for spatial consistency, and the
