@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useState, type ReactNode } from 'react'
 import { ActivityIndicator, Dimensions, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, Chip, HealthBar, Icon, IconButton, PressableScale, SymbolIcon, Text, type IconName } from '@/components/ui'
+import { Button, HealthBar, Icon, IconButton, PressableScale, SymbolIcon, Text, type IconName } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useCommunities } from '@/features/explore/hooks'
 import { useHabits } from '@/features/pods/hooks'
@@ -36,7 +36,8 @@ const COMPACT_FIG_H = 56
 const LIST_H = Math.round(SCREEN_H * 0.52)
 const GROVE: HairlineDrawing = { viewBox: GROVE_VIEWBOX, aspect: GROVE_ASPECT, paths: GROVE_PATHS }
 /** Onboarding's hero: black ground, green lines and ink. */
-const TONE = { bg: '#000000', ink: colors.leaf.DEFAULT, soft: 'rgba(123, 214, 75, 0.72)', faint: 'rgba(123, 214, 75, 0.25)' }
+const GREEN = '#00AB5A'
+const TONE = { bg: '#000000', ink: GREEN, soft: 'rgba(0, 171, 90, 0.8)', faint: 'rgba(0, 171, 90, 0.3)' }
 /** Home's hero heading. */
 const HEAD = { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: TONE.ink } as const
 /** How far the sheet rides up over the hero (as on Home). */
@@ -114,20 +115,6 @@ export default function Onboarding() {
   if (step === 0) {
     return (
       <HeroScreen top={top} lead="Snap at your" bright="pod’s time." sub="Each pod picks a daily snap time. When the window opens, snap a photo of your habit." figure={ONBOARDING_FIGURES.snap}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 12 }} accessible accessibilityLabel="Example: Reading Club snaps from 9:00 to 9:20 PM. Window open, 14 minutes left.">
-          <View style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
-            <Icon name="clock" size={20} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="headline" style={{ fontSize: 17 }}>
-              Reading Club
-            </Text>
-            <Text numeric style={{ fontSize: 15, color: colors.ink.muted }}>
-              9:00–9:20 PM, every day
-            </Text>
-          </View>
-          <Chip icon="timer" label="14m" color={colors.ink.inverse} bg={colors.flame.DEFAULT} />
-        </View>
         {next()}
       </HeroScreen>
     )
@@ -148,15 +135,15 @@ export default function Onboarding() {
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {WEEK.map((d, i) => (
                 <View key={i} style={{ flex: 1, gap: 6, alignItems: 'center' }}>
-                  <View style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: i < 6 ? colors.leaf.DEFAULT : 'transparent', borderWidth: i < 6 ? 0 : 2, borderColor: colors.ink.DEFAULT }} />
+                  <View style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: i < 6 ? GREEN : 'transparent', borderWidth: i < 6 ? 0 : 2, borderColor: colors.ink.DEFAULT }} />
                   <Text style={{ fontSize: 13, fontWeight: i === 6 ? '700' : '500', color: i === 6 ? colors.ink.DEFAULT : colors.ink.muted }}>{d}</Text>
                 </View>
               ))}
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 18 }}>
-            <Legend swatch={<View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: colors.leaf.DEFAULT }} />} label="On time" />
-            <Legend swatch={<View style={{ width: 12, height: 12, borderRadius: 3, borderWidth: 1.5, borderColor: colors.leaf.DEFAULT }} />} label="Late" />
+            <Legend swatch={<View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: GREEN }} />} label="On time" />
+            <Legend swatch={<View style={{ width: 12, height: 12, borderRadius: 3, borderWidth: 1.5, borderColor: GREEN }} />} label="Late" />
           </View>
         </View>
         {next()}
@@ -176,7 +163,7 @@ export default function Onboarding() {
                 92 / 105 HP
               </Text>
             </View>
-            <HealthBar ratio={92 / 105} height={8} color={colors.leaf.DEFAULT} />
+            <HealthBar ratio={92 / 105} height={8} color={GREEN} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Faces names={['maya', 'ben', 'priya', 'theo']} dimLast size={32} />
@@ -197,20 +184,16 @@ export default function Onboarding() {
         <ScrollView style={{ flexGrow: 0, maxHeight: LIST_H }} contentContainerStyle={{ paddingVertical: 4 }}>
           {habits.data?.map((h) => {
             const on = picked.includes(h.id)
-            const joins = communitiesFor(h.id).map((c) => c.name).join(', ')
             return (
-              <PressableScale key={h.id} onPress={() => toggle(h.id)} scaleTo={0.98} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`${h.name}. ${joins ? `Joins ${joins}` : 'No community yet'}`}>
+              <PressableScale key={h.id} onPress={() => toggle(h.id)} scaleTo={0.98} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={h.name}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? colors.leaf.soft : colors.raised }}>
-                    <SymbolIcon name={h.sf_symbol} size={20} color={on ? colors.leaf.DEFAULT : colors.ink.muted} />
+                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? 'rgba(0, 171, 90, 0.16)' : colors.raised }}>
+                    <SymbolIcon name={h.sf_symbol} size={20} color={on ? GREEN : colors.ink.muted} />
                   </View>
-                  <Text variant="headline" numberOfLines={1} style={{ fontSize: 17, flexShrink: 0 }}>
+                  <Text variant="headline" numberOfLines={1} style={{ flex: 1, fontSize: 17 }}>
                     {h.name}
                   </Text>
-                  <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right', fontSize: 14, color: colors.ink.muted }}>
-                    {joins || 'No community yet'}
-                  </Text>
-                  <Icon name={on ? 'checkCircle' : 'circle'} size={24} color={on ? colors.leaf.DEFAULT : colors.ink.subtle} />
+                  <Icon name={on ? 'checkCircle' : 'circle'} size={24} color={on ? GREEN : colors.ink.subtle} />
                 </View>
               </PressableScale>
             )

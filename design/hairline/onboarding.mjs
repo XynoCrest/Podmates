@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Onboarding figures in the Hairline style, drawn with the Hairline kernel and
- * exported as rest poses, the way grovePaths.ts was. Static: the app shows them
- * still, so only the drawing rules apply (04 accent, 05 rest, 06 honesty,
- * 09 radius, 10 quiet, and the frame); the pointer rules have nothing to act on.
+ * Onboarding figures in the Hairline style, drawn with the Hairline kernel. Each figure
+ * is a function of time that acts out its step in a loop (ambient motion, rule 07), and
+ * starts and ends on its composed rest pose (rule 05). Every frame is redrawn by the
+ * kernel, so near plates keep hiding far ones (rule 06). Motion uses the kernel's own
+ * 700ms ease (EASE_LIFT, rule 08), staggered by |i − a| × step (rule 03).
  *
  *   node design/hairline/onboarding.mjs <path/to/kernel.js>
  *
  * kernel.js is the Hairline skill's engine (npx skills add lucasmarkes/hairline).
- * Writes apps/mobile/src/features/tree/onboardingPaths.ts.
+ * Writes apps/mobile/src/features/tree/onboardingPaths.ts: the rest pose, plus only the
+ * paths that move, as a few distinct poses and a timeline of which pose each frame shows.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -22,7 +24,23 @@ if (!kernelPath) {
 const ctx = {}
 vm.createContext(ctx)
 vm.runInContext(readFileSync(kernelPath, 'utf8') + '\n;globalThis.HL = HL', ctx)
-const { Cam, fit, proj, facing, rings, prism, rrect, ringAt, run, hull, poly, open } = ctx.HL
+const { Cam, fit, proj, facing, rings, prism, rrect, ringAt, run, hull, poly, open, EASE_LIFT } = ctx.HL
+
+const FPS = 20
+const DUR = 700 // rule 08: a discrete change gets a 700ms ease-out
+
+/** A value moved by tweens: [start ms, target] steps from `rest`, each a 700ms EASE_LIFT. */
+function track(rest, steps) {
+  return (ms) => {
+    let v = rest
+    for (const [t0, to] of steps) {
+      if (ms < t0) break
+      const from = v
+      v = from + (to - from) * EASE_LIFT(Math.min(1, (ms - t0) / DUR))
+    }
+    return v
+  }
+}
 
 /** Collects paths back to front, and the screen points they cover (for the viewBox). */
 function canvas() {
@@ -42,13 +60,7 @@ function canvas() {
       out.push(['limb', d])
       nums(d)
     },
-    done() {
-      const pad = 4
-      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1])
-      const x0 = Math.floor(Math.min(...xs) - pad), y0 = Math.floor(Math.min(...ys) - pad)
-      const w = Math.ceil(Math.max(...xs) + pad) - x0, h = Math.ceil(Math.max(...ys) + pad) - y0
-      return { viewBox: `${x0} ${y0} ${w} ${h}`, aspect: +(w / h).toFixed(4), paths: out }
-    },
+    done: () => ({ paths: out, pts }),
   }
 }
 
@@ -83,92 +95,175 @@ function camera(S, extremes) {
 }
 
 /**
- * Snap: a camera lying on its back, lens up. Body, a viewfinder hump behind the lens,
- * a lens barrel in two steps, a shutter button. The shutter is the bright mark: the snap.
+ * Snap: a camera lying on its back, lens up. The lens racks out to focus, the shutter
+ * (the bright mark) presses and comes back, then the lens settles. Loop 2.8s.
  */
-function snap() {
-  const { P, front } = camera(1.9, [[-46, -32, 0], [46, 32, 0], [46, -32, 0], [-46, 32, 0], [0, 0, 44]])
-  const c = canvas()
-  const [body, bodyIn] = rings(-44, -30, 44, 30, 12, 1.8)
-  c.solid(prism(P, front, body, bodyIn, 0, 20))
-  // Back to front by x + y: hump (far), shutter (far right), then the lens.
-  const [hump, humpIn] = rings(-34, -28, -6, -14, 5, 1.2)
-  c.solid(prism(P, front, hump, humpIn, 20, 27))
-  c.solid(round(P, front, 30, -16, 6, 1.2, 20, 25), true)
-  c.solid(round(P, front, 2, 6, 21, 1.8, 20, 30))
-  c.solid(round(P, front, 2, 6, 15, 1.6, 30, 38))
-  c.solid(round(P, front, 2, 6, 8, 1.4, 38, 40))
-  return c.done()
+const snap = {
+  loop: 2800,
+  draw() {
+    const { P, front } = camera(1.9, [[-46, -32, 0], [46, 32, 0], [46, -32, 0], [-46, 32, 0], [0, 0, 48]])
+    const zoom = track(0, [[200, 5], [1700, 0]])
+    const press = track(0, [[900, -3], [1500, 0]])
+    return (ms) => {
+      const c = canvas()
+      const z = zoom(ms)
+      const [body, bodyIn] = rings(-44, -30, 44, 30, 12, 1.8)
+      c.solid(prism(P, front, body, bodyIn, 0, 20))
+      const [hump, humpIn] = rings(-34, -28, -6, -14, 5, 1.2)
+      c.solid(prism(P, front, hump, humpIn, 20, 27))
+      c.solid(round(P, front, 30, -16, 6, 1.2, 20, 25 + press(ms)), true)
+      c.solid(round(P, front, 2, 6, 21, 1.8, 20, 30))
+      c.solid(round(P, front, 2, 6, 15, 1.6, 30, 38 + z))
+      c.solid(round(P, front, 2, 6, 8, 1.4, 38 + z, 40 + z))
+      return c.done()
+    }
+  },
 }
 
 /**
- * Streak: seven days as pillars that step up, the last one (today) the tallest
- * and bright. Rest is a rise, not a flat row (rule 05).
+ * Streak: seven days as pillars that step up, today the tallest and bright. They sink,
+ * then rise again one day at a time from the first. Loop 4.2s.
  */
-function streak() {
-  const N = 7, step = 30, H = (i) => 10 + i * 9
-  const xs = Array.from({ length: N }, (_, i) => (i - (N - 1) / 2) * step)
-  const { P, front } = camera(1.6, [[xs[0] - 10, -10, 0], [xs[N - 1] + 10, 10, 0], [xs[0] - 10, 10, 0], [xs[N - 1] + 10, -10, H(N - 1)]])
-  const c = canvas()
-  // Ascending x + y: far end first.
-  xs.forEach((x, i) => {
-    const [r, inn] = rings(x - 8, -8, x + 8, 8, 5, 1.4)
-    c.solid(prism(P, front, r, inn, 0, H(i)), i === N - 1)
+const streak = {
+  loop: 4200,
+  draw() {
+    const N = 7, step = 30, H = (i) => 10 + i * 9, LOW = 3
+    const xs = Array.from({ length: N }, (_, i) => (i - (N - 1) / 2) * step)
+    const { P, front } = camera(1.6, [[xs[0] - 10, -10, 0], [xs[N - 1] + 10, 10, 0], [xs[0] - 10, 10, 0], [xs[N - 1] + 10, -10, H(N - 1)]])
+    const heights = xs.map((_, i) => track(H(i), [[1500, LOW], [2200 + i * 120, H(i)]]))
+    return (ms) => {
+      const c = canvas()
+      xs.forEach((x, i) => {
+        const [r, inn] = rings(x - 8, -8, x + 8, 8, 5, 1.4)
+        c.solid(prism(P, front, r, inn, 0, heights[i](ms)), i === N - 1)
+      })
+      return c.done()
+    }
+  },
+}
+
+/**
+ * Pod: a sapling on a shared mound, with four podmates' stools around it. A gust passes
+ * through the leaves, from one side to the other, and they settle. The crest leaf is the
+ * bright mark. Loop 3.6s.
+ */
+const pod = {
+  loop: 3600,
+  draw() {
+    const TRUNK = 30, CROWN = 34
+    const { P, front } = camera(1.75, [[-58, -58, -8], [58, 58, -8], [58, -58, -8], [-58, 58, -8], [0, 0, CROWN + 16]])
+    const stools = [[-26, -14], [16, -28], [-14, 24], [26, 14]].sort((a, b) => a[0] + a[1] - (b[0] + b[1]))
+    const leaves = [
+      [215, 16, -2, 11], [140, 15, 0, 10], [300, 15, -1, 10], [45, 16, 1, 11], [90, 6, 6, 10], [0, 4, 9, 10],
+    ].map(([deg, reach, dz, len]) => {
+      const a = (deg * Math.PI) / 180
+      return { a, reach, z: CROWN + dz, len, x: Math.cos(a) * reach, y: Math.sin(a) * reach }
+    }).sort((p, q) => (p.x + p.y) * 0.61 + p.z * 0.5 - ((q.x + q.y) * 0.61 + q.z * 0.5))
+    const crest = leaves.reduce((p, q) => (q.z > p.z ? q : p))
+    // The gust starts at the leaf farthest along x − y and spreads (rule 03).
+    const order = leaves.map((l) => l.x - l.y)
+    const a0 = Math.max(...order)
+    const sway = leaves.map((l, i) => {
+      const delay = Math.round((Math.abs(a0 - order[i]) / 40) * 260)
+      return { turn: track(0, [[400 + delay, 0.32], [1300 + delay, 0]]), dip: track(0, [[400 + delay, -2], [1300 + delay, 0]]) }
+    })
+    return (ms) => {
+      const c = canvas()
+      const now = leaves.map((l, i) => {
+        const a = l.a + sway[i].turn(ms), z = l.z + sway[i].dip(ms)
+        const x = Math.cos(a) * l.reach, y = Math.sin(a) * l.reach
+        return { ...l, x, y, z, ring: almond(x, y, l.len, l.len * 0.42, a), inner: almond(x, y, l.len - 2, l.len * 0.42 - 1.6, a) }
+      })
+      const drawStool = ([x, y]) => c.solid(round(P, front, x, y, 6, 1.2, 0, 7))
+      c.solid(taper(P, front, disc(0, 0, 44, 14), disc(0, 0, 37, 14), disc(0, 0, 34.5, 14), -8, 0))
+      stools.filter(([x, y]) => x + y < 0).forEach(drawStool)
+      for (const l of now) c.line(open([P(0, 0, TRUNK - 4), P(l.x * 0.5, l.y * 0.5, (TRUNK + l.z) / 2 + 2), P(l.x * 0.8, l.y * 0.8, l.z)]))
+      c.solid(taper(P, front, disc(0, 0, 5, 8), disc(0, 0, 3, 8), disc(0, 0, 2, 8), 0, TRUNK))
+      now.forEach((l, i) => c.solid(prism(P, front, l.ring, l.inner, l.z, l.z + 1.2), leaves[i] === crest))
+      stools.filter(([x, y]) => x + y >= 0).forEach(drawStool)
+      return c.done()
+    }
+  },
+}
+
+/**
+ * Habits: three tiles fanned on a stack, the top one bright. Each lifts in turn from the
+ * bottom, like picking them up, and sets back down. Loop 3.6s.
+ */
+const habits = {
+  loop: 3600,
+  draw() {
+    const { P, front } = camera(1.9, [[-48, -32, 0], [40, 36, 0], [40, -32, 0], [-48, 36, 0], [0, 0, 38]])
+    const tiles = [[-22, -6, 0], [-4, 2, 12], [14, 10, 24]]
+    const lift = tiles.map((_, i) => track(0, [[300 + i * 160, 5], [1200 + i * 160, 0]]))
+    return (ms) => {
+      const c = canvas()
+      tiles.forEach(([dx, dy, z], i) => {
+        const [r, inn] = rings(-24 + dx, -24 + dy, 24 + dx, 24 + dy, 9, 1.6)
+        const zz = z + lift[i](ms)
+        c.solid(prism(P, front, r, inn, zz, zz + 6), i === tiles.length - 1)
+      })
+      return c.done()
+    }
+  },
+}
+
+const r1 = (d) => d.replace(/-?\d+\.\d+/g, (m) => String(Math.round(+m * 10) / 10))
+
+/** Draws every frame, keeps the rest pose whole and only the paths that change. */
+function bake({ loop, draw }) {
+  const at = draw()
+  const n = Math.round((loop / 1000) * FPS)
+  const frames = Array.from({ length: n }, (_, f) => at((f * 1000) / FPS))
+  const pts = frames.flatMap((f) => f.pts)
+  const pad = 4
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1])
+  const x0 = Math.floor(Math.min(...xs) - pad), y0 = Math.floor(Math.min(...ys) - pad)
+  const w = Math.ceil(Math.max(...xs) + pad) - x0, h = Math.ceil(Math.max(...ys) + pad) - y0
+  const ds = frames.map((f) => f.paths.map(([, d]) => r1(d)))
+  const rest = frames[0].paths.map(([k], i) => [k, ds[0][i]])
+  const slots = rest.map((_, i) => i).filter((i) => ds.some((f) => f[i] !== ds[0][i]))
+  const poses = []
+  const seen = new Map()
+  const timeline = ds.map((f) => {
+    const pose = slots.map((i) => f[i])
+    const key = pose.join('|')
+    if (!seen.has(key)) {
+      seen.set(key, poses.length)
+      poses.push(pose)
+    }
+    return seen.get(key)
   })
-  return c.done()
+  return { viewBox: `${x0} ${y0} ${w} ${h}`, aspect: +(w / h).toFixed(4), paths: rest, anim: { fps: FPS, slots, poses, timeline } }
 }
 
-/**
- * Pod: a sapling on a shared mound, with four podmates' stools around it. Its crest
- * leaf is the bright mark: the tree they grow together.
- */
-function pod() {
-  const TRUNK = 30, CROWN = 34
-  const { P, front } = camera(1.75, [[-58, -58, -8], [58, 58, -8], [58, -58, -8], [-58, 58, -8], [0, 0, CROWN + 16]])
-  const c = canvas()
-  c.solid(taper(P, front, disc(0, 0, 44, 14), disc(0, 0, 37, 14), disc(0, 0, 34.5, 14), -8, 0))
-  const stools = [[-26, -14], [16, -28], [-14, 24], [26, 14]].sort((a, b) => a[0] + a[1] - (b[0] + b[1]))
-  const leaves = [
-    [215, 16, -2, 11], [140, 15, 0, 10], [300, 15, -1, 10], [45, 16, 1, 11], [90, 6, 6, 10], [0, 4, 9, 10],
-  ].map(([deg, reach, dz, len]) => {
-    const a = (deg * Math.PI) / 180, x = Math.cos(a) * reach, y = Math.sin(a) * reach
-    return { x, y, z: CROWN + dz, ring: almond(x, y, len, len * 0.42, a), inner: almond(x, y, len - 2, len * 0.42 - 1.6, a) }
-  }).sort((p, q) => (p.x + p.y) * 0.61 + p.z * 0.5 - ((q.x + q.y) * 0.61 + q.z * 0.5))
-  const crest = leaves.reduce((p, q) => (q.z > p.z ? q : p))
-  const drawStool = ([x, y]) => c.solid(round(P, front, x, y, 6, 1.2, 0, 7))
-  // Stools behind the trunk, the sapling, then the stools in front of it.
-  stools.filter(([x, y]) => x + y < 0).forEach(drawStool)
-  for (const l of leaves) c.line(open([P(0, 0, TRUNK - 4), P(l.x * 0.5, l.y * 0.5, (TRUNK + l.z) / 2 + 2), P(l.x * 0.8, l.y * 0.8, l.z)]))
-  c.solid(taper(P, front, disc(0, 0, 5, 8), disc(0, 0, 3, 8), disc(0, 0, 2, 8), 0, TRUNK))
-  for (const l of leaves) c.solid(prism(P, front, l.ring, l.inner, l.z, l.z + 1.2), l === crest)
-  stools.filter(([x, y]) => x + y >= 0).forEach(drawStool)
-  return c.done()
-}
-
-/**
- * Habits: three tiles fanned on a stack, the top one bright: the habits you pick.
- */
-function habits() {
-  const { P, front } = camera(1.9, [[-48, -32, 0], [40, 36, 0], [40, -32, 0], [-48, 36, 0], [0, 0, 32]])
-  const c = canvas()
-  const tiles = [[-22, -6, 0], [-4, 2, 12], [14, 10, 24]]
-  tiles.forEach(([dx, dy, z], i) => {
-    const [r, inn] = rings(-24 + dx, -24 + dy, 24 + dx, 24 + dy, 9, 1.6)
-    c.solid(prism(P, front, r, inn, z, z + 6), i === tiles.length - 1)
-  })
-  return c.done()
-}
-
-const figures = { snap: snap(), streak: streak(), pod: pod(), habits: habits() }
-const r = (n) => Math.round(n * 100) / 100
+const figures = { snap: bake(snap), streak: bake(streak), pod: bake(pod), habits: bake(habits) }
+const q = (s) => `'${s}'`
 const lines = Object.entries(figures).map(([name, f]) => {
-  const paths = f.paths.map(([k, d]) => `    ['${k}', '${d.replace(/-?\d+\.\d+/g, (m) => String(r(+m)))}'],`).join('\n')
-  return `  ${name}: {\n    viewBox: '${f.viewBox}',\n    aspect: ${f.aspect},\n    paths: [\n${paths}\n    ],\n  },`
+  const paths = f.paths.map(([k, d]) => `      ['${k}', ${q(d)}],`).join('\n')
+  const poses = f.anim.poses.map((p) => `        [${p.map(q).join(', ')}],`).join('\n')
+  return `  ${name}: {
+    viewBox: '${f.viewBox}',
+    aspect: ${f.aspect},
+    paths: [
+${paths}
+    ],
+    anim: {
+      fps: ${f.anim.fps},
+      slots: [${f.anim.slots.join(', ')}],
+      timeline: [${f.anim.timeline.join(', ')}],
+      poses: [
+${poses}
+      ],
+    },
+  },`
 })
 const out = `/**
- * Onboarding figures in the Hairline style: rest poses drawn with the Hairline kernel by
- * design/hairline/onboarding.mjs. Painted back to front; plates are filled with the
- * ground colour so nearer ones hide farther ones. Regenerate with the script, not by hand.
+ * Onboarding figures in the Hairline style, drawn with the Hairline kernel by
+ * design/hairline/onboarding.mjs. Regenerate with the script, not by hand.
+ * \`paths\` is the rest pose, painted back to front; plates are filled with the ground
+ * colour so nearer ones hide farther ones. \`anim\` loops the figure: \`slots\` are the
+ * paths that move, \`poses\` their shapes, \`timeline\` the pose for each frame.
  *   sil  silhouette (filled plate)   lo  dim crease   limb  open line   hi  the bright mark
  */
 import type { HairlineDrawing } from './GroveFigure'
@@ -179,4 +274,5 @@ ${lines.join('\n')}
 `
 const dest = fileURLToPath(new URL('../../apps/mobile/src/features/tree/onboardingPaths.ts', import.meta.url))
 writeFileSync(dest, out)
-console.log(dest)
+for (const [name, f] of Object.entries(figures)) console.log(name, `${f.anim.slots.length} moving paths, ${f.anim.poses.length} poses, ${f.anim.timeline.length} frames`)
+console.log(dest, `${Math.round(out.length / 1024)} KB`)
