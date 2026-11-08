@@ -1,9 +1,10 @@
 import { formatSnapTime } from '@podmates/shared'
 import { colors, radii, space } from '@podmates/ui-tokens'
+import { BlurTargetView, BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useMemo, useState } from 'react'
-import { View } from 'react-native'
+import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
+import { Animated, Modal, StyleSheet, View } from 'react-native'
 import { Button, Icon, ListRow, ScreenState, Section, SheetScreen, Text, TextField } from '@/components/ui'
 import { podWindow, useHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useSendSnap } from '@/features/snaps/hooks'
@@ -23,6 +24,9 @@ export default function SendSheet() {
   const send = useSendSnap()
   const [caption, setCaption] = useState('')
   const [picked, setPicked] = useState<Set<string> | null>(null)
+  const [burst, setBurst] = useState(false)
+  const afterBurst = useRef<(() => void) | null>(null)
+  const blurTarget = useRef<ComponentRef<typeof View>>(null)
 
   // Only pods whose tree is alive can take a snap (a dead tree is replanted first), so only they are listed and picked.
   const sendable = useMemo(() => pods.data?.filter((p) => p.treeStatus === 'alive') ?? [], [pods.data])
@@ -58,15 +62,20 @@ export default function SendSheet() {
     try {
       const rows = await send.mutateAsync({ uri, caption: caption.trim(), pods: chosen })
       haptics.success()
-      router.dismissAll()
-      if (rows.length === 1) router.push({ pathname: '/pod/[id]', params: { id: rows[0]!.pod_id } })
-      else router.navigate('/')
+      afterBurst.current = () => {
+        router.dismissAll()
+        if (rows.length === 1) router.push({ pathname: '/pod/[id]', params: { id: rows[0]!.pod_id } })
+        else router.navigate('/')
+      }
+      setBurst(true)
     } catch {
       haptics.error()
     }
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
     <SheetScreen
       title="Send to"
       subtitle={noPods ? undefined : 'Pods with an open window are picked for you.'}
@@ -77,8 +86,8 @@ export default function SendSheet() {
           size="lg"
           icon="paperplane"
           label={chosen.length ? `Send to ${chosen.length} ${chosen.length === 1 ? 'pod' : 'pods'}` : 'Pick a pod'}
-          disabled={!chosen.length}
-          loading={send.isPending}
+          disabled={!chosen.length || burst}
+          loading={send.isPending || burst}
           onPress={submit}
         />
         )
@@ -114,6 +123,65 @@ export default function SendSheet() {
         </Section>
       ))}
     </SheetScreen>
+    </BlurTargetView>
+      {burst ? <StreakBurst blurTarget={blurTarget} onDone={() => afterBurst.current?.()} /> : null}
+    </View>
+  )
+}
+
+/** Full-screen firework after a snap: blur the screen, play once, then fade out. */
+const BURST_MS = 2440
+const FADE_MS = 420
+
+function StreakBurst({
+  blurTarget,
+  onDone,
+}: {
+  blurTarget: RefObject<ComponentRef<typeof View> | null>
+  onDone: () => void
+}) {
+  const opacity = useRef(new Animated.Value(0)).current
+  const done = useRef(onDone)
+  done.current = onDone
+
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 160, useNativeDriver: false }).start()
+    const hold = setTimeout(() => {
+      Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: false }).start(({ finished }) => {
+        if (finished) done.current()
+      })
+    }, BURST_MS)
+    return () => clearTimeout(hold)
+  }, [opacity])
+
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 20, opacity }]}>
+        <BlurView
+          blurTarget={blurTarget}
+          blurMethod="dimezisBlurView"
+          blurReductionFactor={1}
+          intensity={80}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+      <Modal visible transparent animationType="none" presentationStyle="overFullScreen" statusBarTranslucent>
+        <Animated.View
+          accessibilityViewIsModal
+          accessibilityLabel="Streak sent"
+          pointerEvents="none"
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', opacity }}
+        >
+          <Image
+            source={require('../../assets/images/streak-firework.gif')}
+            style={{ width: 280, height: 323 }}
+            contentFit="contain"
+            autoplay
+          />
+        </Animated.View>
+      </Modal>
+    </>
   )
 }
 
