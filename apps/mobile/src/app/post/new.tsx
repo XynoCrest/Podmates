@@ -1,8 +1,6 @@
-import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { ScrollView, TextInput } from 'react-native'
-import { Button, Text } from '@/components/ui'
+import { Button, SheetScreen, TextField } from '@/components/ui'
 import { useCommunities, useCreatePost } from '@/features/explore/hooks'
 import { haptics } from '@/lib/haptics'
 
@@ -27,18 +25,15 @@ export default function NewPost() {
       },
     )
 
-  const input = { color: colors.ink.DEFAULT, backgroundColor: colors.raised, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }
   return (
-    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
-      <Text variant="title">Post to {c?.name}</Text>
-      <TextInput value={title} onChangeText={setTitle} placeholder="Title" placeholderTextColor={colors.ink.subtle} maxLength={300} style={{ ...input, fontSize: 18, fontWeight: '600' }} />
-      <TextInput value={body} onChangeText={setBody} placeholder="Say more (optional)" placeholderTextColor={colors.ink.subtle} multiline style={{ ...input, fontSize: 16, minHeight: 140, textAlignVertical: 'top' }} />
-      {create.error ? (
-        <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-          {create.error.message}
-        </Text>
-      ) : null}
-      <Button label="Post" size="lg" disabled={!title.trim()} loading={create.isPending} onPress={submit} />
-    </ScrollView>
+    <SheetScreen
+      title="New post"
+      subtitle={c ? `In ${c.name}` : undefined}
+      error={create.error?.message}
+      action={<Button label="Post" size="lg" disabled={!title.trim()} loading={create.isPending} onPress={submit} />}
+    >
+      <TextField label="Title" value={title} onChangeText={setTitle} placeholder="What’s it about?" maxLength={300} />
+      <TextField label="Details" value={body} onChangeText={setBody} placeholder="Say more (optional)" multiline style={{ minHeight: 140 }} />
+    </SheetScreen>
   )
 }
