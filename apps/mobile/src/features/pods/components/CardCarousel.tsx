@@ -21,7 +21,7 @@
  * `pos` is a Reanimated shared value: cards restyle on the UI thread with no React renders; React
  * renders only when the centre card changes.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { usePanGesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -59,8 +59,19 @@ const CENTRES = TIERS.reduce<number[]>((acc, [w], i) => {
   acc.push(i === 0 ? 0 : acc[i - 1]! + TIERS[i - 1]![0] / 2 + GAP + w / 2)
   return acc
 }, [])
-/** Points per card: the distance between the centre and the next card's centre. */
-const CARD_PX = CENTRES[1]!
+
+/**
+ * The carousel's sizes at a scale (1 = the habit picker). Every card size, gap and the band shrink
+ * together, so the cards keep their proportions; each card's content is drawn at full size and
+ * scaled to fit, as before.
+ */
+function geometry(scale: number) {
+  const tiers = TIERS.map(([w, h, o]) => [w * scale, h * scale, o] as [number, number, number])
+  const centres = CENTRES.map((c) => c * scale)
+  /** Points per card: the distance between the centre and the next card's centre. */
+  return { scale, tiers, centres, cardW: CARD_W * scale, bandH: BAND_H * scale, cardPx: centres[1]! }
+}
+type Geometry = ReturnType<typeof geometry>
 
 const SLIDE_MS = 420
 const SLIDE_PER_CARD_MS = 90
@@ -113,15 +124,15 @@ function rubberBand(raw: number, last: number) {
 }
 
 /** The tiers' values at a fractional distance, linearly between whole ones. */
-function tier(distance: number) {
+function tier(distance: number, g: Geometry) {
   'worklet'
-  const d = Math.min(Math.abs(distance), TIERS.length - 1)
-  const i = Math.min(Math.floor(d), TIERS.length - 2)
+  const d = Math.min(Math.abs(distance), g.tiers.length - 1)
+  const i = Math.min(Math.floor(d), g.tiers.length - 2)
   const f = d - i
-  const a = TIERS[i]!
-  const b = TIERS[i + 1]!
+  const a = g.tiers[i]!
+  const b = g.tiers[i + 1]!
   const lerp = (x: number, y: number) => x + (y - x) * f
-  return { w: lerp(a[0], b[0]), h: lerp(a[1], b[1]), opacity: lerp(a[2], b[2]), centre: Math.sign(distance) * lerp(CENTRES[i]!, CENTRES[i + 1]!) }
+  return { w: lerp(a[0], b[0]), h: lerp(a[1], b[1]), opacity: lerp(a[2], b[2]), centre: Math.sign(distance) * lerp(g.centres[i]!, g.centres[i + 1]!) }
 }
 
 export function CardCarousel({
@@ -130,6 +141,7 @@ export function CardCarousel({
   onIndex,
   onPickCentre,
   label,
+  scale = 1,
 }: {
   items: CarouselItem[]
   /** The card chosen: the carousel glides to it. */
@@ -139,7 +151,10 @@ export function CardCarousel({
   onPickCentre?: (index: number) => void
   /** Names the group and the arrows ("Habit" → "Previous habit"). */
   label: string
+  /** Size of the cards and band (1 = full size); proportions stay the same. */
+  scale?: number
 }) {
+  const g = useMemo(() => geometry(scale), [scale])
   const last = Math.max(0, items.length - 1)
   const reduced = useReducedMotion()
   const pos = useSharedValue(index)
@@ -186,12 +201,12 @@ export function CardCarousel({
     },
     onUpdate: (e) => {
       'worklet'
-      pos.set(rubberBand(dragStart.value - e.translationX / CARD_PX, last))
+      pos.set(rubberBand(dragStart.value - e.translationX / g.cardPx, last))
     },
     onDeactivate: (e) => {
       'worklet'
       // Speed in cards/s, positive towards later cards.
-      const speed = -e.velocityX / CARD_PX
+      const speed = -e.velocityX / g.cardPx
       const clamp = (p: number) => Math.min(Math.max(p, 0), last)
       let landing = Math.round(clamp(pos.value + speed * PROJECT_S))
       if (Math.abs(e.velocityX) > FLICK_PT_S && landing === Math.round(clamp(pos.value))) landing = clamp(landing + Math.sign(speed))
@@ -215,9 +230,9 @@ export function CardCarousel({
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label}>
       <GestureDetector gesture={pan}>
-        <View style={{ height: BAND_H, overflow: 'hidden', backgroundColor: C.band, borderBottomWidth: 1, borderTopWidth: 1, borderColor: C.bandLine }}>
+        <View style={{ height: g.bandH, overflow: 'hidden', backgroundColor: C.band, borderBottomWidth: 1, borderTopWidth: 1, borderColor: C.bandLine }}>
           {items.map((item, i) => (
-            <Card key={item.id} item={item} index={i} pos={pos} press={press} centre={i === centre} onPress={() => tapCard(i)} />
+            <Card key={item.id} item={item} g={g} index={i} pos={pos} press={press} centre={i === centre} onPress={() => tapCard(i)} />
           ))}
         </View>
       </GestureDetector>
@@ -273,19 +288,19 @@ function ArrowButton({ icon, label, disabled, onPress }: { icon: 'back' | 'chevr
 }
 
 /** One card, every style computed from the carousel's position on the UI thread. */
-function Card({ item, index, pos, press, centre, onPress }: { item: CarouselItem; index: number; pos: SharedValue<number>; press: SharedValue<number>; centre: boolean; onPress: () => void }) {
+function Card({ item, g, index, pos, press, centre, onPress }: { item: CarouselItem; g: Geometry; index: number; pos: SharedValue<number>; press: SharedValue<number>; centre: boolean; onPress: () => void }) {
   const frame = useAnimatedStyle(() => {
     const distance = index - pos.value
-    const t = tier(distance)
+    const t = tier(distance, g)
     // 1 on the centre card, 0 from one card away: the light card and its dark text fade in.
     const lit = Math.max(0, 1 - Math.abs(distance))
     return {
       width: t.w,
       height: t.h,
-      top: (BAND_H - t.h) / 2,
-      opacity: Math.abs(distance) > TIERS.length - 0.5 ? 0 : t.opacity,
+      top: (g.bandH - t.h) / 2,
+      opacity: Math.abs(distance) > g.tiers.length - 0.5 ? 0 : t.opacity,
       zIndex: 100 - Math.round(Math.abs(distance) * 10),
-      borderRadius: 12 + 8 * Math.min(1, t.w / CARD_W),
+      borderRadius: (12 + 8 * Math.min(1, t.w / g.cardW)) * g.scale,
       backgroundColor: interpolateColor(lit, [0, 1], [C.side, C.centre]),
       shadowOpacity: 0.55 * lit,
       transform: [{ translateX: t.centre - t.w / 2 }, { scale: centre ? press.value : 1 }],
@@ -293,7 +308,7 @@ function Card({ item, index, pos, press, centre, onPress }: { item: CarouselItem
   })
   // The card's content at full size, scaled to the card's height and cropped to its width.
   const content = useAnimatedStyle(() => {
-    const t = tier(index - pos.value)
+    const t = tier(index - pos.value, g)
     return { left: (t.w - CARD_W) / 2, transform: [{ scale: t.h / CARD_H }] }
   })
   const lit = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - Math.abs(index - pos.value)) }))

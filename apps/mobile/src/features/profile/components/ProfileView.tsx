@@ -199,6 +199,7 @@ function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean
         onIndex={setIndex}
         onPickCentre={tappable ? (i) => router.push({ pathname: '/profile/habit', params: { habit: cards[i]!.habit.id } }) : undefined}
         label="Habit"
+        scale={0.78}
       />
     </View>
   )
