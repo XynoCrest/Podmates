@@ -210,7 +210,12 @@ export function useSendSnap() {
         void queryClient.invalidateQueries({ queryKey: qk.tree(p.id) })
         void queryClient.invalidateQueries({ queryKey: qk.members(p.id) })
         void queryClient.invalidateQueries({ queryKey: qk.stories(p.habitId) })
+        void queryClient.invalidateQueries({ queryKey: qk.mySnaps(p.habitId) })
       }
+      // My own story ring, habit cards and calendar show the new snap too.
+      void queryClient.invalidateQueries({ queryKey: qk.profileStory(me) })
+      void queryClient.invalidateQueries({ queryKey: qk.habitCards(me) })
+      void queryClient.invalidateQueries({ queryKey: ['profileMonth'] })
     },
   })
 }

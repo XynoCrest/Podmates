@@ -67,7 +67,6 @@ export function usePodmates(podIds: string[]) {
       return data.map(toDm)
     },
   })
-  useRealtimeInvalidate('direct_messages', undefined, [qk.dmThreads])
   const pairs = usePairTrees()
 
   const data = useMemo<PodmateThread[]>(() => {

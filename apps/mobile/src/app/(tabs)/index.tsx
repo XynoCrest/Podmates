@@ -47,7 +47,7 @@ export default function PodsScreen() {
   const stories = useStories(habitId)
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const hasPods = !!pods.data?.length
-  const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
+  const inHabit = useMemo(() => pods.data?.filter((p) => p.habitId === habitId) ?? [], [pods.data, habitId])
   const habitName = myHabits.data.find((h) => h.id === habitId)?.name
   const podmates = usePodmates(useMemo(() => inHabit.map((p) => p.id), [inHabit]))
   // Unread spans every habit: pod chats and one-to-one threads with anything I haven't opened, newest first.

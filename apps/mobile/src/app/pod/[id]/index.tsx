@@ -79,6 +79,16 @@ export default function PodChat() {
     })
   }
 
+  // Loaded, but this pod isn't one of mine (left, removed, or an old link): don't show an empty chat with a live composer.
+  if (!pod.isLoading && !pod.error && !p) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+        <Header title="Pod" />
+        <ScreenState fill empty={{ icon: 'people', title: 'This pod isn’t available', body: 'You may have left it or been removed.', action: <Button label="Back" variant="secondary" size="sm" onPress={goBack} /> }} />
+      </View>
+    )
+  }
+
   return (
     <ChatScreen
       strip={

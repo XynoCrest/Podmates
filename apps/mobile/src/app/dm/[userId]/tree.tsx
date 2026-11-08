@@ -2,7 +2,7 @@ import { formatSnapTime } from '@podmates/shared'
 import { forecast, healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { View } from 'react-native'
+import { Alert, View } from 'react-native'
 import { Chip, ChunkyButton, ScreenState, StageScreen, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useEndPairDay, usePairHistory, usePairToday, usePairTree, useReplantPair } from '@/features/pairs/hooks'
@@ -45,7 +45,7 @@ export default function PairTreeScreen() {
   const allClosed = !open && !upcoming
 
   const cta = dead
-    ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
+    ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success(), onError: (e) => Alert.alert('Couldn’t replant', e.message) }), loading: replant.isPending }
     : today.data?.me
       ? { label: "You're done today", disabled: true }
       : open

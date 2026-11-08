@@ -49,7 +49,9 @@ export default function DirectChat() {
       />
       }
     >
-      {thread.isLoading || !p ? (
+      {other.error || thread.error ? (
+        <ScreenState fill error={other.error ?? thread.error} onRetry={() => void (other.error ? other.refetch() : thread.refetch())} />
+      ) : thread.isLoading || !p ? (
         <ScreenState fill loading />
       ) : thread.messages.length === 0 ? (
         <ScreenState fill empty={{ icon: 'comment', title: `Say hi to ${p.display_name}`, body: 'Your podmate will see it here.' }} />

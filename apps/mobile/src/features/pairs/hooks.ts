@@ -34,7 +34,6 @@ export function usePairTrees() {
       return data
     },
   })
-  useRealtimeInvalidate('pair_trees', undefined, [qk.pairTrees])
   const data = useMemo(() => {
     const byOther = new Map<string, PairTree>()
     for (const t of query.data ?? []) {

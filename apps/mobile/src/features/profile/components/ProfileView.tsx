@@ -1,9 +1,9 @@
-import { alpha, avatar as avatarColors, colors, radii, space } from '@podmates/ui-tokens'
+import { alpha, avatar as avatarColors, colors, overlay, radii, space } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useState } from 'react'
-import { Alert, Dimensions, Share, View } from 'react-native'
+import { ActivityIndicator, Alert, Dimensions, Share, View } from 'react-native'
 import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Button, HERO_OVERLAP, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
@@ -89,6 +89,11 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
       },
     ])
 
+  const blockFailed = (e: Error) => {
+    haptics.error()
+    Alert.alert('Couldn’t update the block', e.message)
+  }
+
   // Someone else's profile: report or block them.
   const openTheirMenu = () =>
     showActionSheet({
@@ -103,20 +108,23 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
                 onPress: () =>
                   report.mutate(
                     { type: 'profile', id: userId, reason: r.key },
-                    { onSuccess: () => Alert.alert('Thanks for telling us', 'We’ll review it. You can also block them so you don’t see their snaps or messages.') },
+                    {
+                      onSuccess: () => Alert.alert('Thanks for telling us', 'We’ll review it. You can also block them so you don’t see their snaps or messages.'),
+                      onError: (e) => Alert.alert('Couldn’t send the report', e.message),
+                    },
                   ),
               })),
             }),
         },
         blocked.data
-          ? { label: `Unblock @${p.username}`, onPress: () => setBlocked.mutate(false) }
+          ? { label: `Unblock @${p.username}`, onPress: () => setBlocked.mutate(false, { onError: blockFailed }) }
           : {
               label: `Block @${p.username}`,
               destructive: true,
               onPress: () =>
                 Alert.alert(`Block @${p.username}?`, 'You won’t see their snaps, posts or messages, and you can’t message each other. They aren’t told.', [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Block', style: 'destructive', onPress: () => setBlocked.mutate(true, { onSuccess: () => haptics.success() }) },
+                  { text: 'Block', style: 'destructive', onPress: () => setBlocked.mutate(true, { onSuccess: () => haptics.success(), onError: blockFailed }) },
                 ]),
             },
       ],
@@ -201,7 +209,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
               <Icon name="warning" size={16} color={colors.ink.muted} />
               <Text variant="subhead" style={{ flex: 1 }}>You blocked @{p.username}. Their snaps and messages are hidden.</Text>
-              <Button label="Unblock" variant="secondary" size="sm" onPress={() => setBlocked.mutate(false)} />
+              <Button label="Unblock" variant="secondary" size="sm" onPress={() => setBlocked.mutate(false, { onError: blockFailed })} />
             </View>
           ) : null}
 
@@ -224,6 +232,13 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           <ScreenState loading={board.isLoading} empty={{ icon: 'photo', title: isMe ? 'Your board is empty' : 'Nothing shared yet', body: isMe ? 'Pick your best snaps to show here.' : undefined }} />
         )}
       </Animated.ScrollView>
+      {deleteAccount.isPending ? (
+        // Deleting runs on the server (photos, then the account): block the screen so it isn't tapped twice.
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: overlay.scrim, alignItems: 'center', justifyContent: 'center', gap: space.md }}>
+          <ActivityIndicator color={overlay.ink} />
+          <Text variant="callout" style={{ color: overlay.ink }}>Deleting your account…</Text>
+        </View>
+      ) : null}
       <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: colors.canvas }, statusStrip]} />
     </View>
   )
