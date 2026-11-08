@@ -1,0 +1,9 @@
+{
+  "name": "@podmates/ui-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Design tokens: one source for colours/radii, raw values for the app (and a Tailwind preset for a future web console).",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "sideEffects": false
+}

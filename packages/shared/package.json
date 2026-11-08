@@ -1,0 +1,20 @@
+{
+  "name": "@podmates/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contracts shared by every app: API schemas, error codes, snap-window and pod-date helpers.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0"
+  }
+}

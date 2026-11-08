@@ -1,0 +1,23 @@
+{
+  "name": "@podmates/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generated Supabase types (npm run db:types) + typed client factory for server code.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  }
+}

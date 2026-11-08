@@ -1,0 +1,17 @@
+{
+  "name": "@podmates/tree-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The ONLY place tree health, growth, energy, stars and streaks are computed. Pure, unit-tested.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0"
+  }
+}

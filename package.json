@@ -1,0 +1,33 @@
+{
+  "name": "podmates",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset && (npm run settle || echo '\\n\u26a0 Seed history not settled yet: run npm run env:local, then npm run settle (or just start the API).')",
+    "db:types": "supabase gen types typescript --local > packages/db/src/database.types.ts",
+    "db:test": "supabase test db",
+    "env:local": "node scripts/write-local-env.mjs",
+    "dev:api": "npm run dev -w @podmates/api",
+    "dev:mobile": "npm run start -w @podmates/mobile",
+    "settle": "npm run settle -w @podmates/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "smoke": "node scripts/smoke-test.mjs",
+    "tunnel": "node scripts/tunnel.mjs"
+  },
+  "devDependencies": {
+    "supabase": "2.120.0",
+    "typescript": "~6.0.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,21 @@
+# Runs the API (+ in-process settlement worker) in a container against the LOCAL Supabase stack.
+#
+#   npm run db:start      # local Supabase (Postgres, Auth, Realtime, Storage) — itself Docker
+#   npm run env:local     # writes apps/api/.env.local
+#   docker compose up --build
+#
+# Equivalent to `npm run dev:api` without Node on the host.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: apps/api/.env.local
+    environment:
+      # Inside the container, 127.0.0.1 is the container itself; reach the host's Supabase instead.
+      SUPABASE_URL: http://host.docker.internal:55321
+      APP_ENV: local
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - '4100:4100'

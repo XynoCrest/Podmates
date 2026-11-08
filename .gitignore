@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+
+# env files — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# build output
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# expo / react native
+.expo/
+web-build/
+expo-env.d.ts
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# supabase local state (migrations + seed ARE committed)
+supabase/.branches/
+supabase/.temp/
+.env.keys
+
+# os / editors
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Agents (local settings only)
+.claude/settings.local.json

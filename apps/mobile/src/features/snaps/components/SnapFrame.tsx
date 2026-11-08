@@ -1,0 +1,48 @@
+import { colors } from '@podmates/ui-tokens'
+import { Image } from 'expo-image'
+import { router } from 'expo-router'
+import { goBack } from '@/lib/nav'
+import type { ReactNode } from 'react'
+import { View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Avatar, Chip, IconButton, PressableScale, Text } from '@/components/ui'
+import { timeAgo } from '@/lib/format'
+import { imageUri } from '@/lib/images'
+import type { Snap } from '../hooks'
+
+/** Full-screen snap: photo, author bar on top, caption + on-time badge at the bottom. */
+export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; footer?: ReactNode }) {
+  const insets = useSafeAreaInsets()
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <Image source={{ uri: imageUri(snap.image) }} style={{ position: 'absolute', top: insets.top, left: 0, right: 0, bottom: insets.bottom + 8, borderRadius: 14 }} contentFit="cover" transition={150} />
+      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 10, gap: 10 }}>
+        {top}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <PressableScale onPress={() => router.push({ pathname: '/user/[id]', params: { id: snap.author.id } })} accessibilityLabel={snap.author.display_name}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Avatar person={snap.author} size={34} />
+              <View>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>
+                  {snap.author.display_name} <Text style={{ color: 'rgba(255,255,255,0.75)', fontWeight: '500' }}>{timeAgo(snap.takenAt)}</Text>
+                </Text>
+                {snap.podName ? <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{snap.podName}</Text> : null}
+              </View>
+            </View>
+          </PressableScale>
+          <View style={{ flex: 1 }} />
+          <IconButton icon="close" label="Close" onPress={goBack} color="#fff" />
+        </View>
+      </View>
+      <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 28, gap: 10, alignItems: 'flex-start' }}>
+        {snap.onTime ? <Chip icon="bolt" label="ON TIME · +10 ENERGY" color={colors.ink.inverse} bg={colors.energy.DEFAULT} /> : <Chip icon="clock" label="LATE" color="#fff" bg="rgba(0,0,0,0.55)" />}
+        {snap.caption ? (
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+            <Text style={{ color: '#fff', fontSize: 16 }}>{snap.caption}</Text>
+          </View>
+        ) : null}
+        {footer}
+      </View>
+    </View>
+  )
+}
