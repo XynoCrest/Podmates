@@ -1,4 +1,4 @@
-import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
+import { avatar as avatarColors, colors, radii, space } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { ScrollView, TextInput, View } from 'react-native'
 import { Icon, PressableScale, SlideIndicator, Text, useOptionLayouts } from '@/components/ui'
@@ -9,7 +9,7 @@ import type { Community } from '../hooks'
 /** Rounded search field. */
 export function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (text: string) => void; placeholder: string }) {
   return (
-    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.raised }}>
+    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingHorizontal: 16, borderRadius: radii.chip, backgroundColor: colors.canvas }}>
       <Icon name="explore" size={17} color={colors.ink.muted} weight="semibold" />
       <TextInput
         value={value}
@@ -29,7 +29,7 @@ export function SearchBar({ value, onChange, placeholder }: { value: string; onC
 export function CommunityCircles({ communities }: { communities: Community[] }) {
   const sorted = [...communities].sort((a, b) => Number(b.joined) - Number(a.joined))
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 14, paddingBottom: 6, gap: 4 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.gutter - 8, paddingTop: space.md, paddingBottom: 6, gap: 4 }}>
       {sorted.map((c) => {
         const icon = COMMUNITY_ICONS[c.slug]
         return (

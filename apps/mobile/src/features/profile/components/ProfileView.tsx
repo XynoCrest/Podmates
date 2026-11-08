@@ -1,15 +1,14 @@
-import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
+import { alpha, avatar as avatarColors, colors, radii, space } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { useState } from 'react'
-import { ActivityIndicator, Dimensions, ScrollView, Share, View } from 'react-native'
+import { Dimensions, ScrollView, Share, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, Icon, IconButton, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, Header, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
 import { compact } from '@/lib/format'
 import { showActionSheet } from '@/lib/actionSheet'
 import { imageUri } from '@/lib/images'
-import { goBack } from '@/lib/nav'
 import type { Snap } from '../../snaps/hooks'
 import { useProfileBoard } from '../../snaps/hooks'
 import { CardCarousel, type CarouselItem } from '../../pods/components/CardCarousel'
@@ -18,7 +17,7 @@ import { useHabitCards, useProfile, useSharedPods, type HabitCard } from '../hoo
 const SCREEN_W = Dimensions.get('window').width
 const BANNER_H = 128
 const AVATAR = 96
-const PAD = 16
+const PAD = space.gutter
 const GAP = 8
 const COL_W = (SCREEN_W - PAD * 2 - GAP) / 2
 /** Masonry rhythm: varied tile heights (× column width), Pinterest-style. */
@@ -39,7 +38,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const shared = useSharedPods(userId)
 
   const p = profile.data
-  if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}>{profile.isLoading ? <ActivityIndicator style={{ marginTop: 120 }} /> : null}</View>
+  if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading={profile.isLoading} error={profile.error} onRetry={() => void profile.refetch()} /></View>
 
   const shareMine = () => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })
 
@@ -68,14 +67,8 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const [left, right] = masonry(board.data ?? [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: asTab ? 16 : 4 }}>
-        {!asTab ? <IconButton icon="back" label="Back" onPress={goBack} /> : null}
-        <Text style={{ fontSize: 22, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-          {p.username}
-        </Text>
-        {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} /> : null}
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <Header leading={asTab ? 'none' : 'back'} title={p.username} border={false} right={isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} /> : null} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
         {/* Banner: their cover photo, or a wash of their avatar colour until they set one. */}
@@ -83,7 +76,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           {p.banner_url ? (
             <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: BANNER_H }} contentFit="cover" transition={150} accessibilityLabel="Profile banner" />
           ) : (
-            <View style={{ flex: 1, backgroundColor: 'rgba(11, 12, 15, 0.35)' }} />
+            <View style={{ flex: 1, backgroundColor: alpha(colors.canvas, 0.35) }} />
           )}
         </View>
 
@@ -95,14 +88,14 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
                 <Avatar person={p} size={AVATAR} />
               </View>
             </PressableScale>
-            <Text center style={{ marginTop: 10, fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }} numberOfLines={1}>
+            <Text variant="title" center style={{ marginTop: space.sm }} numberOfLines={1}>
               {p.display_name}
             </Text>
             <Text variant="subhead" center numberOfLines={1}>
               @{p.username}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', marginTop: space.lg }}>
             <View style={{ flex: 1 }}>
               <Stat value={p.streak} label="Streak" icon="flame" />
             </View>
@@ -115,7 +108,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
 
           {!isMe ? (
-            <View style={{ flexDirection: 'row', marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', marginTop: space.lg }}>
               <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
             </View>
           ) : null}
@@ -125,7 +118,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 
         {cards.data.length ? <HabitCards cards={cards.data} tappable={isMe} /> : null}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: space.xl, marginBottom: space.sm }}>
           <Text variant="overline">Board</Text>
           {isMe && cards.data.length ? <Button label="Pick snaps" icon="plus" variant="secondary" size="sm" onPress={pickSnaps} /> : null}
         </View>
@@ -136,9 +129,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
             <Column items={right} />
           </View>
         ) : (
-          <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>
-            {isMe ? 'Pick your best snaps to show here.' : 'Nothing shared yet.'}
-          </Text>
+          <ScreenState loading={board.isLoading} empty={{ icon: 'photo', title: isMe ? 'Your board is empty' : 'Nothing shared yet', body: isMe ? 'Pick your best snaps to show here.' : undefined }} />
         )}
       </ScrollView>
     </View>
@@ -163,7 +154,7 @@ function Column({ items }: { items: { snap: Snap; h: number }[] }) {
     <View style={{ flex: 1, gap: GAP }}>
       {items.map(({ snap, h }) => (
         <PressableScale key={snap.id} onPress={() => router.push({ pathname: '/snap/[id]', params: { id: snap.id } })} scaleTo={0.97} accessibilityLabel="Open snap">
-          <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: 14, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
+          <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: radii.card, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
         </PressableScale>
       ))}
     </View>
@@ -192,7 +183,7 @@ function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean
     }
   })
   return (
-    <View style={{ marginTop: 18 }}>
+    <View style={{ marginTop: space.xl }}>
       <CardCarousel
         items={items}
         index={Math.min(index, Math.max(0, items.length - 1))}
@@ -209,11 +200,11 @@ function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean
 function SharedPods({ names }: { names: string[] }) {
   const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
       <Icon name="people" size={16} color={colors.leaf.DEFAULT} />
-      <Text style={{ flex: 1, fontSize: 14, color: colors.ink.muted }}>
+      <Text variant="subhead" style={{ flex: 1 }}>
         {"You're both in "}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink.DEFAULT }}>{list}</Text>
+        <Text variant="subhead" style={{ fontWeight: '600', color: colors.ink.DEFAULT }}>{list}</Text>
       </Text>
     </View>
   )
@@ -222,12 +213,12 @@ function SharedPods({ names }: { names: string[] }) {
 function Stat({ value, label, icon }: { value: number; label: string; icon: 'flame' | 'trophy' | 'camera' }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text numeric style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 }}>
+      <Text variant="title" numeric>
         {compact(value)}
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
         <Icon name={icon} size={12} color={colors.ink.muted} />
-        <Text style={{ fontSize: 15, lineHeight: 19, color: colors.ink.muted }}>{label}</Text>
+        <Text variant="subhead">{label}</Text>
       </View>
     </View>
   )
