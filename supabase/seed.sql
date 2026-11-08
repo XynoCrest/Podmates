@@ -279,3 +279,13 @@ update public.pod_members set last_read_at = now() - interval '1 hour'
 where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000001';
 update public.pod_members set last_read_at = now() - interval '7 hours'
 where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000003';
+
+-- ─── Podmate pair trees ───────────────────────────────────────────────────────
+
+-- Every pair who shares a pod starts its tree alongside the pod trees; settlement replays the days since.
+insert into public.pair_trees (user_a, user_b, last_settled_date, planted_at)
+select a.user_id, b.user_id, min((now() at time zone p.timezone)::date) - 13, now() - interval '13 days'
+from public.pod_members a
+join public.pod_members b on b.pod_id = a.pod_id and a.user_id < b.user_id
+join public.pods p on p.id = a.pod_id
+group by a.user_id, b.user_id;

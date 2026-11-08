@@ -14,6 +14,8 @@ export function startWorker({ services, log, pollMs }: { services: Services; log
     try {
       const settled = await services.settle()
       if (settled.length) log.info(`settled ${settled.length} pod-day(s)`, { days: settled.map((d) => `${d.podDate}:${d.outcome}`) })
+      const pairDays = await services.settlePairs()
+      if (pairDays) log.info(`settled ${pairDays} podmate pair-day(s)`)
     } catch (err) {
       log.error('settlement failed — is Supabase running? (npm run db:start)', { err: err instanceof Error ? err.message : String(err) })
     }

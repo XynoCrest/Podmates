@@ -1,13 +1,12 @@
 import { colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Avatar, PressableScale, Text } from '@/components/ui'
+import { Avatar, PressableScale, StreakCount, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
-import { chatTime } from '@/lib/format'
 import type { PodmateThread } from '../hooks'
 
-/** Messenger-style row for a one-to-one chat: avatar · name · last message (or shared pods) · time. */
-export function PodmateRow({ thread, now }: { thread: PodmateThread; now: Date }) {
+/** Messenger-style row for a one-to-one chat: avatar · name · last message (or shared pods) · unread dot · our streak. */
+export function PodmateRow({ thread }: { thread: PodmateThread; now?: Date }) {
   const me = useMe()
   const { person, last, unread } = thread
   const fresh = unread > 0
@@ -24,9 +23,9 @@ export function PodmateRow({ thread, now }: { thread: PodmateThread; now: Date }
             {preview}
           </Text>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          {last ? <Text variant="caption">{chatTime(last.createdAt, now)}</Text> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {fresh ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.sky.DEFAULT }} accessibilityLabel={`${unread} unread`} /> : null}
+          {thread.pair && thread.pair.streak > 0 ? <StreakCount count={thread.pair.streak} /> : null}
         </View>
       </View>
     </PressableScale>

@@ -1,4 +1,5 @@
-import type { OpenWindowResponse, ReplantResponse, SettledDay } from '@podmates/shared'
+import type { OpenWindowResponse, PairReplantResponse, ReplantResponse, SettledDay } from '@podmates/shared'
+import type { PairSettleOptions } from './pairSettlement'
 
 export interface AuthUser {
   id: string
@@ -18,6 +19,11 @@ export interface Services {
   verifyAccessToken(token: string): Promise<AuthUser | null>
   isPodMember(podId: string, userId: string): Promise<boolean>
   settle(options?: SettleOptions): Promise<SettledDay[]>
+  /** Do these two share a pod? */
+  arePodmates(userId: string, otherId: string): Promise<boolean>
+  /** Settles podmate pair trees; returns how many pair-days were written. */
+  settlePairs(options?: PairSettleOptions): Promise<number>
+  replantPair(userId: string, otherId: string, now?: Date): Promise<PairReplantResponse>
   replant(podId: string, now?: Date): Promise<ReplantResponse>
   openWindowNow(podId: string, now?: Date): Promise<OpenWindowResponse>
 }

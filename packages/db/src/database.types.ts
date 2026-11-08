@@ -211,6 +211,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pair_days": {
+                  Row: {
+                    "contributors": number,"hp_after": number,"hp_delta": number,"outcome": string,"pair_date": string,"settled_at": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "contributors": number,"hp_after": number,"hp_delta": number,"outcome": string,"pair_date": string,"settled_at"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "contributors"?: number,"hp_after"?: number,"hp_delta"?: number,"outcome"?: string,"pair_date"?: string,"settled_at"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pair_days_user_a_user_b_fkey"
+      columns: ["user_a","user_b"]
+isOneToOne: false
+      referencedRelation: "pair_trees"
+      referencedColumns: ["user_a","user_b"]
+    }
+                  ]
+                },"pair_trees": {
+                  Row: {
+                    "growth": number,"hp": number,"last_settled_date": string,"max_hp": number,"planted_at": string,"status": string,"streak": number,"updated_at": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "growth"?: number,"hp"?: number,"last_settled_date": string,"max_hp"?: number,"planted_at"?: string,"status"?: string,"streak"?: number,"updated_at"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "growth"?: number,"hp"?: number,"last_settled_date"?: string,"max_hp"?: number,"planted_at"?: string,"status"?: string,"streak"?: number,"updated_at"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pair_trees_user_a_fkey"
+      columns: ["user_a"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pair_trees_user_b_fkey"
+      columns: ["user_b"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"pod_days": {
                   Row: {
                     "contributors": number,"hp_after": number,"hp_delta": number,"members": number,"outcome": string,"pod_date": string,"pod_id": string,"settled_at": string
@@ -473,6 +519,9 @@ isOneToOne: false
           Functions: {
             "apply_day_settlement":
 { Args: { "p_day": Json,"p_expected_last": string,"p_members": Json,"p_message": string,"p_message_at": string,"p_pod_date": string,"p_pod_id": string,"p_tree": Json }; Returns: boolean
+                           },
+"apply_pair_settlement":
+{ Args: { "p_day": Json,"p_expected_last": string,"p_pair_date": string,"p_tree": Json,"p_user_a": string,"p_user_b": string }; Returns: boolean
                            },
 "create_pod":
 { Args: { "p_goal": string,"p_habit_id": string,"p_name": string,"p_snap_time": string,"p_timezone": string,"p_window_minutes"?: number }; Returns: string

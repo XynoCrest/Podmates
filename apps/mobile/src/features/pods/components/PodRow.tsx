@@ -1,7 +1,7 @@
 import { colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Chip, PressableScale, StreakFlame, Text } from '@/components/ui'
+import { Chip, PressableScale, StreakCount, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { firstName } from '@/lib/format'
 import { podWindow, type PodSummary } from '../hooks'
@@ -35,14 +35,7 @@ export function PodRow({ pod, now }: { pod: PodSummary; now: Date }) {
           ) : urgent ? (
             <Chip icon="timer" label={`${w.closesInMin}m`} color={colors.ink.inverse} bg={colors.flame.DEFAULT} />
           ) : null}
-          {pod.myStreak > 0 ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} accessibilityLabel={`${pod.myStreak} day streak`}>
-              <StreakFlame size={22} />
-              <Text numeric style={{ fontSize: 17, fontWeight: '700', color: '#FF9600' }}>
-                {pod.myStreak}
-              </Text>
-            </View>
-          ) : null}
+          {pod.myStreak > 0 ? <StreakCount count={pod.myStreak} /> : null}
         </View>
       </View>
     </PressableScale>

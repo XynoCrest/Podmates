@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(19);
+select plan(21);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -57,6 +57,13 @@ update public.pod_members set last_read_at = now() - interval '1 day' where pod_
 select ok((select last_read_at > now() - interval '1 day' from public.pod_members where pod_id = 'b0000000-0000-4000-8000-000000000001' and user_id = 'a0000000-0000-4000-8000-000000000002'), 'Clients cannot write read markers directly');
 select public.mark_pod_read('b0000000-0000-4000-8000-000000000001');
 select is((select unread_count from public.pod_overview where id = 'b0000000-0000-4000-8000-000000000001'), 0, 'Opening a pod chat clears its unread count');
+
+-- Pair trees: only the two people in a pair can see it, and only settlement writes it.
+select is((select count(*)::int from public.pair_trees where 'a0000000-0000-4000-8000-000000000001' not in (user_a, user_b)), 0, 'Ben sees only his own pair trees');
+select throws_ok(
+  $$ select public.apply_pair_settlement('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002', current_date, current_date, '{}', '{}') $$,
+  '42501', null, 'Clients cannot call the pair settlement writer'
+);
 
 -- Joining by invite code works through the RPC.
 select isnt(public.join_pod('IRONPT'), null, 'Ben can join Iron Pact with its invite code');

@@ -3,7 +3,7 @@
  * here — the app reads and writes Supabase directly under RLS. The API is only
  * for work that needs server privileges (tree replanting, local demo helpers).
  */
-import { OpenWindowResponse, ReplantResponse, SettleResponse, type ApiErrorCode } from '@podmates/shared'
+import { OpenWindowResponse, PairReplantResponse, PairSettleResponse, ReplantResponse, SettleResponse, type ApiErrorCode } from '@podmates/shared'
 import { env } from './env'
 import { supabase } from './supabase'
 
@@ -59,5 +59,13 @@ export const api = {
   /** Local only: move the snap window so it is open now. */
   async openWindow(podId: string) {
     return OpenWindowResponse.parse(await request('POST', `/v1/dev/pods/${podId}/open-window`, {}))
+  },
+  /** Replant a podmate pair's dead tree. `userId` is the other person. */
+  async replantPair(userId: string) {
+    return PairReplantResponse.parse(await request('POST', `/v1/podmates/${userId}/replant`, {}))
+  },
+  /** Local only: close today now and settle this pair's tree. */
+  async endPairDay(userId: string) {
+    return PairSettleResponse.parse(await request('POST', `/v1/dev/podmates/${userId}/end-day`, {}))
   },
 }

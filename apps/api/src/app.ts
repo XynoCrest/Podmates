@@ -5,6 +5,7 @@ import { apiError } from '@podmates/shared'
 import type { Logger } from './lib/logger'
 import { errorHandler, notFound } from './middleware/errors'
 import { healthRouter } from './routes/health'
+import { podmatesRouter } from './routes/podmates'
 import { podsRouter } from './routes/pods'
 import type { Services } from './services/types'
 
@@ -38,6 +39,7 @@ export function createApp({ services, log, env, worker, corsOrigins }: AppOption
     }),
   )
   app.use(podsRouter(services, { env }))
+  app.use(podmatesRouter(services, { env }))
 
   app.use(notFound)
   app.use(errorHandler(log))

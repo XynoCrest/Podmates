@@ -4,6 +4,7 @@ import { useMe } from '@/ctx/session'
 import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
+import { usePairTrees, type PairTree } from '../pairs/hooks'
 import { PERSON_FIELDS, type ChatMessage, type Person } from '../pods/hooks'
 
 export interface DirectMessage {
@@ -22,6 +23,8 @@ export interface PodmateThread {
   last: DirectMessage | null
   /** Messages from them I haven't opened yet. */
   unread: number
+  /** Our pair tree and streak; null until settlement first sees the pair. */
+  pair: PairTree | null
 }
 
 const DM_FIELDS = 'id, sender_id, recipient_id, body, created_at, read_at'
@@ -57,12 +60,13 @@ export function usePodmates(podIds: string[]) {
     },
   })
   useRealtimeInvalidate('direct_messages', undefined, [qk.dmThreads])
+  const pairs = usePairTrees()
 
   const data = useMemo<PodmateThread[]>(() => {
     const byId = new Map<string, PodmateThread>()
     for (const m of members.data ?? []) {
       if (m.person.id === me) continue
-      const t = byId.get(m.person.id) ?? { person: m.person, pods: [], last: null, unread: 0 }
+      const t = byId.get(m.person.id) ?? { person: m.person, pods: [], last: null, unread: 0, pair: pairs.data.get(m.person.id) ?? null }
       if (m.pod && !t.pods.includes(m.pod)) t.pods.push(m.pod)
       byId.set(m.person.id, t)
     }
@@ -78,7 +82,7 @@ export function usePodmates(podIds: string[]) {
       if (a.last || b.last) return a.last ? -1 : 1
       return a.person.display_name.localeCompare(b.person.display_name)
     })
-  }, [members.data, threads.data, me])
+  }, [members.data, threads.data, me, pairs.data])
 
   return {
     data,

@@ -1,9 +1,10 @@
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native'
-import { Avatar, Header, PressableScale, Text } from '@/components/ui'
+import { Avatar, Header, PressableScale, StreakCount, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useDirectMessages, useMarkThreadRead, useSendDirect } from '@/features/dms/hooks'
+import { usePairTree } from '@/features/pairs/hooks'
 import { Composer } from '@/features/pods/components/Composer'
 import { MessageBubble } from '@/features/pods/components/MessageBubble'
 import { useProfile } from '@/features/profile/hooks'
@@ -18,6 +19,8 @@ export default function DirectChat() {
   useMarkThreadRead(userId, thread.data)
   const p = other.data
   const openProfile = () => router.push({ pathname: '/user/[id]', params: { id: userId } })
+  const pair = usePairTree(userId)
+  const openTree = () => router.push({ pathname: '/dm/[userId]/tree', params: { userId } })
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -33,6 +36,16 @@ export default function DirectChat() {
           </PressableScale>
         }
         subtitle={p ? `@${p.username}` : undefined}
+        right={
+          pair.data ? (
+            // Our streak; tap for the pair tree (the same game as a pod's, for two).
+            <PressableScale onPress={openTree} accessibilityLabel="Open your tree together" scaleTo={0.92}>
+              <View style={{ height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
+                <StreakCount count={pair.data.streak} size={18} />
+              </View>
+            </PressableScale>
+          ) : null
+        }
       />
       {thread.isLoading || !p ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.ink.muted} />

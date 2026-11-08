@@ -54,9 +54,10 @@ function SessionGate() {
         <Stack.Protected guard={signedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="pod/[id]/index" />
-          <Stack.Screen name="dm/[userId]" />
+          <Stack.Screen name="dm/[userId]/index" />
           {/* The tree is its own little world: full screen, closes with an X like a game screen. */}
           <Stack.Screen name="pod/[id]/tree" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="dm/[userId]/tree" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
           <Stack.Screen name="snap/[id]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
           <Stack.Screen name="send" options={{ ...sheet, sheetAllowedDetents: [0.75, 1] }} />

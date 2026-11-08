@@ -2,6 +2,7 @@ import type { DbClient } from '@podmates/db'
 import { podDate, zonedParts } from '@podmates/shared'
 import { newTree } from '@podmates/tree-engine'
 import { HttpError } from '../lib/httpError'
+import { pairKey, pairToday, settlePairsDue } from './pairSettlement'
 import { settleDue } from './settlement'
 import type { Services } from './types'
 
@@ -31,6 +32,43 @@ export function createSupabaseServices(db: DbClient): Services {
     },
 
     settle: (options) => settleDue(db, options),
+
+    async arePodmates(userId, otherId) {
+      if (userId === otherId) return false
+      const { data, error } = await db.from('pod_members').select('pod_id, user_id').in('user_id', [userId, otherId])
+      if (error) throw error
+      const mine = new Set(data.filter((m) => m.user_id === userId).map((m) => m.pod_id))
+      return data.some((m) => m.user_id === otherId && mine.has(m.pod_id))
+    },
+
+    settlePairs: (options) => settlePairsDue(db, options),
+
+    async replantPair(userId, otherId, now = new Date()) {
+      const [a, b] = pairKey(userId, otherId)
+      const fresh = newTree()
+      // Like a replanted pod, today isn't scored: the new tree's first day ends tonight.
+      const today = await pairToday(db, a, b, now)
+      if (!today) throw new HttpError('forbidden', 'You no longer share a pod')
+      const { data, error } = await db
+        .from('pair_trees')
+        .update({
+          hp: fresh.hp,
+          max_hp: fresh.maxHp,
+          growth: fresh.growth,
+          status: fresh.status,
+          streak: 0,
+          last_settled_date: today,
+          planted_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq('user_a', a)
+        .eq('user_b', b)
+        .eq('status', 'dead')
+        .select('hp, max_hp')
+      if (error) throw error
+      if (!data?.length) throw new HttpError('conflict', 'The tree is still alive')
+      return { userId: otherId, hp: data[0]!.hp, maxHp: data[0]!.max_hp }
+    },
 
     async replant(podId, now = new Date()) {
       const pod = await loadPod(podId)

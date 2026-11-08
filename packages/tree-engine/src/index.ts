@@ -152,6 +152,14 @@ function summarize(outcome: DayOutcome, contributors: number, members: number, h
   return `Only ${contributors} of ${members} showed up. The tree lost ${-hpDelta} HP.`
 }
 
+/**
+ * Perfect-day streak for a group (a podmate pair's 🔥): consecutive days everyone
+ * snapped. Any other day, including a dead tree's dormant days, resets it.
+ */
+export function perfectStreak(previous: number, outcome: DayOutcome): number {
+  return outcome === 'thrive' ? previous + 1 : 0
+}
+
 export const STAGES = [
   { minGrowth: 0, name: 'Seed' },
   { minGrowth: 2, name: 'Sprout' },

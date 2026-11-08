@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { forecast, newTree, outcomeFor, RULES, settleDay, stageFor, type MemberDay } from './index'
+import { forecast, newTree, outcomeFor, perfectStreak, RULES, settleDay, stageFor, type MemberDay } from './index'
 
 const members = (contributed: boolean[], streak = 2): MemberDay[] =>
   contributed.map((c, i) => ({ userId: `u${i}`, streak, contributed: c }))
@@ -73,5 +73,19 @@ describe('stageFor', () => {
     expect(stageFor(0)).toMatchObject({ level: 1, name: 'Seed', toNext: 2 })
     expect(stageFor(6)).toMatchObject({ level: 3, name: 'Sapling', toNext: 4 })
     expect(stageFor(99)).toMatchObject({ level: 6, toNext: null })
+  })
+})
+
+describe('perfectStreak', () => {
+  it('counts consecutive perfect days and resets on anything else', () => {
+    expect(perfectStreak(3, 'thrive')).toBe(4)
+    expect(perfectStreak(3, 'steady')).toBe(0)
+    expect(perfectStreak(3, 'wilt')).toBe(0)
+    expect(perfectStreak(3, 'dormant')).toBe(0)
+  })
+
+  it('a pair of two only thrives when both snap', () => {
+    expect(outcomeFor(2, 2)).toBe('thrive')
+    expect(outcomeFor(1, 2)).toBe('wilt')
   })
 })
