@@ -18,6 +18,28 @@ describe('outcomeFor', () => {
   })
 })
 
+describe('best streak', () => {
+  it('grows with the streak and never goes down after a miss', () => {
+    const tree = { hp: 100, maxHp: 100, growth: 0, status: 'alive' as const }
+    const up = settleDay(tree, [{ userId: 'a', streak: 9, bestStreak: 9, contributed: true }]).memberUpdates[0]!
+    expect(up).toMatchObject({ streak: 10, bestStreak: 10 })
+    const miss = settleDay(tree, [{ userId: 'a', streak: 10, bestStreak: 10, contributed: false }]).memberUpdates[0]!
+    expect(miss).toMatchObject({ streak: 0, bestStreak: 10 })
+    const back = settleDay(tree, [{ userId: 'a', streak: 0, bestStreak: 10, contributed: true }]).memberUpdates[0]!
+    expect(back).toMatchObject({ streak: 1, bestStreak: 10 })
+  })
+
+  it('defaults to the current streak when no best is known', () => {
+    const tree = { hp: 100, maxHp: 100, growth: 0, status: 'alive' as const }
+    expect(settleDay(tree, [{ userId: 'a', streak: 4, contributed: false }]).memberUpdates[0]!.bestStreak).toBe(4)
+  })
+
+  it('a resting (dead) tree keeps the best streak', () => {
+    const r = settleDay({ hp: 0, maxHp: 100, growth: 0, status: 'dead' }, [{ userId: 'a', streak: 3, bestStreak: 7, contributed: true }])
+    expect(r.memberUpdates[0]!.bestStreak).toBe(7)
+  })
+})
+
 describe('settleDay', () => {
   it('a perfect day grows HP, max HP and growth, and awards stars', () => {
     const r = settleDay({ hp: 90, maxHp: 100, growth: 3, status: 'alive' }, members([true, true, true]))

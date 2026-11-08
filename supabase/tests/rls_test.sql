@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(21);
+select plan(24);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -68,6 +68,17 @@ select throws_ok(
 -- Joining by invite code works through the RPC.
 select isnt(public.join_pod('IRONPT'), null, 'Ben can join Iron Pact with its invite code');
 select is((select count(*)::int from public.pods), 6, 'After joining, Ben sees Iron Pact');
+
+-- Profile numbers (Best, Snaps) are settlement/trigger-owned, like energy.
+select throws_ok(
+  $$ update public.profiles set best_streak = 999 where id = 'a0000000-0000-4000-8000-000000000001' $$,
+  '42501', null, 'Best streak is settlement-owned (column grant)'
+);
+select throws_ok(
+  $$ update public.profiles set snap_count = 999 where id = 'a0000000-0000-4000-8000-000000000001' $$,
+  '42501', null, 'Snap count is trigger-owned (column grant)'
+);
+select ok((select snap_count from public.profiles where username = 'maya.reads') > 0, 'Anyone signed in can read another person''s snap count');
 
 select * from finish();
 rollback;

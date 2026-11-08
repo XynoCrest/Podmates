@@ -285,14 +285,14 @@ isOneToOne: false
                   ]
                 },"pod_members": {
                   Row: {
-                    "energy": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
+                    "best_streak": number,"energy": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
+                    "best_streak"?: number,"energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
                   }
                   Update: {
-                    "energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
+                    "best_streak"?: number,"energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -395,14 +395,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_color": string,"avatar_url": string | null,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"stars": number,"streak": number,"username": string
+                    "avatar_color": string,"avatar_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"snap_count": number,"stars": number,"streak": number,"username": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"stars"?: number,"streak"?: number,"username": string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username": string
                   }
                   Update: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"stars"?: number,"streak"?: number,"username"?: string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username"?: string
                   }
                   Relationships: [
                     
