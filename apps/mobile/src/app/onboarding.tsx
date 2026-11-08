@@ -240,7 +240,7 @@ function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top
     <View style={{ gap: 8, flexShrink: 1 }}>
       <View accessible accessibilityRole="header" accessibilityLabel={`${lead} ${bright}`}>
         <Text style={HEAD}>{lead}</Text>
-        <Text style={[HEAD, { color: '#FFFFFF' }]}>{bright}</Text>
+        <Text style={[HEAD, { color: overlay.ink }]}>{bright}</Text>
       </View>
       <Text style={{ fontSize: 15, lineHeight: 21, color: TONE.soft }}>{sub}</Text>
     </View>

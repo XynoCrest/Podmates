@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, View } from 'react-native'
-import { Chip } from '@/components/ui'
+import { overlay } from '@podmates/ui-tokens'
+import { Chip, ScreenState } from '@/components/ui'
 import { useMe } from '@/ctx/session'
-import { SnapFrame } from '@/features/snaps/components/SnapFrame'
+import { ProgressBars, SnapFrame } from '@/features/snaps/components/SnapFrame'
 import { SNAP_FIELDS, toSnap } from '@/features/snaps/hooks'
 import { qk } from '@/lib/keys'
 import { goBack } from '@/lib/nav'
@@ -29,7 +30,7 @@ export default function DaySnaps() {
 
   const list = snaps.data ?? []
   const snap = list[index]
-  if (!snap) return <View style={{ flex: 1, backgroundColor: '#000' }} />
+  if (!snap) return <View style={{ flex: 1, backgroundColor: overlay.media }}><ScreenState fill loading={snaps.isLoading} tone="media" /></View>
 
   const next = () => (index < list.length - 1 ? setIndex(index + 1) : goBack())
   const prev = () => setIndex(Math.max(0, index - 1))
@@ -42,14 +43,10 @@ export default function DaySnaps() {
         top={
           <View style={{ gap: 8 }}>
             {list.length > 1 ? (
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                {list.map((s, i) => (
-                  <View key={s.id} style={{ flex: 1, height: 2.5, borderRadius: 2, backgroundColor: i <= index ? '#fff' : 'rgba(255,255,255,0.35)' }} />
-                ))}
-              </View>
+              <ProgressBars count={list.length} index={index} />
             ) : null}
             <View style={{ alignSelf: 'flex-start' }}>
-              <Chip label={label} color="#fff" bg="rgba(0,0,0,0.55)" />
+              <Chip label={label} color={overlay.ink} bg={overlay.scrim} />
             </View>
           </View>
         }

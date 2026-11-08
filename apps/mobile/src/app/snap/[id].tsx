@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
-import { Button } from '@/components/ui'
+import { overlay } from '@podmates/ui-tokens'
+import { Button, ScreenState } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { SnapFrame } from '@/features/snaps/components/SnapFrame'
 import { useSnap, useToggleOnProfile } from '@/features/snaps/hooks'
@@ -15,7 +16,7 @@ export default function SnapScreen() {
   const queryClient = useQueryClient()
   const toggle = useToggleOnProfile(snap.data?.habitId ?? '')
 
-  if (!snap.data) return <View style={{ flex: 1, backgroundColor: '#000' }} />
+  if (!snap.data) return <View style={{ flex: 1, backgroundColor: overlay.media }}><ScreenState fill loading={snap.isLoading} error={snap.error} tone="media" /></View>
   const s = snap.data
   return (
     <SnapFrame

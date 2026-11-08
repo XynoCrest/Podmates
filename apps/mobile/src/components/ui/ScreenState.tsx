@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, overlay } from '@podmates/ui-tokens'
 import type { ReactNode } from 'react'
 import { ActivityIndicator, View } from 'react-native'
 import { Button } from './Button'
@@ -29,7 +29,7 @@ export function ScreenState({
   if (loading) {
     return (
       <View style={[box, fill ? null : { paddingVertical: 48 }]}>
-        <ActivityIndicator color={tone === 'media' ? '#FFFFFF' : colors.ink.muted} />
+        <ActivityIndicator color={tone === 'media' ? overlay.ink : colors.ink.muted} />
       </View>
     )
   }
