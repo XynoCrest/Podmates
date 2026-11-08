@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast, healthRatio, stageFor } from '@podmates/tree-engine'
+import { forecast, stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
@@ -7,7 +7,8 @@ import { Chip, ChunkyButton, ScreenState, StageScreen } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { podWindow, usePod, usePodMembers } from '@/features/pods/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
-import { DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
+import { healthTotal, shareHealth } from '@/features/tree/healthShare'
+import { ContributionBoard, DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
 import { useEndDay, useOpenWindow, useReplant, useTreeHistory } from '@/features/tree/hooks'
 import { isLocal } from '@/lib/env'
 import { haptics } from '@/lib/haptics'
@@ -38,7 +39,9 @@ export default function TreeScreen() {
   const f = forecast(tree, pod.contributedToday, counted)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
-  const ratio = healthRatio(tree)
+  const shares = shareHealth(members.data ?? [])
+  const shown = dead ? 0 : healthTotal(shares)
+  const ratio = shown / 100
 
   const cta = dead
     ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
@@ -95,6 +98,15 @@ export default function TreeScreen() {
       </Headline>
 
       <TreeStats stage={stage} hp={dead ? 0 : pod.hp} maxHp={pod.maxHp} ratio={dead ? 0 : ratio} snapped={`${pod.contributedToday} of ${counted} snapped today${pod.restingToday ? ` · ${pod.restingToday} resting` : ''}`} />
+
+      <ContributionBoard
+        dead={dead}
+        total={shown}
+        people={(members.data ?? []).map((m) => {
+          const s = shares.find((x) => x.id === m.id)
+          return { ...m, share: s?.share ?? 0, fair: s?.fair ?? 0, dragging: s?.dragging ?? false }
+        })}
+      />
 
       <WeekStrip days={history.data ?? []} />
 
