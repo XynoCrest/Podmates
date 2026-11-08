@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast, stageFor } from '@podmates/tree-engine'
+import { forecast } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
@@ -10,7 +10,7 @@ import { podWindow } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
 import { healthTotal, shareHealth } from '@/features/tree/healthShare'
-import { ContributionBoard, DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
+import { DemoTools, Headline, HealthStamp, Hl, MemberRing, WeekStrip } from '@/features/tree/TreeParts'
 import { isLocal } from '@/lib/env'
 import { firstName } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
@@ -36,7 +36,6 @@ export default function PairTreeScreen() {
 
   const name = firstName(other.data.display_name)
   const dead = pair.status === 'dead'
-  const stage = stageFor(pair.growth)
   const snapped = (today.data?.me ? 1 : 0) + (today.data?.other ? 1 : 0)
   const f = forecast(pair, snapped, 2)
   // Where I can still snap today: a shared pod whose window is open, else the next to open.
@@ -69,9 +68,19 @@ export default function PairTreeScreen() {
       right={<Chip size="md" icon="flame" label={String(pair.streak)} color={colors.flame.DEFAULT} bg={colors.raised} accessibilityLabel={`Your streak together: ${pair.streak} days`} />}
       footer={<ChunkyButton {...cta} />}
     >
-      <View style={{ alignItems: 'center', marginTop: 8 }}>
-        <TreeArt growth={pair.growth} health={ratio} dead={dead} size={260} />
-        <MemberRing members={members} />
+      <View style={{ alignItems: 'center', marginTop: 8, width: '100%' }}>
+        <View style={{ width: 280, alignItems: 'center' }}>
+          <TreeArt growth={pair.growth} health={ratio} dead={dead} size={260} />
+          <View style={{ position: 'absolute', top: 8, right: 0 }}>
+            <HealthStamp percent={shown} />
+          </View>
+        </View>
+        <MemberRing
+          members={members.map((m) => {
+            const s = shares.find((x) => x.id === m.id)
+            return { ...m, share: dead ? 0 : s?.share, dragging: s?.dragging }
+          })}
+        />
       </View>
 
       <Headline>
@@ -97,17 +106,6 @@ export default function PairTreeScreen() {
           </>
         )}
       </Headline>
-
-      <TreeStats stage={stage} hp={dead ? 0 : pair.hp} maxHp={pair.maxHp} ratio={dead ? 0 : ratio} snapped={`${snapped} of 2 snapped today`} />
-
-      <ContributionBoard
-        dead={dead}
-        total={shown}
-        people={members.map((m) => {
-          const s = shares.find((x) => x.id === m.id)
-          return { ...m, share: s?.share ?? 0, fair: s?.fair ?? 0, dragging: s?.dragging ?? false }
-        })}
-      />
 
       <WeekStrip days={history.data ?? []} />
 

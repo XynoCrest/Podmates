@@ -3,14 +3,25 @@ import type { ReactNode } from 'react'
 import { View } from 'react-native'
 import { Avatar, Button, HealthBar, Icon, Section, Text } from '@/components/ui'
 import { firstName } from '@/lib/format'
-import type { HealthShare } from './healthShare'
 import type { PodDay } from './hooks'
-
-const CHIP = [colors.leaf.DEFAULT, colors.sky.DEFAULT, colors.star.DEFAULT, colors.energy.DEFAULT, colors.flame.DEFAULT] as const
 
 /** Pieces shared by the pod tree screen and the podmate pair tree screen. */
 
-export function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean; restingToday?: boolean }[] }) {
+export function MemberRing({
+  members,
+}: {
+  members: {
+    id: string
+    display_name: string
+    avatar_color: string
+    avatar_url: string | null
+    contributedToday: boolean
+    restingToday?: boolean
+    share?: number
+    dragging?: boolean
+    fair?: number
+  }[]
+}) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 8 }}>
       {members.map((m) => (
@@ -36,9 +47,35 @@ export function MemberRing({ members }: { members: { id: string; display_name: s
             </View>
           </View>
           <Text variant="caption">{m.restingToday ? 'Resting' : firstName(m.display_name)}</Text>
+          {m.share != null ? (
+            <Text numeric style={{ fontWeight: '800', fontSize: 16, color: m.dragging ? colors.ink.muted : colors.leaf.DEFAULT }}>
+              {m.share}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>
+  )
+}
+
+/** Health as a percent, parked on the tree's top-right like a sticker. */
+export function HealthStamp({ percent }: { percent: number }) {
+  return (
+    <Text
+      numeric
+      style={{
+        fontSize: 36,
+        lineHeight: 40,
+        fontWeight: '800',
+        letterSpacing: -1.2,
+        color: colors.ink.DEFAULT,
+        textShadowColor: 'rgba(255,255,255,0.85)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 4,
+      }}
+    >
+      {percent}%
+    </Text>
   )
 }
 
@@ -55,62 +92,6 @@ export function Hl({ children, color }: { children: ReactNode; color: string }) 
     <Text variant="title" style={{ color }}>
       {children}
     </Text>
-  )
-}
-
-/** Each member's slice of the 100, plus a stacked bar so the gap to 100 is the people dragging. */
-export function ContributionBoard({
-  people,
-  total,
-  dead,
-}: {
-  people: (HealthShare & { display_name: string; avatar_color: string; avatar_url: string | null })[]
-  total: number
-  dead: boolean
-}) {
-  const shown = dead ? 0 : total
-  return (
-    <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, overflow: 'hidden' }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Text variant="overline">Health</Text>
-          <Text numeric style={{ fontWeight: '600', fontSize: 22 }}>
-            {shown}/100
-          </Text>
-        </View>
-        <View style={{ height: 10, borderRadius: 5, backgroundColor: colors.raised, overflow: 'hidden', flexDirection: 'row' }}>
-          {dead
-            ? null
-            : people.map((p, i) => (
-                <View key={p.id} style={{ flex: p.share, backgroundColor: p.dragging ? colors.flame.DEFAULT : CHIP[i % CHIP.length] }} />
-              ))}
-        </View>
-        <Text variant="caption">{dead ? 'The tree is out of health' : `${100 - shown} points left on the table · fair share is ${people[0]?.fair ?? 0} each`}</Text>
-      </View>
-      {people.map((p, i) => (
-        <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
-          <Avatar person={p} size={36} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text style={{ fontWeight: '600' }} numberOfLines={1}>
-                {firstName(p.display_name)}
-              </Text>
-              <Text numeric style={{ fontWeight: '700', color: p.dragging ? colors.flame.DEFAULT : colors.ink.DEFAULT }}>
-                {dead ? 0 : p.share}
-              </Text>
-            </View>
-            <HealthBar ratio={dead ? 0 : p.share / Math.max(1, p.fair)} height={6} color={p.dragging ? colors.flame.DEFAULT : CHIP[i % CHIP.length]} />
-            <Text variant="caption">
-              {p.dragging
-                ? `Holding the group back · streak ${p.streak} · fair ${p.fair}`
-                : p.contributedToday
-                  ? `Keeping up · streak ${p.streak}`
-                  : `On pace · streak ${p.streak} · not in yet today`}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
   )
 }
 
