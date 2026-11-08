@@ -13,6 +13,9 @@ export function TextField({ label, hint, error, multiline, style, ...props }: Te
       <TextInput
         placeholderTextColor={colors.ink.subtle}
         multiline={multiline}
+        // Screen readers announce the field's label, and its error when there is one.
+        accessibilityLabel={label}
+        accessibilityHint={error ?? hint}
         {...props}
         style={[
           {
