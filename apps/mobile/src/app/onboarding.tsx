@@ -1,4 +1,4 @@
-import { alpha, colors, overlay, space } from '@podmates/ui-tokens'
+import { alpha, colors, intro, space } from '@podmates/ui-tokens'
 import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useState, type ReactNode } from 'react'
 import { Dimensions, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, HealthBar, Icon, IconButton, ListRow, PressableScale, RowIcon, SymbolIcon, Text, type IconName } from '@/components/ui'
+import { Button, HealthBar, HERO_OVERLAP, Icon, IconButton, IntroHeading, IntroSheet, ListRow, PressableScale, RowIcon, SymbolIcon, Text, type IconName } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useCommunities } from '@/features/explore/hooks'
 import { useHabits } from '@/features/pods/hooks'
@@ -35,13 +35,10 @@ const COMPACT_FIG_H = 56
 /** The habit list's height: the sheet shows most of it and scrolls the rest. */
 const LIST_H = Math.round(SCREEN_H * 0.52)
 const GROVE: HairlineDrawing = { viewBox: GROVE_VIEWBOX, aspect: GROVE_ASPECT, paths: GROVE_PATHS }
-/** Onboarding's hero: black ground, green lines and ink. */
+/** Onboarding's hero: the intro tone (black ground, green lines and ink). */
 const GREEN = colors.leaf.DEFAULT
-const TONE = { bg: overlay.media, ink: GREEN, soft: alpha(GREEN, 0.8), faint: alpha(GREEN, 0.3) }
-/** Home's hero heading. */
-const HEAD = { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: TONE.ink } as const
-/** How far the sheet rides up over the hero (as on Home). */
-const OVERLAP = 22
+const TONE = intro
+const OVERLAP = HERO_OVERLAP
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 /**
@@ -236,15 +233,7 @@ function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top
   const insets = useSafeAreaInsets()
   const [box, setBox] = useState({ w: 0, h: 0 })
   const figH = Math.max(0, Math.min(box.h - 8, (box.w - 40) / figure.aspect, MAX_FIG_H))
-  const heading = (
-    <View style={{ gap: 8, flexShrink: 1 }}>
-      <View accessible accessibilityRole="header" accessibilityLabel={`${lead} ${bright}`}>
-        <Text style={HEAD}>{lead}</Text>
-        <Text style={[HEAD, { color: overlay.ink }]}>{bright}</Text>
-      </View>
-      <Text style={{ fontSize: 15, lineHeight: 21, color: TONE.soft }}>{sub}</Text>
-    </View>
-  )
+  const heading = <IntroHeading lead={lead} bright={bright} sub={sub} />
   return (
     <View style={{ flex: 1, backgroundColor: TONE.bg }}>
       <StatusBar style="light" />
@@ -268,7 +257,7 @@ function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top
           </>
         )}
       </View>
-      <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: colors.raised, marginTop: -OVERLAP, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>{children}</View>
+      <IntroSheet bottomInset={insets.bottom}>{children}</IntroSheet>
     </View>
   )
 }

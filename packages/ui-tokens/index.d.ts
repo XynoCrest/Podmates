@@ -16,6 +16,7 @@ export declare const colors: {
 export declare const ring: [string, string, string]
 export declare const avatar: Record<'leaf' | 'sky' | 'star' | 'flame' | 'rose' | 'teal', string>
 export declare const hero: { bg: string; ink: string; soft: string; faint: string; bright: string }
+export declare const intro: { bg: string; ink: string; soft: string; faint: string; bright: string }
 export declare const overlay: { media: string; ink: string; scrim: string; scrimSoft: string; track: string }
 export declare const space: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number; xxxl: number; gutter: number }
 export declare const radii: { control: number; card: number; sheet: number; chip: number; snap: number }

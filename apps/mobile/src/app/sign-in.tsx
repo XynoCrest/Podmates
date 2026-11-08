@@ -1,22 +1,18 @@
-import { colors, space } from '@podmates/ui-tokens'
+import { colors, intro, space } from '@podmates/ui-tokens'
 import { useLocalSearchParams } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, PressableScale, Text, TextField } from '@/components/ui'
+import { Button, HERO_OVERLAP, IntroSheet, Segmented, Text, TextField } from '@/components/ui'
 import { auth } from '@/ctx/session'
-import { TreeArt } from '@/features/tree/TreeArt'
+import { HairlineFigure } from '@/features/tree/GroveFigure'
+import { ONBOARDING_FIGURES } from '@/features/tree/onboardingPaths'
 import { isLocal } from '@/lib/env'
 import { haptics } from '@/lib/haptics'
 
-const DEMO = [
-  { email: 'ben@podmates.dev', name: 'Ben S.', color: 'leaf' },
-  { email: 'maya@podmates.dev', name: 'Maya', color: 'rose' },
-  { email: 'theo@podmates.dev', name: 'Theo', color: 'flame' },
-  { email: 'priya@podmates.dev', name: 'Priya', color: 'sky' },
-  { email: 'jonas@podmates.dev', name: 'Jonas', color: 'star' },
-  { email: 'aisha@podmates.dev', name: 'Aisha', color: 'teal' },
-]
+/** The big light title: thin system font in brand green, like a product intro. */
+const TITLE = { fontSize: 52, lineHeight: 56, fontWeight: '300', letterSpacing: -1.4 } as const
 
 export default function SignIn() {
   const insets = useSafeAreaInsets()
@@ -30,73 +26,74 @@ export default function SignIn() {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [name, setName] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function run(key: string, fn: () => Promise<{ error: { message: string } | null }>) {
-    setBusy(key)
+  async function submit() {
+    setBusy(true)
     setError(null)
-    const { error } = await fn()
-    setBusy(null)
+    const { error } =
+      mode === 'signIn' ? await auth.signIn(email.trim(), password) : await auth.signUp(email.trim(), password, username.trim().toLowerCase(), name.trim() || username.trim())
+    setBusy(false)
     if (error) {
       haptics.error()
       setError(error.message)
     } else haptics.success()
   }
 
-  const submit = () =>
-    run('form', () =>
-      mode === 'signIn' ? auth.signIn(email.trim(), password) : auth.signUp(email.trim(), password, username.trim().toLowerCase(), name.trim() || username.trim()),
-    )
-
+  const signUp = mode === 'signUp'
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24, paddingHorizontal: space.gutter, gap: space.xxl }} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: 'center', gap: 8 }}>
-          <TreeArt growth={6} health={1} size={150} />
-          <Text variant="display">Podmates</Text>
-          <Text variant="subhead" center>
-            Build habits with your people. Snap the proof, grow a tree together.
-          </Text>
-        </View>
-
-        <View style={{ gap: 12 }}>
-          {mode === 'signUp' ? (
-            <>
-              <TextField value={name} onChangeText={setName} placeholder="Name" autoCapitalize="words" />
-              <TextField value={username} onChangeText={setUsername} placeholder="Username" autoCapitalize="none" />
-            </>
-          ) : null}
-          <TextField value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-          <TextField value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry autoComplete="password" />
-          {error ? (
-            <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-              {error}
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: intro.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
+        {/* The intro: the pea pod in green lines, then a thin title and a soft line under it. */}
+        <View style={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.gutter, paddingBottom: HERO_OVERLAP + space.xl, gap: space.lg }}>
+          <View accessible={false} style={{ alignItems: 'center' }}>
+            <HairlineFigure drawing={ONBOARDING_FIGURES.peapod} height={170} ground={intro.bg} ink={intro.ink} />
+          </View>
+          <View style={{ gap: space.md }}>
+            <Text style={[TITLE, { color: intro.ink }]} center accessibilityRole="header">
+              Introducing{'\n'}Podmates
             </Text>
-          ) : null}
-          <Button label={mode === 'signIn' ? 'Sign in' : 'Create account'} onPress={submit} loading={busy === 'form'} size="lg" />
-          <Button
-            variant="ghost"
-            label={mode === 'signIn' ? 'New here? Create an account' : 'Have an account? Sign in'}
-            onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')}
-          />
+            <Text variant="callout" center style={{ color: colors.ink.muted }}>
+              Build positive habits, stay consistent, and turn small daily actions into lifelong routines.
+            </Text>
+          </View>
         </View>
 
-        {isLocal ? (
-          <View style={{ gap: 12 }}>
-            <Text variant="overline">Demo accounts · local only</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-              {DEMO.map((d) => (
-                <PressableScale key={d.email} onPress={() => run(d.email, () => auth.signIn(d.email, 'podmates123'))} accessibilityLabel={`Sign in as ${d.name}`}>
-                  <View style={{ alignItems: 'center', gap: 6, width: 64, opacity: busy && busy !== d.email ? 0.4 : 1 }}>
-                    <Avatar person={{ display_name: d.name, avatar_color: d.color }} size={52} ring={busy === d.email ? 'unseen' : undefined} />
-                    <Text variant="caption">{d.name}</Text>
-                  </View>
-                </PressableScale>
-              ))}
+        <IntroSheet bottomInset={insets.bottom} grow>
+          <View style={{ paddingHorizontal: space.gutter, gap: space.xl }}>
+            <Segmented
+              value={mode}
+              onChange={(m) => {
+                setError(null)
+                setMode(m)
+              }}
+              segments={[
+                { key: 'signIn', label: 'Sign in' },
+                { key: 'signUp', label: 'Create account' },
+              ]}
+            />
+            <View style={{ gap: space.lg }}>
+              {signUp ? (
+                <>
+                  <TextField label="Name" value={name} onChangeText={setName} placeholder="Maya Lopez" autoCapitalize="words" textContentType="name" />
+                  <TextField label="Username" value={username} onChangeText={setUsername} placeholder="maya.reads" autoCapitalize="none" autoCorrect={false} textContentType="username" />
+                </>
+              ) : null}
+              <TextField label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
+              <TextField label="Password" value={password} onChangeText={setPassword} placeholder={signUp ? 'At least 6 characters' : 'Your password'} secureTextEntry autoComplete={signUp ? 'new-password' : 'password'} />
+            </View>
+            <View style={{ gap: space.sm }}>
+              <Button label={signUp ? 'Create account' : 'Get started'} onPress={submit} loading={busy} size="lg" />
+              {error ? (
+                <Text variant="caption" center style={{ color: colors.danger.DEFAULT }}>
+                  {error}
+                </Text>
+              ) : null}
             </View>
           </View>
-        ) : null}
+        </IntroSheet>
       </ScrollView>
     </KeyboardAvoidingView>
   )

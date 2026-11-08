@@ -24,7 +24,7 @@ if (!kernelPath) {
 const ctx = {}
 vm.createContext(ctx)
 vm.runInContext(readFileSync(kernelPath, 'utf8') + '\n;globalThis.HL = HL', ctx)
-const { Cam, fit, proj, facing, rings, prism, rrect, ringAt, run, hull, poly, open, EASE_LIFT } = ctx.HL
+const { Cam, fit, proj, facing, rings, prism, rrect, ringAt, run, hull, poly, open, circ, EASE_LIFT } = ctx.HL
 
 const FPS = 20
 const DUR = 700 // rule 08: a discrete change gets a 700ms ease-out
@@ -70,6 +70,18 @@ const round = (P, front, x, y, r, b, z0, z1) => prism(P, front, disc(x, y, r), d
 /** A solid whose top is smaller than its foot (rule 09's two strings). */
 function taper(P, front, foot, top, inner, z0, z1) {
   return { sil: poly(hull(ringAt(P, foot, z0).concat(ringAt(P, top, z1)))), crease: open(ringAt(P, run(inner, front), z1)) }
+}
+
+/** A ball: the hull of its latitude rings for the silhouette, the equator's front run as the crease (rule 09). */
+function ball(P, front, x, y, zc, r) {
+  const pts = []
+  for (let k = -6; k <= 6; k++) {
+    const t = (k / 6) * (Math.PI / 2)
+    const ring = circ(r * Math.cos(t), 24).map((q) => ({ ...q, u: q.u + x, v: q.v + y }))
+    pts.push(...ringAt(P, ring, zc + r * Math.sin(t)))
+  }
+  const eq = circ(r, 48).map((q) => ({ ...q, u: q.u + x, v: q.v + y }))
+  return { sil: poly(hull(pts)), crease: open(ringAt(P, run(eq, front), zc)) }
 }
 
 /** An almond leaf ring, as grove.js draws them. */
@@ -237,7 +249,42 @@ function bake({ loop, draw }) {
   return { viewBox: `${x0} ${y0} ${w} ${h}`, aspect: +(w / h).toFixed(4), paths: rest, anim: { fps: FPS, slots, poses, timeline } }
 }
 
-const figures = { snap: bake(snap), streak: bake(streak), pod: bake(pod), habits: bake(habits) }
+/**
+ * Peapod (sign-in): an open pea pod lying on the ground, three peas in it. The peas lift
+ * one after another, like they're popping up, and settle; the middle pea is bright. Loop 3.6s.
+ */
+const peapod = {
+  loop: 3600,
+  draw() {
+    const A = -2.0 // the pod's direction on the ground: a rising diagonal on screen, like the reference logo
+    const L = 40, W = 14, H = 11
+    const { P, front } = camera(2.1, [[-44, -44, 0], [44, 44, 0], [44, -44, 0], [-44, 44, 0], [0, 0, 30]])
+    const axis = (d) => [Math.cos(A) * d, Math.sin(A) * d]
+    const peas = [-17, 0, 17].map((d) => axis(d))
+    const lift = peas.map((_, i) => track(0, [[300 + i * 160, 7], [1200 + i * 160, 0]]))
+    const foot = almond(0, 0, L * 0.78, W * 0.45, A), rim = almond(0, 0, L, W, A), lip = almond(0, 0, L - 2.5, W - 2.5, A)
+    return (ms) => {
+      const c = canvas()
+      // The shell: a boat, narrower at the keel than at the rim; its rim is the crease.
+      c.solid(taper(P, front, foot, rim, lip, 0, H))
+      // The stem curls up from the far tip.
+      const [tx, ty] = axis(L + 1)
+      const [nx, ny] = axis(L + 6)
+      c.line(open([P(tx, ty, H - 2), P(nx, ny, H + 4), P(nx - 2, ny - 2, H + 10)]))
+      // Peas, far to near along x + y so nearer ones cover farther ones (rule 06).
+      peas
+        .map((p, i) => ({ p, i }))
+        .sort((a, b) => a.p[0] + a.p[1] - (b.p[0] + b.p[1]))
+        .forEach(({ p: [x, y], i }) => c.solid(ball(P, front, x, y, H + 1 + lift[i](ms), 7), i === 1))
+      // The near wall of the shell comes last, so the peas sit inside the pod, not on it.
+      const wall = poly(hull(ringAt(P, run(foot, front), 0).concat(ringAt(P, run(rim, front), H))))
+      c.solid({ sil: wall, crease: open(ringAt(P, run(lip, front), H)) })
+      return c.done()
+    }
+  },
+}
+
+const figures = { snap: bake(snap), streak: bake(streak), pod: bake(pod), habits: bake(habits), peapod: bake(peapod) }
 const q = (s) => `'${s}'`
 const lines = Object.entries(figures).map(([name, f]) => {
   const paths = f.paths.map(([k, d]) => `      ['${k}', ${q(d)}],`).join('\n')
@@ -268,7 +315,7 @@ const out = `/**
  */
 import type { HairlineDrawing } from './GroveFigure'
 
-export const ONBOARDING_FIGURES: Record<'snap' | 'streak' | 'pod' | 'habits', HairlineDrawing> = {
+export const ONBOARDING_FIGURES: Record<'snap' | 'streak' | 'pod' | 'habits' | 'peapod', HairlineDrawing> = {
 ${lines.join('\n')}
 }
 `

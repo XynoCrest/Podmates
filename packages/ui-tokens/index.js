@@ -49,6 +49,9 @@ const avatar = {
  */
 const hero = { bg: BRAND, ink: '#03200F', soft: 'rgba(3, 32, 15, 0.72)', faint: 'rgba(3, 32, 15, 0.25)', bright: '#FFFFFF' }
 
+/** The intro (sign-in, onboarding): black ground, brand-green lines and lead text, white bright text. */
+const intro = { bg: '#000000', ink: BRAND, soft: 'rgba(0, 171, 90, 0.8)', faint: 'rgba(0, 171, 90, 0.3)', bright: '#FFFFFF' }
+
 /** Over photos and the camera: black ground, white ink, translucent discs and pills. */
 const overlay = { media: '#000000', ink: '#FFFFFF', scrim: 'rgba(0, 0, 0, 0.5)', scrimSoft: 'rgba(0, 0, 0, 0.35)', track: 'rgba(255, 255, 255, 0.35)' }
 
@@ -75,4 +78,4 @@ const preset = {
   },
 }
 
-module.exports = { colors, ring, avatar, hero, overlay, space, radii, alpha, preset }
+module.exports = { colors, ring, avatar, hero, intro, overlay, space, radii, alpha, preset }

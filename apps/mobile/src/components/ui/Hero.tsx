@@ -1,4 +1,4 @@
-import { colors, hero, radii, space } from '@podmates/ui-tokens'
+import { colors, hero, intro, radii, space } from '@podmates/ui-tokens'
 import type { ReactNode } from 'react'
 import { View } from 'react-native'
 import { Text } from './Text'
@@ -58,4 +58,45 @@ export function TabHero({ topInset, heading, art, children, minHeight }: { topIn
 /** The sheet under a hero: canvas, rounded top, riding up over the band. */
 export function HeroSheet({ children }: { children?: ReactNode }) {
   return <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, marginTop: -HERO_OVERLAP, paddingTop: 10 }}>{children}</View>
+}
+
+/** The intro heading (sign-in, onboarding): larger, green lead-in and the bright line in white. */
+export const INTRO_TITLE = { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8 } as const
+
+export function IntroHeading({ lead, bright, sub }: { lead: string; bright: string; sub?: string }) {
+  return (
+    <View style={{ gap: space.sm, flexShrink: 1 }}>
+      <View accessible accessibilityRole="header" accessibilityLabel={`${lead} ${bright}`}>
+        <Text style={[INTRO_TITLE, { color: intro.ink }]}>{lead}</Text>
+        <Text style={[INTRO_TITLE, { color: intro.bright }]}>{bright}</Text>
+      </View>
+      {sub ? (
+        <Text variant="callout" style={{ color: intro.soft }}>
+          {sub}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
+/** The sheet under an intro hero: canvas with a hairline top edge so it reads on black. */
+/** `grow` stretches it to the bottom of a scrolling page. */
+export function IntroSheet({ children, bottomInset = 0, grow }: { children?: ReactNode; bottomInset?: number; grow?: boolean }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.canvas,
+        borderTopLeftRadius: radii.sheet,
+        borderTopRightRadius: radii.sheet,
+        borderTopWidth: 1,
+        borderColor: colors.raised,
+        marginTop: -HERO_OVERLAP,
+        paddingTop: space.md,
+        paddingBottom: bottomInset + space.md,
+        flexGrow: grow ? 1 : 0,
+      }}
+    >
+      {children}
+    </View>
+  )
 }
