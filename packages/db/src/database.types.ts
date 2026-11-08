@@ -239,14 +239,14 @@ isOneToOne: false
                   ]
                 },"pod_members": {
                   Row: {
-                    "energy": number,"joined_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
+                    "energy": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "energy"?: number,"joined_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
+                    "energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
                   }
                   Update: {
-                    "energy"?: number,"joined_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
+                    "energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -456,7 +456,7 @@ isOneToOne: true
           Views: {
             "pod_overview": {
                   Row: {
-                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"member_count": number | null,"my_streak": number | null,"name": string | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"window_minutes": number | null
+                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"member_count": number | null,"my_streak": number | null,"name": string | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"unread_count": number | null,"window_minutes": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -485,6 +485,9 @@ isOneToOne: false
                            },
 "mark_dm_read":
 { Args: { "p_other": string }; Returns: number
+                           },
+"mark_pod_read":
+{ Args: { "p_pod": string }; Returns: undefined
                            },
 "refresh_profile_stats":
 { Args: { "p_user_ids": (string)[] }; Returns: undefined

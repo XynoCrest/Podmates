@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(17);
+select plan(19);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -51,6 +51,12 @@ select lives_ok(
 update public.direct_messages set read_at = now() where read_at is null;
 select is((select count(*)::int from public.direct_messages where read_at is not null and body = 'Your tree is looking healthy this week'), 0, 'Clients cannot write read_at directly');
 select is(public.mark_dm_read('a0000000-0000-4000-8000-000000000005'), 1, 'Opening the Jonas thread marks his unread message read');
+
+-- Pod chat read markers: only through the RPC, and only for my own membership.
+update public.pod_members set last_read_at = now() - interval '1 day' where pod_id = 'b0000000-0000-4000-8000-000000000001';
+select ok((select last_read_at > now() - interval '1 day' from public.pod_members where pod_id = 'b0000000-0000-4000-8000-000000000001' and user_id = 'a0000000-0000-4000-8000-000000000002'), 'Clients cannot write read markers directly');
+select public.mark_pod_read('b0000000-0000-4000-8000-000000000001');
+select is((select unread_count from public.pod_overview where id = 'b0000000-0000-4000-8000-000000000001'), 0, 'Opening a pod chat clears its unread count');
 
 -- Joining by invite code works through the RPC.
 select isnt(public.join_pod('IRONPT'), null, 'Ben can join Iron Pact with its invite code');

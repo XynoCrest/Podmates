@@ -12,7 +12,7 @@ import { HabitTabs } from '@/features/pods/components/HabitTabs'
 import { PodRow } from '@/features/pods/components/PodRow'
 import { StoriesRow } from '@/features/pods/components/StoriesRow'
 import { WindowBanner } from '@/features/pods/components/WindowBanner'
-import { needsSnap, useHabits, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
+import { needsSnap, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
 import { GroveFigure } from '@/features/tree/GroveFigure'
@@ -24,19 +24,18 @@ const HERO_H = 196
 /** How far the sheet rides up over the hero. */
 const OVERLAP = 22
 
-/** Home: a green streak hero, then a sheet with habit tabs → podmates' stories → Pods (group chats) or Podmates (one-to-one chats) for that habit. */
+/** Home: a green streak hero, then a sheet with habit tabs → podmates' stories → Pods (group chats) or Podmates (one-to-one chats) for that habit, or Unread (every unopened chat, all habits). */
 export default function PodsScreen() {
   const insets = useSafeAreaInsets()
   const me = useMe()
   const now = useNow()
   const profile = useProfile(me)
   const pods = useMyPods()
-  const habits = useHabits()
   const myHabits = useMyHabits()
   const [picked, setHabitId] = useState<string>()
   const [focused, setFocused] = useState(true)
   const [pastHero, setPastHero] = useState(false)
-  const [list, setList] = useState<'pods' | 'podmates'>('pods')
+  const [list, setList] = useState<'pods' | 'podmates' | 'unread'>('pods')
   useFocusEffect(
     useCallback(() => {
       setFocused(true)
@@ -55,8 +54,14 @@ export default function PodsScreen() {
   const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
   const urgent = inHabit.find((p) => needsSnap(p, now))
   const podmates = usePodmates(useMemo(() => inHabit.map((p) => p.id), [inHabit]))
-  const rows: (PodSummary | PodmateThread)[] = !hasPods ? [] : list === 'pods' ? inHabit : podmates.data
-  const symbol = (id: string) => habits.data?.find((h) => h.id === id)?.sf_symbol ?? 'leaf'
+  // Unread spans every habit: pod chats and one-to-one threads with anything I haven't opened, newest first.
+  const everyone = usePodmates(useMemo(() => pods.data?.map((p) => p.id) ?? [], [pods.data]))
+  const unread = useMemo<(PodSummary | PodmateThread)[]>(
+    () =>
+      [...(pods.data?.filter((p) => p.unread > 0) ?? []), ...everyone.data.filter((t) => t.unread > 0)].sort((a, b) => lastAt(b).localeCompare(lastAt(a))),
+    [pods.data, everyone.data],
+  )
+  const rows: (PodSummary | PodmateThread)[] = !hasPods ? [] : list === 'pods' ? inHabit : list === 'podmates' ? podmates.data : unread
   const heroTotal = insets.top + HERO_H
 
   return (
@@ -67,11 +72,12 @@ export default function PodsScreen() {
         keyExtractor={(r) => ('person' in r ? `u:${r.person.id}` : r.id)}
         renderItem={({ item }) => (
           <View style={{ backgroundColor: colors.canvas }}>
-            {'person' in item ? <PodmateRow thread={item} now={now} /> : <PodRow pod={item} symbol={symbol(item.habitId)} now={now} />}
+            {'person' in item ? <PodmateRow thread={item} now={now} /> : <PodRow pod={item} now={now} />}
           </View>
         )}
         onScroll={(e) => setPastHero(e.nativeEvent.contentOffset.y > HERO_H - 8)}
         scrollEventThrottle={32}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
             {/* Rides above the hero inside the scroll content, so pulling down reveals more green, not the canvas. */}
@@ -90,6 +96,7 @@ export default function PodsScreen() {
                       segments={[
                         { key: 'pods', label: 'Pods', badge: inHabit.filter((p) => needsSnap(p, now)).length },
                         { key: 'podmates', label: 'Podmates', badge: podmates.data.filter((t) => t.unread > 0).length },
+                        { key: 'unread', label: 'Unread', badge: unread.length },
                       ]}
                     />
                   </View>
@@ -108,6 +115,10 @@ export default function PodsScreen() {
               body="A pod is a few friends tracking one habit together. Snap daily, grow a tree."
               action={<Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />}
             />
+          ) : list === 'unread' && !everyone.isLoading ? (
+            <Text variant="subhead" center style={{ padding: 32 }}>
+              {"You're all caught up"}
+            </Text>
           ) : list === 'podmates' && !podmates.isLoading ? (
             <Text variant="subhead" center style={{ padding: 32 }}>
               No podmates in this habit yet. Invite friends to your pod.
@@ -123,6 +134,7 @@ export default function PodsScreen() {
               void stories.refetch()
               void profile.refetch()
               void podmates.refetch()
+              void everyone.refetch()
             }}
           />
         }
@@ -131,6 +143,8 @@ export default function PodsScreen() {
     </View>
   )
 }
+
+const lastAt = (r: PodSummary | PodmateThread) => ('person' in r ? (r.last?.createdAt ?? '') : r.lastActivityAt)
 
 /** The streak, said big: a dark lead-in, the count in white, and a quiet line of encouragement. */
 function StreakHero({ streak, topInset }: { streak: number; topInset: number }) {

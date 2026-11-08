@@ -1,6 +1,6 @@
 import { podDate, windowState, type WindowState } from '@podmates/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +30,10 @@ export interface PodSummary {
   contributedToday: number
   meContributedToday: boolean
   myStreak: number
+  /** Members in join order — the faces on the pod's group icon. */
+  members: Person[]
+  /** Messages from others since I last opened the chat. */
+  unread: number
   lastMessage: { kind: string; body: string; author: string | null } | null
   lastActivityAt: string
 }
@@ -63,6 +67,13 @@ export function useMyPods() {
     queryFn: async (): Promise<PodSummary[]> => {
       const { data, error } = await supabase.from('pod_overview').select('*').order('last_activity_at', { ascending: false })
       if (error) throw error
+      const ids = data.map((p) => p.id!)
+      const faces = new Map<string, Person[]>()
+      if (ids.length) {
+        const m = await supabase.from('pod_members').select(`pod_id, profile:profiles(${PERSON_FIELDS})`).in('pod_id', ids).order('joined_at')
+        if (m.error) throw m.error
+        for (const row of m.data) faces.set(row.pod_id, [...(faces.get(row.pod_id) ?? []), row.profile as Person])
+      }
       return data.map((p) => ({
         id: p.id!,
         name: p.name!,
@@ -80,6 +91,8 @@ export function useMyPods() {
         contributedToday: p.contributed_today ?? 0,
         meContributedToday: p.me_contributed_today ?? false,
         myStreak: p.my_streak ?? 0,
+        members: faces.get(p.id!) ?? [],
+        unread: p.unread_count ?? 0,
         lastMessage: p.last_message_kind
           ? { kind: p.last_message_kind, body: p.last_message_body ?? '', author: p.last_message_author }
           : null,
@@ -179,6 +192,21 @@ export function useMessages(podId: string) {
   })
   useRealtimeInvalidate('messages', `pod_id=eq.${podId}`, [qk.messages(podId), qk.members(podId), qk.tree(podId)])
   return query
+}
+
+/**
+ * Moves my read marker to now while the chat is open: once on open, and again whenever
+ * a new message lands (the pod list refetches on realtime, so `unread` goes back above 0).
+ */
+export function useMarkPodRead(podId: string, unread: number | undefined) {
+  const queryClient = useQueryClient()
+  const pending = !!unread
+  useEffect(() => {
+    if (!pending) return
+    void supabase.rpc('mark_pod_read', { p_pod: podId }).then(({ error }) => {
+      if (!error) void queryClient.invalidateQueries({ queryKey: qk.pods })
+    })
+  }, [pending, podId, queryClient])
 }
 
 export function useSendMessage(podId: string) {

@@ -7,7 +7,7 @@ import { Header, Icon, PressableScale, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { Composer } from '@/features/pods/components/Composer'
 import { MessageBubble } from '@/features/pods/components/MessageBubble'
-import { podWindow, useMessages, usePod, useSendMessage, type PodSummary } from '@/features/pods/hooks'
+import { podWindow, useMarkPodRead, useMessages, usePod, useSendMessage, type PodSummary } from '@/features/pods/hooks'
 import { useNow } from '@/lib/useNow'
 
 export default function PodChat() {
@@ -16,6 +16,7 @@ export default function PodChat() {
   const pod = usePod(id)
   const messages = useMessages(id)
   const send = useSendMessage(id)
+  useMarkPodRead(id, pod.data?.unread)
 
   const openTree = () => router.push({ pathname: '/pod/[id]/tree', params: { id } })
   const p = pod.data

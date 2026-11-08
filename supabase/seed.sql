@@ -271,3 +271,11 @@ from (values
 ) as v(sender, recipient, body, ago)
 join public.profiles s on s.username = v.sender
 join public.profiles r on r.username = v.recipient;
+
+-- ─── Pod chat read markers ────────────────────────────────────────────────────
+
+-- Ben is behind on two pod chats, so the Unread tab has something in it.
+update public.pod_members set last_read_at = now() - interval '1 hour'
+where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000001';
+update public.pod_members set last_read_at = now() - interval '7 hours'
+where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000003';
