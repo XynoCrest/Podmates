@@ -1,18 +1,9 @@
 import type { DbClient } from '@podmates/db'
-import { podDate, zonedParts } from '@podmates/shared'
-import { newTree } from '@podmates/tree-engine'
 import { HttpError } from '../lib/httpError'
-import { settleDue } from './settlement'
+import { settleAll } from './settlement'
 import type { Services } from './types'
 
 export function createSupabaseServices(db: DbClient): Services {
-  async function loadPod(podId: string) {
-    const { data, error } = await db.from('pods').select('id, timezone, window_minutes, trees(status)').eq('id', podId).maybeSingle()
-    if (error) throw error
-    if (!data) throw new HttpError('not_found', 'Pod not found')
-    return data
-  }
-
   return {
     async verifyAccessToken(token) {
       const { data, error } = await db.auth.getUser(token)
@@ -20,51 +11,41 @@ export function createSupabaseServices(db: DbClient): Services {
       return { id: data.user.id, email: data.user.email ?? null }
     },
 
-    async isPodMember(podId, userId) {
-      const { count, error } = await db
-        .from('pod_members')
-        .select('user_id', { count: 'exact', head: true })
-        .eq('pod_id', podId)
-        .eq('user_id', userId)
+    async isAdmin(userId) {
+      const { data, error } = await db.from('profiles').select('is_admin').eq('id', userId).maybeSingle()
       if (error) throw error
-      return (count ?? 0) > 0
+      return data?.is_admin === true
     },
 
-    settle: (options) => settleDue(db, options),
+    settle: (options) => settleAll(db, options),
 
-    async replant(podId, now = new Date()) {
-      const pod = await loadPod(podId)
-      const fresh = newTree()
+    async flaggedSnaps() {
       const { data, error } = await db
-        .from('trees')
-        .update({
-          hp: fresh.hp,
-          max_hp: fresh.maxHp,
-          growth: fresh.growth,
-          status: fresh.status,
-          last_settled_date: podDate(now, pod.timezone),
-          planted_at: now.toISOString(),
-          updated_at: now.toISOString(),
-        })
-        .eq('pod_id', podId)
-        .eq('status', 'dead')
-        .select('hp, max_hp')
+        .from('snaps')
+        .select('id, pod_id, habit_id, user_id, image, caption, day, flag_count')
+        .eq('review_status', 'pending')
+        .order('taken_at', { ascending: true })
       if (error) throw error
-      if (!data?.length) throw new HttpError('conflict', 'The tree is still alive')
-      await db.from('messages').insert({ pod_id: podId, user_id: null, kind: 'system', body: 'A new seed was planted. Fresh start! 🌱' })
-      return { podId, hp: data[0]!.hp, maxHp: data[0]!.max_hp }
+      return (data ?? []).map((s) => ({
+        id: s.id,
+        podId: s.pod_id,
+        habitId: s.habit_id,
+        userId: s.user_id,
+        image: s.image,
+        caption: s.caption,
+        day: s.day,
+        flagCount: s.flag_count,
+      }))
     },
 
-    async openWindowNow(podId, now = new Date()) {
-      const pod = await loadPod(podId)
-      const start = zonedParts(now, pod.timezone).minuteOfDay - 1
-      if (start < 0 || start + pod.window_minutes >= 24 * 60) {
-        throw new HttpError('conflict', 'Too close to midnight for a demo window — try again in a bit')
-      }
-      const snapTime = `${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}:00`
-      const { error } = await db.from('pods').update({ snap_time: snapTime }).eq('id', podId)
+    async reviewSnap(snapId, approve) {
+      const { data: snap, error: sErr } = await db.from('snaps').select('user_id, review_status').eq('id', snapId).maybeSingle()
+      if (sErr) throw sErr
+      if (!snap) throw new HttpError('not_found', 'Snap not found')
+      if (snap.review_status !== 'pending') throw new HttpError('conflict', 'This snap is not waiting for review')
+      const { error } = await db.rpc('review_snap', { p_snap_id: snapId, p_approve: approve })
       if (error) throw error
-      return { podId, snapTime }
+      return { userId: snap.user_id }
     },
   }
 }

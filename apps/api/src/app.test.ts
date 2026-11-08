@@ -4,15 +4,16 @@ import { createApp } from './app'
 import { silentLogger } from './lib/logger'
 import type { Services } from './services/types'
 
-const POD = 'b0000000-0000-4000-8000-000000000001'
+const SNAP = 'e0000000-0000-4000-8000-000000000001'
+const ADMIN = 'admin-1'
 
 function fakeServices(overrides: Partial<Services> = {}): Services {
   return {
-    verifyAccessToken: async (t) => (t === 'good' ? { id: 'user-1', email: null } : null),
-    isPodMember: async (podId) => podId === POD,
-    settle: vi.fn(async () => []),
-    replant: async (podId) => ({ podId, hp: 100, maxHp: 100 }),
-    openWindowNow: async (podId) => ({ podId, snapTime: '12:00:00' }),
+    verifyAccessToken: async (t) => (t === 'good' ? { id: 'user-1', email: null } : t === 'admin' ? { id: ADMIN, email: null } : null),
+    isAdmin: async (id) => id === ADMIN,
+    settle: vi.fn(async () => ({ streaks: 0, trees: 0 })),
+    flaggedSnaps: async () => [],
+    reviewSnap: vi.fn(async () => ({ userId: 'owner-1' })),
     ...overrides,
   }
 }
@@ -27,31 +28,40 @@ describe('api', () => {
   })
 
   it('rejects missing and bad tokens', async () => {
-    expect((await request(app()).post(`/v1/pods/${POD}/replant`)).status).toBe(401)
-    expect((await request(app()).post(`/v1/pods/${POD}/replant`).set('Authorization', 'Bearer nope')).status).toBe(401)
+    expect((await request(app()).get('/v1/admin/flagged')).status).toBe(401)
+    expect((await request(app()).get('/v1/admin/flagged').set('Authorization', 'Bearer nope')).status).toBe(401)
   })
 
-  it('only members can replant', async () => {
-    const other = 'b0000000-0000-4000-8000-000000000009'
-    const res = await request(app()).post(`/v1/pods/${other}/replant`).set('Authorization', 'Bearer good')
+  it('only admins can list or review flagged snaps', async () => {
+    expect((await request(app()).get('/v1/admin/flagged').set('Authorization', 'Bearer good')).status).toBe(403)
+    const res = await request(app()).post(`/v1/admin/snaps/${SNAP}/review`).set('Authorization', 'Bearer good').send({ approve: false })
     expect(res.status).toBe(403)
     expect(res.body.code).toBe('forbidden')
   })
 
-  it('validates the pod id', async () => {
-    const res = await request(app()).post('/v1/pods/not-a-uuid/replant').set('Authorization', 'Bearer good')
-    expect(res.status).toBe(400)
+  it('a rejection reviews the snap and re-settles its owner', async () => {
+    const services = fakeServices()
+    const res = await request(app('prod', services)).post(`/v1/admin/snaps/${SNAP}/review`).set('Authorization', 'Bearer admin').send({ approve: false })
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ snapId: SNAP, status: 'rejected' })
+    expect(services.reviewSnap).toHaveBeenCalledWith(SNAP, false)
+    expect(services.settle).toHaveBeenCalledWith({ userId: 'owner-1' })
   })
 
-  it('end-day settles through today for that pod', async () => {
+  it('validates the snap id and body', async () => {
+    expect((await request(app()).post('/v1/admin/snaps/not-a-uuid/review').set('Authorization', 'Bearer admin').send({ approve: true })).status).toBe(400)
+    expect((await request(app()).post(`/v1/admin/snaps/${SNAP}/review`).set('Authorization', 'Bearer admin').send({ approve: 'yes' })).status).toBe(400)
+  })
+
+  it('end-day settles my habits through today', async () => {
     const services = fakeServices()
-    const res = await request(app('local', services)).post(`/v1/dev/pods/${POD}/end-day`).set('Authorization', 'Bearer good')
+    const res = await request(app('local', services)).post('/v1/dev/end-day').set('Authorization', 'Bearer good')
     expect(res.status).toBe(200)
-    expect(services.settle).toHaveBeenCalledWith({ podId: POD, throughToday: true })
+    expect(services.settle).toHaveBeenCalledWith({ userId: 'user-1', throughToday: true })
   })
 
   it('dev helpers do not exist outside local', async () => {
-    const res = await request(app('prod')).post(`/v1/dev/pods/${POD}/end-day`).set('Authorization', 'Bearer good')
+    const res = await request(app('prod')).post('/v1/dev/end-day').set('Authorization', 'Bearer good')
     expect(res.status).toBe(404)
   })
 })

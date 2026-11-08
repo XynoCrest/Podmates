@@ -13,26 +13,28 @@ export const HealthResponse = z.object({
 })
 export type HealthResponse = z.infer<typeof HealthResponse>
 
-export const DayOutcome = z.enum(['thrive', 'steady', 'wilt', 'dormant'])
-
-export const SettledDay = z.object({
-  podId: z.uuid(),
-  podDate: z.iso.date(),
-  outcome: DayOutcome,
-  contributors: z.number().int(),
-  members: z.number().int(),
-  hpDelta: z.number().int(),
-  hpAfter: z.number().int(),
-  died: z.boolean(),
-})
-export type SettledDay = z.infer<typeof SettledDay>
-
-export const SettleResponse = z.object({ settled: z.array(SettledDay) })
+/** One settlement pass: how many streaks and trees were (re)computed. */
+export const SettleResponse = z.object({ streaks: z.number().int(), trees: z.number().int() })
 export type SettleResponse = z.infer<typeof SettleResponse>
 
-export const ReplantResponse = z.object({ podId: z.uuid(), hp: z.number().int(), maxHp: z.number().int() })
-export type ReplantResponse = z.infer<typeof ReplantResponse>
+/** Team review of a snap hidden by flags. */
+export const ReviewRequest = z.object({ approve: z.boolean() })
+export type ReviewRequest = z.infer<typeof ReviewRequest>
 
-/** Local-only demo helper: moves the pod's snap window so it is open right now. */
-export const OpenWindowResponse = z.object({ podId: z.uuid(), snapTime: z.string() })
-export type OpenWindowResponse = z.infer<typeof OpenWindowResponse>
+export const ReviewResponse = z.object({ snapId: z.uuid(), status: z.enum(['approved', 'rejected']) })
+export type ReviewResponse = z.infer<typeof ReviewResponse>
+
+export const FlaggedSnap = z.object({
+  id: z.uuid(),
+  podId: z.uuid(),
+  habitId: z.string(),
+  userId: z.uuid(),
+  image: z.string(),
+  caption: z.string(),
+  day: z.iso.date(),
+  flagCount: z.number().int(),
+})
+export type FlaggedSnap = z.infer<typeof FlaggedSnap>
+
+export const FlaggedResponse = z.object({ snaps: z.array(FlaggedSnap) })
+export type FlaggedResponse = z.infer<typeof FlaggedResponse>
