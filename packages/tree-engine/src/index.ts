@@ -41,6 +41,8 @@ export interface MemberDay {
   userId: string
   /** Streak before this day. */
   streak: number
+  /** Longest streak before this day (defaults to the current streak). */
+  bestStreak?: number
   contributed: boolean
 }
 
@@ -50,6 +52,8 @@ export interface MemberUpdate {
   starsDelta: number
   /** Streak after this day. */
   streak: number
+  /** Longest streak ever, after this day. Never goes down. */
+  bestStreak: number
 }
 
 export interface SettleResult {
@@ -111,7 +115,7 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
       growthDelta: 0,
       died: false,
       tree,
-      memberUpdates: members.map((m) => ({ userId: m.userId, energyDelta: 0, starsDelta: 0, streak: m.streak })),
+      memberUpdates: members.map((m) => ({ userId: m.userId, energyDelta: 0, starsDelta: 0, streak: m.streak, bestStreak: Math.max(m.bestStreak ?? 0, m.streak) })),
       summary: 'The tree is resting. Replant it to start growing again.',
     }
   }
@@ -124,12 +128,16 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
   const died = hp === 0
   const next: TreeState = { hp, maxHp, growth: tree.growth + growthDelta, status: died ? 'dead' : 'alive' }
 
-  const memberUpdates = members.map((m) => ({
-    userId: m.userId,
-    energyDelta: m.contributed ? RULES.energyPerCheckin : 0,
-    starsDelta: m.contributed && outcome === 'thrive' ? RULES.starsPerPerfectDay : 0,
-    streak: m.contributed ? m.streak + 1 : 0,
-  }))
+  const memberUpdates = members.map((m) => {
+    const streak = m.contributed ? m.streak + 1 : 0
+    return {
+      userId: m.userId,
+      energyDelta: m.contributed ? RULES.energyPerCheckin : 0,
+      starsDelta: m.contributed && outcome === 'thrive' ? RULES.starsPerPerfectDay : 0,
+      streak,
+      bestStreak: Math.max(m.bestStreak ?? 0, m.streak, streak),
+    }
+  })
 
   return {
     outcome,

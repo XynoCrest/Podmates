@@ -29,9 +29,9 @@ export interface StoryGroup {
   unseen: boolean
 }
 
-const SNAP_FIELDS = `id, image, caption, taken_at, on_time, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS})`
+export const SNAP_FIELDS = `id, image, caption, taken_at, on_time, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS})`
 
-const toSnap = (s: any, podName: string | null = null): Snap => ({
+export const toSnap = (s: any, podName: string | null = null): Snap => ({
   id: s.id,
   image: s.image,
   caption: s.caption,
@@ -123,6 +123,18 @@ export function useProfileSnaps(userId: string, habitId: string | undefined) {
   })
 }
 
+/** A person's profile board: every snap they chose to show, across all habits, newest first. */
+export function useProfileBoard(userId: string) {
+  return useQuery({
+    queryKey: qk.profileBoard(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('snaps').select(`${SNAP_FIELDS}, pod:pods(name)`).eq('user_id', userId).eq('on_profile', true).order('taken_at', { ascending: false }).limit(60)
+      if (error) throw error
+      return data.map((s) => toSnap(s))
+    },
+  })
+}
+
 /** All my snaps for a habit — the "pick for profile" sheet. */
 export function useMySnaps(habitId: string) {
   const me = useMe()
@@ -157,6 +169,7 @@ export function useToggleOnProfile(habitId: string) {
       void queryClient.invalidateQueries({ queryKey: qk.mySnaps(habitId) })
       void queryClient.invalidateQueries({ queryKey: qk.profileSnaps(me, habitId) })
       void queryClient.invalidateQueries({ queryKey: qk.profileHabits(me) })
+      void queryClient.invalidateQueries({ queryKey: qk.profileBoard(me) })
     },
   })
 }

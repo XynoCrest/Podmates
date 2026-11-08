@@ -28,7 +28,7 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
 
     const { data: members, error: mErr } = await db
       .from('pod_members')
-      .select('user_id, streak, joined_at')
+      .select('user_id, streak, best_streak, joined_at')
       .eq('pod_id', pod.id)
     if (mErr) throw mErr
     const { data: contributions, error: cErr } = await db
@@ -41,6 +41,7 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
 
     let tree: TreeState = { hp: t.hp, maxHp: t.max_hp, growth: t.growth, status: t.status as TreeState['status'] }
     const streaks = new Map((members ?? []).map((m) => [m.user_id, m.streak]))
+    const bests = new Map((members ?? []).map((m) => [m.user_id, m.best_streak]))
     let last = t.last_settled_date
 
     for (const day of days) {
@@ -50,6 +51,7 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       const memberDays: MemberDay[] = active.map((m) => ({
         userId: m.user_id,
         streak: streaks.get(m.user_id) ?? 0,
+        bestStreak: bests.get(m.user_id) ?? 0,
         contributed: contributed.has(m.user_id),
       }))
       const r = settleDay(tree, memberDays)
@@ -65,6 +67,7 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
           energy_delta: u.energyDelta,
           stars_delta: u.starsDelta,
           streak: u.streak,
+          best_streak: u.bestStreak,
         })),
         p_message: r.summary,
         // A replayed day's summary lands at that day's midnight; "end the day now" lands now.
@@ -77,6 +80,7 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       last = day
       for (const u of r.memberUpdates) {
         streaks.set(u.userId, u.streak)
+        bests.set(u.userId, u.bestStreak)
         touchedUsers.add(u.userId)
       }
       settled.push({

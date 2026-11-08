@@ -1,4 +1,5 @@
 import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
+import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useState } from 'react'
@@ -7,6 +8,7 @@ import { Avatar, Button, PressableScale, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useProfile, useUpdateProfile, type Profile } from '@/features/profile/hooks'
 import { haptics } from '@/lib/haptics'
+import { imageUri } from '@/lib/images'
 
 export default function EditProfile() {
   const profile = useProfile(useMe())
@@ -15,17 +17,23 @@ export default function EditProfile() {
 
 function EditForm({ profile }: { profile: Profile }) {
   const update = useUpdateProfile()
-  const [form, setForm] = useState({ display_name: profile.display_name, username: profile.username, bio: profile.bio, avatar_color: profile.avatar_color })
+  const [form, setForm] = useState({ display_name: profile.display_name, username: profile.username, avatar_color: profile.avatar_color })
   const [photo, setPhoto] = useState<string | null>(null)
+  const [banner, setBanner] = useState<string | null>(null)
 
   async function pickPhoto() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.9 })
     if (!r.canceled && r.assets[0]) setPhoto(r.assets[0].uri)
   }
 
+  async function pickBanner() {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 1], quality: 0.9 })
+    if (!r.canceled && r.assets[0]) setBanner(r.assets[0].uri)
+  }
+
   const save = () =>
     update.mutate(
-      { ...form, newAvatarUri: photo },
+      { ...form, newAvatarUri: photo, newBannerUri: banner },
       {
         onSuccess: () => {
           haptics.success()
@@ -38,6 +46,13 @@ function EditForm({ profile }: { profile: Profile }) {
   return (
     <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 18 }} keyboardShouldPersistTaps="handled">
       <Text variant="title">Edit profile</Text>
+      <View style={{ gap: 8 }}>
+        <Text variant="overline">Banner</Text>
+        <View style={{ height: 96, borderRadius: 14, overflow: 'hidden', backgroundColor: avatarColors[form.avatar_color as keyof typeof avatarColors] ?? colors.raised }}>
+          {banner ?? profile.banner_url ? <Image source={{ uri: banner ?? imageUri(profile.banner_url!) }} style={{ width: '100%', height: 96 }} contentFit="cover" /> : null}
+        </View>
+        <Button label={profile.banner_url || banner ? 'Change banner' : 'Add a banner'} variant="ghost" size="sm" onPress={pickBanner} />
+      </View>
       <View style={{ alignItems: 'center', gap: 10 }}>
         <Avatar person={{ ...form, avatar_url: photo ?? profile.avatar_url }} size={96} />
         <Button label="Change photo" variant="ghost" size="sm" onPress={pickPhoto} />
@@ -51,7 +66,6 @@ function EditForm({ profile }: { profile: Profile }) {
       </View>
       <Labeled label="Name" value={form.display_name} onChangeText={(v) => setForm({ ...form, display_name: v })} />
       <Labeled label="Username" value={form.username} autoCapitalize="none" onChangeText={(v) => setForm({ ...form, username: v })} />
-      <Labeled label="Bio" value={form.bio} multiline maxLength={160} onChangeText={(v) => setForm({ ...form, bio: v })} />
       {update.error ? (
         <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
           {update.error.message}
