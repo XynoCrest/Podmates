@@ -4,7 +4,7 @@ export default function Camera({ onClose }) {
       <div className="viewfinder" />
       <div className="cam-bar">
         <button className="cam-close" onClick={onClose}>
-          Close
+          Close camera
         </button>
         <button className="cam-shutter" aria-label="Take photo" onClick={onClose} />
         <span style={{ width: 44 }} />

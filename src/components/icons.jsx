@@ -58,6 +58,24 @@ function Heart(props) {
   );
 }
 
+function ThumbsUp(props) {
+  return (
+    <svg viewBox="0 0 24 24" {...line} {...props}>
+      <path d="M8.2 10.1 12 3.8c1.7.8 2.3 2.3 1.8 4.1l-.5 2.2h4.6a2 2 0 0 1 1.9 2.5l-1.5 6a2 2 0 0 1-1.9 1.5H8.2" />
+      <path d="M4.2 10.1h4v10h-4a1.2 1.2 0 0 1-1.2-1.2v-7.6a1.2 1.2 0 0 1 1.2-1.2Z" />
+    </svg>
+  );
+}
+
+function ThumbsDown(props) {
+  return (
+    <svg viewBox="0 0 24 24" {...line} {...props}>
+      <path d="m8.2 13.9 3.8 6.3c1.7-.8 2.3-2.3 1.8-4.1l-.5-2.2h4.6a2 2 0 0 0 1.9-2.5l-1.5-6a2 2 0 0 0-1.9-1.5H8.2" />
+      <path d="M4.2 3.9h4v10h-4A1.2 1.2 0 0 1 3 12.7V5.1a1.2 1.2 0 0 1 1.2-1.2Z" />
+    </svg>
+  );
+}
+
 function Plus(props) {
   return (
     <svg viewBox="0 0 24 24" {...line} strokeWidth="2.2" {...props}>
@@ -125,6 +143,16 @@ function Chat({ active, ...props }) {
   );
 }
 
+function Community(props) {
+  return (
+    <svg viewBox="0 0 24 24" {...line} {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c.5-3.1 2.4-4.8 5.5-4.8 2.2 0 3.8.9 4.7 2.6" />
+      <path d="M15.2 7.1a2.8 2.8 0 1 1 0 5.6M16.2 15c2.4.4 3.7 1.7 4.2 4" />
+    </svg>
+  );
+}
+
 function Person({ active, ...props }) {
   if (active) {
     return (
@@ -148,12 +176,15 @@ export const ICONS = {
   run: Run,
   flame: Flame,
   heart: Heart,
+  thumbsUp: ThumbsUp,
+  thumbsDown: ThumbsDown,
   plus: Plus,
   camera: Camera,
   sun: Sun,
   moon: Moon,
   home: Home,
   chat: Chat,
+  community: Community,
   person: Person,
 };
 

@@ -11,7 +11,6 @@ const podmates = [
   {
     name: "Mark",
     sub: "Read · 11 hrs left",
-    photo: "https://i.pravatar.cc/160?img=12",
     icon: "read",
     streak: 9,
     color: "var(--green)",
@@ -20,16 +19,14 @@ const podmates = [
   {
     name: "Emma",
     sub: "Run · 11 hrs left",
-    photo: "https://i.pravatar.cc/160?img=47",
     icon: "run",
     streak: 11,
-    color: "var(--red)",
+    color: "var(--accent)",
     fresh: true,
   },
   {
     name: "Nabil",
     sub: "Swim · 4 hrs left",
-    photo: "https://i.pravatar.cc/160?img=33",
     icon: "swim",
     streak: 4,
     color: "var(--green)",
@@ -41,19 +38,16 @@ const pods = [
   {
     name: "Rexall Swim",
     sub: "Matt posted 1 min ago",
-    photo: "https://i.pravatar.cc/160?img=65",
     health: 86,
   },
   {
     name: "Volleyball YYC",
     sub: "Emma posted 17 min ago",
-    photo: "https://i.pravatar.cc/160?img=52",
     health: 48,
   },
   {
     name: "Knitting Clurb",
     sub: "Alex posted 1 hr ago",
-    photo: "https://i.pravatar.cc/160?img=27",
     health: 52,
   },
 ];
@@ -73,7 +67,7 @@ function HealthBar({ value }) {
   const step = Math.max(1, Math.round((value / 100) * SEGMENTS.length));
 
   return (
-    <span className="thermo" aria-label={`Pod health ${value} percent`}>
+    <span className="thermo" role="img" aria-label={`Pod health: ${value}%`}>
       <span className="thermo-bulb" style={{ background: SEGMENTS[step - 1] }}>
         <Icon name="heart" size={11} />
       </span>
@@ -101,12 +95,6 @@ export default function Home({ theme, onToggleTheme, onOpenCamera, onOpenPod }) 
           >
             <Icon name={theme === "dark" ? "moon" : "sun"} size={21} />
           </button>
-          <button className="icon-btn" aria-label="Add a habit">
-            <Icon name="plus" size={22} />
-          </button>
-          <button className="icon-btn" aria-label="Messages">
-            <Icon name="chat" size={22} />
-          </button>
         </div>
       </header>
 
@@ -124,25 +112,19 @@ export default function Home({ theme, onToggleTheme, onOpenCamera, onOpenPod }) 
             <span className="story-label">{habit.label}</span>
           </button>
         ))}
-        <button className="story" aria-label="Add a habit">
-          <span className="story-ring add">
-            <span className="story-face">
-              <Icon name="plus" size={24} />
-            </span>
-          </span>
-          <span className="story-label">Add</span>
-        </button>
       </div>
 
       <div className="feed">
         <div className="section-head">
-          <h2>Podmates</h2>
-          <span>See all</span>
+          <div>
+            <p className="eyebrow">Your circle</p>
+            <h1>Podmates</h1>
+          </div>
         </div>
         {podmates.map((person) => (
           <div key={person.name} className="row">
-            <span className={`av-ring${person.fresh ? "" : " seen"}`}>
-              <img src={person.photo} alt="" />
+            <span className={`avatar${person.fresh ? "" : " seen"}`} aria-hidden="true">
+              {person.name[0]}
             </span>
             <div>
               <p className="row-name">{person.name}</p>
@@ -156,15 +138,13 @@ export default function Home({ theme, onToggleTheme, onOpenCamera, onOpenPod }) 
             </div>
           </div>
         ))}
-
         <div className="section-head">
           <h2>Pods</h2>
-          <span>See all</span>
         </div>
         {pods.map((pod) => (
           <button key={pod.name} className="row" onClick={() => onOpenPod(pod)}>
-            <span className="av-ring seen">
-              <img src={pod.photo} alt="" />
+            <span className="pod-mark" aria-hidden="true">
+              {pod.name.slice(0, 1)}
             </span>
             <div>
               <p className="row-name">{pod.name}</p>
