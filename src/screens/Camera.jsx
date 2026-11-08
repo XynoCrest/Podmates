@@ -6,7 +6,7 @@ export default function Camera({ onClose }) {
         <button className="cam-close" onClick={onClose}>
           Close
         </button>
-        <button className="shutter" aria-label="Take photo" onClick={onClose} />
+        <button className="cam-shutter" aria-label="Take photo" onClick={onClose} />
         <span style={{ width: 44 }} />
       </div>
     </section>
