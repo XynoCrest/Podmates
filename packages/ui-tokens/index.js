@@ -3,22 +3,28 @@
  * profile, feed, tree) reads best on a near-black canvas, and snaps pop on it.
  *
  * Colour is reserved for the game's three currencies and the tree, so each reads at a glance:
- *   leaf   → the tree, health, "done today"       energy → ⚡ energy points
- *   star   → ⭐ stars (perfect pod days)           flame  → 🔥 streaks, open snap window
+ *   leaf   → the brand green: heroes, the tree, health, "done today"
+ *   energy → on-time badges, warnings              flame  → 🔥 streaks, open snap window
+ *   star   → reserved                              sky    → your own chat bubbles, links
  *   danger → wilting tree, destructive actions
  * Each has a soft tint for backgrounds and a deep tone for pressed/edge states.
  *
  * CommonJS on purpose: Metro and Node scripts can both require() it. `preset` is a Tailwind preset
  * kept for a future web console; the app uses the raw values.
  */
+/** The brand green (#00AB5A): heroes, the tree, health, "done today", primary accents. */
+const BRAND = '#00AB5A'
+
 const colors = {
   canvas: '#0B0C0F',
+  /** Home streak band — story rings use this too. */
+  hero: BRAND,
   surface: '#15171C',
   raised: '#1E2128',
   sunken: '#08090B',
   line: '#2A2E37',
   ink: { DEFAULT: '#F3F4F6', muted: '#A3A8B4', subtle: '#6C7280', inverse: '#0B0C0F' },
-  leaf: { DEFAULT: '#7BD64B', soft: '#16271A', deep: '#4E9A2C' },
+  leaf: { DEFAULT: BRAND, soft: '#0B2618', deep: '#00813F' },
   energy: { DEFAULT: '#FFC83D', soft: '#2B2412', deep: '#C9951C' },
   star: { DEFAULT: '#B9A2FF', soft: '#211C33', deep: '#8668E6' },
   flame: { DEFAULT: '#FF8A3D', soft: '#2E1C12', deep: '#D9651C' },
@@ -26,8 +32,8 @@ const colors = {
   sky: { DEFAULT: '#5AB2FF', soft: '#122233', deep: '#2F86D6' },
 }
 
-/** Story ring gradient (unseen snaps). */
-const ring = ['#FFC83D', '#FF8A3D', '#F0457D']
+/** Story ring (unseen snaps): same green as the home streak band. */
+const ring = [BRAND, BRAND, BRAND]
 
 /** Avatar backgrounds, picked by profiles.avatar_color. */
 const avatar = {
@@ -39,7 +45,29 @@ const avatar = {
   teal: '#1F8A84',
 }
 
-const radii = { card: 20, control: 14, chip: 999, snap: 6 }
+/**
+ * The hero band at the top of tab pages (Home, Explore): brand green with dark ink, and
+ * white for the bright half of the heading.
+ */
+const hero = { bg: BRAND, ink: '#03200F', soft: 'rgba(3, 32, 15, 0.72)', faint: 'rgba(3, 32, 15, 0.25)', bright: '#FFFFFF' }
+
+/** The intro (sign-in, onboarding): black ground, brand-green lines and lead text, white bright text. */
+const intro = { bg: '#000000', ink: BRAND, soft: 'rgba(0, 171, 90, 0.8)', faint: 'rgba(0, 171, 90, 0.3)', bright: '#FFFFFF' }
+
+/** Over photos and the camera: black ground, white ink, translucent discs and pills. */
+const overlay = { media: '#000000', ink: '#FFFFFF', scrim: 'rgba(0, 0, 0, 0.5)', scrimSoft: 'rgba(0, 0, 0, 0.35)', track: 'rgba(255, 255, 255, 0.35)' }
+
+/** Spacing scale. `gutter` is the side padding of every page. */
+const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, gutter: 16 }
+
+/** control: buttons and inputs · card: boxes and tiles · sheet: sheets and the hero overlap. */
+const radii = { control: 14, card: 16, sheet: 24, chip: 999, snap: 6 }
+
+/** A #RRGGBB colour at an opacity, e.g. alpha(colors.leaf.DEFAULT, 0.4). */
+function alpha(hex, a) {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+}
 
 /** Tailwind preset for a future web console. */
 const preset = {
@@ -52,4 +80,4 @@ const preset = {
   },
 }
 
-module.exports = { colors, ring, avatar, radii, preset }
+module.exports = { colors, ring, avatar, hero, intro, overlay, space, radii, alpha, preset }

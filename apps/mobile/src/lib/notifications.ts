@@ -5,18 +5,12 @@
  * Tapping one opens the camera with that pod preselected.
  */
 import { snapTimeIn } from '@podmates/shared'
-import * as Notifications from 'expo-notifications'
 import { router } from 'expo-router'
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { useMyPods } from '@/features/pods/hooks'
 import { deviceTimeZone } from './format'
-
-if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
-  })
-}
+import { loadNotifications } from './nativeNotifications'
 
 export function useSnapReminders() {
   const pods = useMyPods()
@@ -27,6 +21,11 @@ export function useSnapReminders() {
     const list = pods.data
     void (async () => {
       try {
+        const Notifications = loadNotifications()
+        if (!Notifications) return
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+        })
         const { status } = await Notifications.requestPermissionsAsync()
         if (status !== 'granted') return
         await Notifications.cancelAllScheduledNotificationsAsync()
@@ -37,7 +36,7 @@ export function useSnapReminders() {
           await Notifications.scheduleNotificationAsync({
             content: {
               title: `📸 Snap time — ${p.name}`,
-              body: `Your window is open for ${p.windowMinutes} minutes. Your tree is counting on you.`,
+              body: `Your window is open for ${p.windowMinutes} minutes. Show your pod you turned up.`,
               data: { podId: p.id },
             },
             trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
@@ -52,10 +51,22 @@ export function useSnapReminders() {
 
   useEffect(() => {
     if (Platform.OS === 'web') return
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const podId = response.notification.request.content.data?.podId
-      if (typeof podId === 'string') router.navigate({ pathname: '/camera', params: { podId } })
-    })
-    return () => sub.remove()
+    const Notifications = loadNotifications()
+    if (!Notifications) return
+    try {
+      const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+        const podId = response.notification.request.content.data?.podId
+        if (typeof podId === 'string') router.navigate({ pathname: '/camera', params: { podId } })
+      })
+      return () => {
+        try {
+          sub.remove()
+        } catch {
+          // ApplicationModule can already be closed after an Expo Go reload.
+        }
+      }
+    } catch {
+      return
+    }
   }, [])
 }

@@ -1,10 +1,11 @@
 /**
- * Session: email + password via Supabase Auth. Local builds offer one-tap demo
- * accounts on the sign-in screen (seeded in supabase/seed.sql).
+ * Session: email + password via Supabase Auth. Locally, the seeded demo accounts
+ * (supabase/seed.sql) sign in by hand, or with the `sign-in?demo=<name>` deep link.
  */
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { queryClient } from '@/lib/queryClient'
+import { cancelReminders } from '@/lib/reminders'
 import { supabase } from '@/lib/supabase'
 
 type SessionState =
@@ -21,8 +22,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const apply = (session: Session | null) => {
       const userId = session?.user.id ?? null
-      // A different person is now using the app: drop everything cached for the last one.
-      if (lastUser.current && lastUser.current !== userId) queryClient.clear()
+      // A different person (or nobody) is now using the app: drop everything cached for the last one,
+      // and their snap reminders, which would otherwise keep naming their pods every day.
+      if (lastUser.current && lastUser.current !== userId) {
+        queryClient.clear()
+        void cancelReminders()
+      }
       lastUser.current = userId
       setState(session && userId ? { status: 'ready', session, userId } : { status: 'signedOut' })
     }

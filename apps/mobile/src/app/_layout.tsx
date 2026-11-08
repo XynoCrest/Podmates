@@ -1,13 +1,15 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, overlay } from '@podmates/ui-tokens'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ActionSheetHost } from '@/lib/actionSheet'
 import { ConfigError } from '@/components/system/SetupScreens'
 import { SessionProvider, useSession } from '@/ctx/session'
 import { env } from '@/lib/env'
+import { LiveSync } from '@/lib/liveSync'
 import { useSnapReminders } from '@/lib/notifications'
 import { queryClient } from '@/lib/queryClient'
 
@@ -20,6 +22,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
+        <ActionSheetHost />
         {env ? (
           <QueryClientProvider client={queryClient}>
             <SessionProvider>
@@ -49,19 +52,29 @@ function SessionGate() {
   const signedIn = session.status === 'ready'
   return (
     <HideSplash>
-      {signedIn ? <Reminders /> : null}
+      {signedIn ? (
+        <>
+          <Reminders />
+          <LiveSync />
+        </>
+      ) : null}
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
         <Stack.Protected guard={signedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="pod/[id]/index" />
+          <Stack.Screen name="dm/[userId]/index" />
           {/* The tree is its own little world: full screen, closes with an X like a game screen. */}
           <Stack.Screen name="pod/[id]/tree" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
-          <Stack.Screen name="snap/[id]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
+          <Stack.Screen name="dm/[userId]/tree" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: overlay.media } }} />
+          <Stack.Screen name="snap/[id]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: overlay.media } }} />
           <Stack.Screen name="send" options={{ ...sheet, sheetAllowedDetents: [0.75, 1] }} />
           <Stack.Screen name="pod/new" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/edit" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/pick" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
+          <Stack.Screen name="profile/habit" options={{ ...sheet, sheetAllowedDetents: [0.75, 1] }} />
+          <Stack.Screen name="profile/day" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: overlay.media } }} />
           <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
           <Stack.Screen name="user/[id]" />
           <Stack.Screen name="community/[slug]" />

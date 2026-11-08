@@ -23,7 +23,33 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "comments": {
+            "blocks": {
+                  Row: {
+                    "blocked_id": string,"blocker_id": string,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_id": string,"blocker_id"?: string,"created_at"?: string
+                  }
+                  Update: {
+                    "blocked_id"?: string,"blocker_id"?: string,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "blocks_blocked_id_fkey"
+      columns: ["blocked_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "blocks_blocker_id_fkey"
+      columns: ["blocker_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"comments": {
                   Row: {
                     "body": string,"created_at": string,"id": string,"post_id": string,"user_id": string
                   }
@@ -133,6 +159,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"direct_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"id": string,"read_at": string | null,"recipient_id": string,"sender_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"id"?: string,"read_at"?: string | null,"recipient_id": string,"sender_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"id"?: string,"read_at"?: string | null,"recipient_id"?: string,"sender_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_messages_recipient_id_fkey"
+      columns: ["recipient_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_messages_sender_id_fkey"
+      columns: ["sender_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"habits": {
                   Row: {
                     "emoji": string,"id": string,"name": string,"sf_symbol": string,"sort": number
@@ -185,6 +237,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pair_days": {
+                  Row: {
+                    "contributors": number,"hp_after": number,"hp_delta": number,"outcome": string,"pair_date": string,"settled_at": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "contributors": number,"hp_after": number,"hp_delta": number,"outcome": string,"pair_date": string,"settled_at"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "contributors"?: number,"hp_after"?: number,"hp_delta"?: number,"outcome"?: string,"pair_date"?: string,"settled_at"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pair_days_user_a_user_b_fkey"
+      columns: ["user_a","user_b"]
+isOneToOne: false
+      referencedRelation: "pair_trees"
+      referencedColumns: ["user_a","user_b"]
+    }
+                  ]
+                },"pair_trees": {
+                  Row: {
+                    "growth": number,"hp": number,"last_settled_date": string,"max_hp": number,"planted_at": string,"status": string,"streak": number,"updated_at": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "growth"?: number,"hp"?: number,"last_settled_date": string,"max_hp"?: number,"planted_at"?: string,"status"?: string,"streak"?: number,"updated_at"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "growth"?: number,"hp"?: number,"last_settled_date"?: string,"max_hp"?: number,"planted_at"?: string,"status"?: string,"streak"?: number,"updated_at"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pair_trees_user_a_fkey"
+      columns: ["user_a"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pair_trees_user_b_fkey"
+      columns: ["user_b"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"pod_days": {
                   Row: {
                     "contributors": number,"hp_after": number,"hp_delta": number,"members": number,"outcome": string,"pod_date": string,"pod_id": string,"settled_at": string
@@ -213,14 +311,14 @@ isOneToOne: false
                   ]
                 },"pod_members": {
                   Row: {
-                    "energy": number,"joined_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
+                    "best_streak": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"streak": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "energy"?: number,"joined_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
+                    "best_streak"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"streak"?: number,"user_id": string
                   }
                   Update: {
-                    "energy"?: number,"joined_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
+                    "best_streak"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"streak"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -237,6 +335,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "pod_members_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pod_removals": {
+                  Row: {
+                    "pod_id": string,"removed_at": string,"removed_by": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "pod_id": string,"removed_at"?: string,"removed_by"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "pod_id"?: string,"removed_at"?: string,"removed_by"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pod_removals_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pod_overview"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_removed_by_fkey"
+      columns: ["removed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
@@ -269,6 +405,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"post_shares": {
+                  Row: {
+                    "post_id": string,"shared_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "post_id": string,"shared_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "post_id"?: string,"shared_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "post_shares_post_id_fkey"
+      columns: ["post_id"]
+isOneToOne: false
+      referencedRelation: "posts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "post_shares_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"post_votes": {
                   Row: {
                     "post_id": string,"user_id": string,"value": number
@@ -297,14 +459,14 @@ isOneToOne: false
                   ]
                 },"posts": {
                   Row: {
-                    "body": string,"comment_count": number,"community_id": string,"created_at": string,"id": string,"image_url": string | null,"score": number,"title": string,"user_id": string
+                    "body": string,"comment_count": number,"community_id": string,"created_at": string,"down_count": number,"id": string,"image_url": string | null,"score": number,"share_count": number,"title": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body"?: string,"comment_count"?: number,"community_id": string,"created_at"?: string,"id"?: string,"image_url"?: string | null,"score"?: number,"title": string,"user_id"?: string
+                    "body"?: string,"comment_count"?: number,"community_id": string,"created_at"?: string,"down_count"?: number,"id"?: string,"image_url"?: string | null,"score"?: number,"share_count"?: number,"title": string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"comment_count"?: number,"community_id"?: string,"created_at"?: string,"id"?: string,"image_url"?: string | null,"score"?: number,"title"?: string,"user_id"?: string
+                    "body"?: string,"comment_count"?: number,"community_id"?: string,"created_at"?: string,"down_count"?: number,"id"?: string,"image_url"?: string | null,"score"?: number,"share_count"?: number,"title"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -323,17 +485,69 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_color": string,"avatar_url": string | null,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"stars": number,"streak": number,"username": string
+                    "avatar_color": string,"avatar_url": string | null,"banner_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"id": string,"onboarded_at": string | null,"snap_count": number,"streak": number,"username": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"stars"?: number,"streak"?: number,"username": string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"id": string,"onboarded_at"?: string | null,"snap_count"?: number,"streak"?: number,"username": string
                   }
                   Update: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"stars"?: number,"streak"?: number,"username"?: string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"onboarded_at"?: string | null,"snap_count"?: number,"streak"?: number,"username"?: string
                   }
                   Relationships: [
                     
+                  ]
+                },"reports": {
+                  Row: {
+                    "created_at": string,"details": string | null,"id": string,"reason": string,"reporter_id": string,"target_id": string,"target_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason": string,"reporter_id"?: string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason"?: string,"reporter_id"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_reporter_id_fkey"
+      columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"rest_days": {
+                  Row: {
+                    "created_at": string,"pod_date": string,"pod_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"pod_date": string,"pod_id": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"pod_date"?: string,"pod_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rest_days_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pod_overview"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rest_days_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rest_days_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"snap_views": {
                   Row: {
@@ -430,7 +644,7 @@ isOneToOne: true
           Views: {
             "pod_overview": {
                   Row: {
-                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"member_count": number | null,"my_streak": number | null,"name": string | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"window_minutes": number | null
+                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"me_resting_today": boolean | null,"member_count": number | null,"my_rests_this_week": number | null,"my_streak": number | null,"name": string | null,"resting_today": number | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"unread_count": number | null,"window_minutes": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -448,8 +662,23 @@ isOneToOne: false
             "apply_day_settlement":
 { Args: { "p_day": Json,"p_expected_last": string,"p_members": Json,"p_message": string,"p_message_at": string,"p_pod_date": string,"p_pod_id": string,"p_tree": Json }; Returns: boolean
                            },
+"apply_pair_settlement":
+{ Args: { "p_day": Json,"p_expected_last": string,"p_pair_date": string,"p_tree": Json,"p_user_a": string,"p_user_b": string }; Returns: boolean
+                           },
+"block_between":
+{ Args: { "p_user_id": string }; Returns: boolean
+                           },
+"cancel_rest":
+{ Args: { "p_pod_id": string }; Returns: undefined
+                           },
 "create_pod":
 { Args: { "p_goal": string,"p_habit_id": string,"p_name": string,"p_snap_time": string,"p_timezone": string,"p_window_minutes"?: number }; Returns: string
+                           },
+"i_blocked":
+{ Args: { "p_user_id": string }; Returns: boolean
+                           },
+"i_reported":
+{ Args: { "p_id": string,"p_type": string }; Returns: boolean
                            },
 "is_pod_member":
 { Args: { "p_pod_id": string }; Returns: boolean
@@ -457,8 +686,26 @@ isOneToOne: false
 "join_pod":
 { Args: { "p_invite_code": string }; Returns: string
                            },
+"leave_pod":
+{ Args: { "p_pod_id": string }; Returns: undefined
+                           },
+"mark_dm_read":
+{ Args: { "p_other": string }; Returns: number
+                           },
+"mark_pod_read":
+{ Args: { "p_pod": string }; Returns: undefined
+                           },
 "refresh_profile_stats":
 { Args: { "p_user_ids": (string)[] }; Returns: undefined
+                           },
+"remove_pod_member":
+{ Args: { "p_pod_id": string,"p_user_id": string }; Returns: undefined
+                           },
+"rest_today":
+{ Args: { "p_pod_id": string }; Returns: string
+                           },
+"share_post":
+{ Args: { "p_post": string }; Returns: number
                            },
 "shares_pod_with":
 { Args: { "p_user_id": string }; Returns: boolean

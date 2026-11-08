@@ -14,6 +14,8 @@ export interface Community {
   description: string
   emoji: string
   color: string
+  /** The habit this community is about (null = general). */
+  habitId: string | null
   memberCount: number
   joined: boolean
 }
@@ -25,13 +27,17 @@ export interface Post {
   imageUrl: string | null
   score: number
   commentCount: number
+  /** Thumbs-down votes. Thumbs-up = score + downCount (score is the net). */
+  downCount: number
+  /** People who have shared it (one each). */
+  shareCount: number
   createdAt: string
   author: Person
   community: { id: string; slug: string; name: string; emoji: string; color: string }
   myVote: -1 | 0 | 1
 }
 
-const POST_FIELDS = `id, title, body, image_url, score, comment_count, created_at, author:profiles!posts_user_id_fkey(${PERSON_FIELDS}), community:communities(id, slug, name, emoji, color), post_votes(value, user_id)`
+const POST_FIELDS = `id, title, body, image_url, score, comment_count, down_count, share_count, created_at, author:profiles!posts_user_id_fkey(${PERSON_FIELDS}), community:communities(id, slug, name, emoji, color), post_votes(value, user_id)`
 
 function toPost(p: any, me: string): Post {
   return {
@@ -41,6 +47,8 @@ function toPost(p: any, me: string): Post {
     imageUrl: p.image_url,
     score: p.score,
     commentCount: p.comment_count,
+    downCount: p.down_count,
+    shareCount: p.share_count,
     createdAt: p.created_at,
     author: p.author,
     community: p.community,
@@ -73,6 +81,7 @@ export function useCommunities() {
         description: c.description,
         emoji: c.emoji,
         color: c.color,
+        habitId: c.habit_id,
         memberCount: c.member_count,
         // RLS lets everyone read memberships; we only need to know about our own row.
         joined: c.community_members.some((m) => m.user_id === me),
@@ -165,12 +174,32 @@ export function useVote() {
     },
     onMutate: ({ post, value }) => {
       const next = post.myVote === value ? 0 : value
-      const patch = (p: Post) => (p.id === post.id ? { ...p, myVote: next as Post['myVote'], score: p.score - p.myVote + next } : p)
+      const patch = (p: Post) =>
+        p.id === post.id
+          ? { ...p, myVote: next as Post['myVote'], score: p.score - p.myVote + next, downCount: p.downCount - (p.myVote === -1 ? 1 : 0) + (next === -1 ? 1 : 0) }
+          : p
       queryClient.setQueriesData<Post[]>({ queryKey: ['feed'] }, (old) => old?.map(patch))
       queryClient.setQueryData<Post>(qk.post(post.id), (old) => (old ? patch(old) : old))
     },
     onSettled: (_d, _e, { post }) => {
       void queryClient.invalidateQueries({ queryKey: qk.post(post.id) })
+    },
+  })
+}
+
+/** Records that I shared a post (counted once per person) and puts the new count in the cache. */
+export function useSharePost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const { data, error } = await supabase.rpc('share_post', { p_post: postId })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (count, postId) => {
+      const patch = (p: Post) => (p.id === postId ? { ...p, shareCount: count } : p)
+      queryClient.setQueriesData<Post[]>({ queryKey: ['feed'] }, (old) => old?.map(patch))
+      queryClient.setQueryData<Post>(qk.post(postId), (old) => (old ? patch(old) : old))
     },
   })
 }

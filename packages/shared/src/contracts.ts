@@ -33,6 +33,14 @@ export type SettleResponse = z.infer<typeof SettleResponse>
 export const ReplantResponse = z.object({ podId: z.uuid(), hp: z.number().int(), maxHp: z.number().int() })
 export type ReplantResponse = z.infer<typeof ReplantResponse>
 
+/** A podmate pair's fresh tree after the old one died. `userId` is the other person. */
+export const PairReplantResponse = z.object({ userId: z.uuid(), hp: z.number().int(), maxHp: z.number().int() })
+export type PairReplantResponse = z.infer<typeof PairReplantResponse>
+
+/** Local-only demo helper: how many pair-days were settled. */
+export const PairSettleResponse = z.object({ settled: z.number().int() })
+export type PairSettleResponse = z.infer<typeof PairSettleResponse>
+
 /** Local-only demo helper: moves the pod's snap window so it is open right now. */
 export const OpenWindowResponse = z.object({ podId: z.uuid(), snapTime: z.string() })
 export type OpenWindowResponse = z.infer<typeof OpenWindowResponse>

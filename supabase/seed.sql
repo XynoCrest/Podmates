@@ -1,14 +1,14 @@
 -- Demo data for local development. Loaded by `supabase db reset`.
 --
 -- What is seeded here is RAW activity only: people, pods, snaps, contributions, chat,
--- communities. Tree health, energy, stars, streaks and the day log are NOT faked —
+-- communities. Tree health, streaks and the day log are NOT faked —
 -- every tree starts fresh 12 days ago and apps/api settlement (packages/tree-engine)
 -- replays those days on boot / `npm run settle`, exactly as in production.
 --
 -- Demo accounts (password for all: podmates123):
 --   ben@podmates.dev  (main demo user — member of 5 pods)
 --   maya@ theo@ priya@ jonas@ aisha@podmates.dev
--- Images are placeholder photos from picsum.photos (needs network in the simulator).
+-- Images are placeholder photos from picsum.photos, avatars from randomuser.me (needs network in the simulator).
 
 -- ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -36,15 +36,15 @@ insert into auth.identities (provider_id, user_id, identity_data, provider, last
 select id::text, id, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now()
 from auth.users where email like '%@podmates.dev';
 
-update public.profiles p set bio = v.bio, avatar_color = v.color
+update public.profiles p set bio = v.bio, avatar_color = v.color, avatar_url = v.photo
 from (values
-  ('ben', 'Building Podmates. Reading more, scrolling less.', 'leaf'),
-  ('maya.reads', 'Two books a month or bust 📚', 'rose'),
-  ('theo_runs', 'Sub-25 5K loading…', 'flame'),
-  ('priya', 'Pool at 7, coffee at 8.', 'sky'),
-  ('jonas.k', 'Night owl. Bookworm. Occasional runner.', 'star'),
-  ('aisha', 'Swim · read · repeat', 'teal')
-) as v(username, bio, color)
+  ('ben', 'Building Podmates. Reading more, scrolling less.', 'leaf', 'https://randomuser.me/api/portraits/men/32.jpg'),
+  ('maya.reads', 'Two books a month or bust 📚', 'rose', 'https://randomuser.me/api/portraits/women/44.jpg'),
+  ('theo_runs', 'Sub-25 5K loading…', 'flame', 'https://randomuser.me/api/portraits/men/75.jpg'),
+  ('priya', 'Pool at 7, coffee at 8.', 'sky', 'https://randomuser.me/api/portraits/women/68.jpg'),
+  ('jonas.k', 'Night owl. Bookworm. Occasional runner.', 'star', 'https://randomuser.me/api/portraits/men/46.jpg'),
+  ('aisha', 'Swim · read · repeat', 'teal', 'https://randomuser.me/api/portraits/women/90.jpg')
+) as v(username, bio, color, photo)
 where p.username = v.username;
 
 -- ─── Habits ───────────────────────────────────────────────────────────────────
@@ -255,3 +255,42 @@ from (values
   (5, 6, 'Adding to my list', interval '13 hours'),
   (7, 1, 'Hips are shooting up a little early. Otherwise solid.', interval '22 hours')
 ) as c(p, u, body, ago);
+
+-- ─── Direct messages ──────────────────────────────────────────────────────────
+
+-- Ben has read everything except Jonas's latest, so one thread shows as unread.
+insert into public.direct_messages (sender_id, recipient_id, body, created_at, read_at)
+select s.id, r.id, v.body, now() - v.ago, case when v.sender = 'jonas.k' then null else now() - v.ago + interval '5 minutes' end
+from (values
+  ('maya.reads', 'ben', 'Finished chapter 9 last night, no spoilers!', interval '5 hours'),
+  ('ben', 'maya.reads', 'Haha I''m two behind. Tonight for sure', interval '4 hours 40 minutes'),
+  ('maya.reads', 'ben', 'Snap it or it didn''t happen 📸', interval '4 hours 30 minutes'),
+  ('theo_runs', 'ben', 'Long run Saturday? 10k loop by the river', interval '1 day 2 hours'),
+  ('ben', 'theo_runs', 'In. 7am?', interval '1 day 1 hour'),
+  ('jonas.k', 'ben', 'Your tree is looking healthy this week', interval '3 hours')
+) as v(sender, recipient, body, ago)
+join public.profiles s on s.username = v.sender
+join public.profiles r on r.username = v.recipient;
+
+-- ─── Pod chat read markers ────────────────────────────────────────────────────
+
+-- Ben is behind on two pod chats, so the Unread tab has something in it.
+update public.pod_members set last_read_at = now() - interval '1 hour'
+where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000001';
+update public.pod_members set last_read_at = now() - interval '7 hours'
+where user_id = 'a0000000-0000-4000-8000-000000000001' and pod_id = 'b0000000-0000-4000-8000-000000000003';
+
+-- ─── Podmate pair trees ───────────────────────────────────────────────────────
+
+-- Every pair who shares a pod starts its tree alongside the pod trees; settlement replays the days since.
+insert into public.pair_trees (user_a, user_b, last_settled_date, planted_at)
+select a.user_id, b.user_id, min((now() at time zone p.timezone)::date) - 13, now() - interval '13 days'
+from public.pod_members a
+join public.pod_members b on b.pod_id = a.pod_id and a.user_id < b.user_id
+join public.pods p on p.id = a.pod_id
+group by a.user_id, b.user_id;
+
+-- ─── Post shares ──────────────────────────────────────────────────────────────
+
+-- A share count to go with the demo scores above (about one share per twelve points).
+update public.posts set share_count = greatest(0, score / 12);

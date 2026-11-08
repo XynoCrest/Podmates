@@ -1,6 +1,6 @@
 import { podDate, windowState, type WindowState } from '@podmates/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +30,15 @@ export interface PodSummary {
   contributedToday: number
   meContributedToday: boolean
   myStreak: number
+  /** Members resting today who haven't snapped (left out of the tree's count). */
+  restingToday: number
+  meRestingToday: boolean
+  /** Rest days I've used in this pod this week (Mon–Sun); 2 allowed. */
+  myRestsThisWeek: number
+  /** Members in join order — the faces on the pod's group icon. */
+  members: Person[]
+  /** Messages from others since I last opened the chat. */
+  unread: number
   lastMessage: { kind: string; body: string; author: string | null } | null
   lastActivityAt: string
 }
@@ -63,6 +72,13 @@ export function useMyPods() {
     queryFn: async (): Promise<PodSummary[]> => {
       const { data, error } = await supabase.from('pod_overview').select('*').order('last_activity_at', { ascending: false })
       if (error) throw error
+      const ids = data.map((p) => p.id!)
+      const faces = new Map<string, Person[]>()
+      if (ids.length) {
+        const m = await supabase.from('pod_members').select(`pod_id, profile:profiles(${PERSON_FIELDS})`).in('pod_id', ids).order('joined_at')
+        if (m.error) throw m.error
+        for (const row of m.data) faces.set(row.pod_id, [...(faces.get(row.pod_id) ?? []), row.profile as Person])
+      }
       return data.map((p) => ({
         id: p.id!,
         name: p.name!,
@@ -80,6 +96,11 @@ export function useMyPods() {
         contributedToday: p.contributed_today ?? 0,
         meContributedToday: p.me_contributed_today ?? false,
         myStreak: p.my_streak ?? 0,
+        restingToday: p.resting_today ?? 0,
+        meRestingToday: p.me_resting_today ?? false,
+        myRestsThisWeek: p.my_rests_this_week ?? 0,
+        members: faces.get(p.id!) ?? [],
+        unread: p.unread_count ?? 0,
         lastMessage: p.last_message_kind
           ? { kind: p.last_message_kind, body: p.last_message_body ?? '', author: p.last_message_author }
           : null,
@@ -87,8 +108,7 @@ export function useMyPods() {
       }))
     },
   })
-  // Chat previews and "snapped today" counts change whenever anyone posts.
-  useRealtimeInvalidate('messages', undefined, [qk.pods])
+  // Live updates for the pod list come from one app-wide subscription (src/lib/liveSync.tsx).
   return query
 }
 
@@ -117,9 +137,8 @@ export const needsSnap = (pod: PodSummary, now: Date) => !pod.meContributedToday
 export interface Member extends Person {
   role: string
   streak: number
-  energy: number
-  stars: number
   contributedToday: boolean
+  restingToday: boolean
 }
 
 export function usePodMembers(pod: PodSummary | undefined) {
@@ -128,20 +147,22 @@ export function usePodMembers(pod: PodSummary | undefined) {
     enabled: !!pod,
     queryFn: async (): Promise<Member[]> => {
       const today = podDate(new Date(), pod!.timeZone)
-      const [members, today_] = await Promise.all([
-        supabase.from('pod_members').select(`role, streak, energy, stars, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
+      const [members, today_, rests] = await Promise.all([
+        supabase.from('pod_members').select(`role, streak, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
         supabase.from('contributions').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
+        supabase.from('rest_days').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
       ])
       if (members.error) throw members.error
       if (today_.error) throw today_.error
+      if (rests.error) throw rests.error
       const done = new Set(today_.data.map((c) => c.user_id))
+      const resting = new Set(rests.data.map((r) => r.user_id))
       return members.data.map((m) => ({
         ...(m.profile as Person),
         role: m.role,
         streak: m.streak,
-        energy: m.energy,
-        stars: m.stars,
         contributedToday: done.has((m.profile as Person).id),
+        restingToday: resting.has((m.profile as Person).id) && !done.has((m.profile as Person).id),
       }))
     },
   })
@@ -179,6 +200,21 @@ export function useMessages(podId: string) {
   })
   useRealtimeInvalidate('messages', `pod_id=eq.${podId}`, [qk.messages(podId), qk.members(podId), qk.tree(podId)])
   return query
+}
+
+/**
+ * Moves my read marker to now while the chat is open: once on open, and again whenever
+ * a new message lands (the pod list refetches on realtime, so `unread` goes back above 0).
+ */
+export function useMarkPodRead(podId: string, unread: number | undefined) {
+  const queryClient = useQueryClient()
+  const pending = !!unread
+  useEffect(() => {
+    if (!pending) return
+    void supabase.rpc('mark_pod_read', { p_pod: podId }).then(({ error }) => {
+      if (!error) void queryClient.invalidateQueries({ queryKey: qk.pods })
+    })
+  }, [pending, podId, queryClient])
 }
 
 export function useSendMessage(podId: string) {

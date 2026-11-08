@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, radii } from '@podmates/ui-tokens'
 import { ActivityIndicator, Pressable, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Icon, type IconName } from './Icon'
@@ -34,13 +34,13 @@ export function Button({
   size?: 'sm' | 'md' | 'lg'
 }) {
   const s = STYLE[variant]
-  const height = size === 'sm' ? 34 : size === 'lg' ? 54 : 44
+  const height = size === 'sm' ? 36 : size === 'lg' ? 52 : 44
   return (
     <PressableScale onPress={onPress} disabled={disabled || loading} flex={flex} accessibilityRole="button" accessibilityLabel={label}>
       <View
         style={{
           height,
-          borderRadius: size === 'sm' ? 10 : 14,
+          borderRadius: size === 'sm' ? 10 : radii.control,
           backgroundColor: s.bg,
           paddingHorizontal: 16,
           flexDirection: 'row',
@@ -78,17 +78,17 @@ export function ChunkyButton({
   disabled?: boolean
   loading?: boolean
 }) {
-  const LIP = 5
+  const LIP = 4
   const face = disabled ? colors.raised : color
   const edge = disabled ? colors.line : lip
   return (
     <Pressable onPress={onPress} disabled={disabled || loading} accessibilityRole="button" accessibilityLabel={label}>
       {({ pressed }) => (
-        <View style={{ borderRadius: 18, backgroundColor: edge, paddingBottom: LIP }}>
+        <View style={{ borderRadius: 16, backgroundColor: edge, paddingBottom: LIP }}>
           <Animated.View
             style={{
-              height: 58,
-              borderRadius: 18,
+              height: 56,
+              borderRadius: 16,
               backgroundColor: face,
               alignItems: 'center',
               justifyContent: 'center',
@@ -100,9 +100,7 @@ export function ChunkyButton({
             {loading ? (
               <ActivityIndicator color={textColor} />
             ) : (
-              <Text style={{ color: disabled ? colors.ink.subtle : textColor, fontSize: 17, fontWeight: '800', letterSpacing: 1 }}>
-                {label.toUpperCase()}
-              </Text>
+              <Text style={{ color: disabled ? colors.ink.subtle : textColor, fontSize: 17, fontWeight: '600' }}>{label}</Text>
             )}
           </Animated.View>
         </View>

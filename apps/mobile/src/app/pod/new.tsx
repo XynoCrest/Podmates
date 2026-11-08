@@ -1,46 +1,50 @@
-import { formatSnapTime } from '@podmates/shared'
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { ScrollView, TextInput, View } from 'react-native'
-import { Button, Icon, PressableScale, Text } from '@/components/ui'
+import { View } from 'react-native'
+import { Button, Section, Segmented, SheetScreen, Text, TextField, TimeScrubber } from '@/components/ui'
+import { HabitCarousel } from '@/features/pods/components/HabitCarousel'
 import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
 import { deviceTimeZone } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 
-const WINDOWS = [15, 20, 30]
+const WINDOWS = [15, 20, 30, 45]
 
 /** Start a pod (habit · goal · daily snap time) or join one with an invite code. */
 export default function NewPod() {
-  const params = useLocalSearchParams<{ tab?: string }>()
+  const params = useLocalSearchParams<{ tab?: string; habit?: string }>()
   const [tab, setTab] = useState<'create' | 'join'>(params.tab === 'join' ? 'join' : 'create')
   return (
-    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
-      <View style={{ flexDirection: 'row', backgroundColor: colors.raised, borderRadius: 12, padding: 3 }}>
-        {(['create', 'join'] as const).map((t) => (
-          <PressableScale key={t} flex onPress={() => setTab(t)} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} scaleTo={0.97}>
-            <View style={{ height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tab === t ? colors.line : 'transparent' }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>{t === 'create' ? 'Start a pod' : 'Join with code'}</Text>
-            </View>
-          </PressableScale>
-        ))}
-      </View>
-      {tab === 'create' ? <CreateForm /> : <JoinForm />}
-    </ScrollView>
+    <SheetScreen
+      title={tab === 'create' ? 'Start a pod' : 'Join a pod'}
+      subtitle={tab === 'create' ? 'Pick a habit and a daily snap time, then invite friends.' : 'Ask a podmate for their 6-letter invite code.'}
+    >
+      <Segmented
+        fill
+        value={tab}
+        onChange={setTab}
+        segments={[
+          { key: 'create', label: 'Start a pod' },
+          { key: 'join', label: 'Join with code' },
+        ]}
+      />
+      {tab === 'create' ? <CreateForm initialHabit={params.habit} /> : <JoinForm />}
+    </SheetScreen>
   )
 }
 
-function CreateForm() {
+function CreateForm({ initialHabit }: { initialHabit?: string }) {
   const habits = useHabits()
   const create = useCreatePod()
   const [name, setName] = useState('')
   const [goal, setGoal] = useState('')
-  const [habitId, setHabitId] = useState<string>('reading')
+  // Until one is picked (or passed in), the middle habit of the carousel is chosen.
+  const [pickedHabit, setHabitId] = useState<string | undefined>(initialHabit)
+  const middle = habits.data?.[Math.floor(habits.data.length / 2)]?.id
+  const habitId = pickedHabit ?? middle ?? 'reading'
   const [minutes, setMinutes] = useState(21 * 60)
   const [windowMinutes, setWindowMinutes] = useState(20)
 
-  // Windows can't cross midnight.
-  const step = (delta: number) => setMinutes((m) => Math.min(24 * 60 - windowMinutes - 15, Math.max(0, m + delta)))
   const snapTime = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 
   const submit = () =>
@@ -57,54 +61,29 @@ function CreateForm() {
     )
 
   return (
-    <View style={{ gap: 18 }}>
-      <Field label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
-      <View style={{ gap: 8 }}>
-        <Text variant="overline">Habit</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {habits.data?.map((h) => {
-            const active = h.id === habitId
-            return (
-              <PressableScale key={h.id} onPress={() => setHabitId(h.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} scaleTo={0.95}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
-                  <Text>{h.emoji}</Text>
-                  <Text style={{ fontWeight: '600', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
-                </View>
-              </PressableScale>
-            )
-          })}
+    <View style={{ gap: space.xl }}>
+      <TextField label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
+      <Section label="Habit">
+        {/* Full-bleed: the carousel band runs edge to edge of the sheet. */}
+        <View style={{ marginHorizontal: -space.gutter }}>
+          <HabitCarousel habits={habits.data ?? []} value={habitId} onChange={setHabitId} />
         </View>
-      </View>
-      <Field label="Daily goal" value={goal} onChangeText={setGoal} placeholder="20 pages a day" maxLength={120} />
-      <View style={{ gap: 8 }}>
-        <Text variant="overline">Daily snap time</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.raised, borderRadius: 14, padding: 8 }}>
-          <Stepper icon="arrowDown" label="Earlier" onPress={() => step(-15)} />
-          <View style={{ alignItems: 'center' }}>
-            <Text numeric style={{ fontSize: 28, fontWeight: '700' }}>
-              {formatSnapTime(snapTime)}
-            </Text>
-            <Text variant="caption">{deviceTimeZone()}</Text>
-          </View>
-          <Stepper icon="arrowUp" label="Later" onPress={() => step(15)} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {WINDOWS.map((w) => (
-            <PressableScale key={w} flex onPress={() => setWindowMinutes(w)} accessibilityRole="radio" accessibilityState={{ selected: w === windowMinutes }}>
-              <View style={{ height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: w === windowMinutes ? colors.flame.soft : colors.raised, borderWidth: 1, borderColor: w === windowMinutes ? colors.flame.DEFAULT : 'transparent' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: w === windowMinutes ? colors.flame.DEFAULT : colors.ink.DEFAULT }}>{w} min window</Text>
-              </View>
-            </PressableScale>
-          ))}
-        </View>
+      </Section>
+      <TextField label="Daily goal" value={goal} onChangeText={setGoal} placeholder="Example: 20 pages a day" maxLength={120} />
+      <Section label="Daily snap time">
+        {/* Windows can't cross midnight, so the latest start leaves room for the window. */}
+        <TimeScrubber value={minutes} onChange={setMinutes} max={24 * 60 - windowMinutes - 15} step={15} caption={deviceTimeZone()} />
+        <Segmented
+          fill
+          value={String(windowMinutes)}
+          onChange={(v) => setWindowMinutes(Number(v))}
+          segments={WINDOWS.map((w) => ({ key: String(w), label: `${w} min` }))}
+        />
         <Text variant="caption">Everyone gets a reminder at this time and has {windowMinutes} minutes to snap proof.</Text>
-      </View>
-      {create.error ? (
-        <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-          {create.error.message}
-        </Text>
-      ) : null}
-      <Button label="Plant the seed 🌱" size="lg" disabled={!name.trim()} loading={create.isPending} onPress={submit} />
+      </Section>
+      <FormAction error={create.error?.message}>
+        <Button label="Plant the seed 🌱" size="lg" disabled={!name.trim()} loading={create.isPending} onPress={submit} />
+      </FormAction>
     </View>
   )
 }
@@ -122,42 +101,34 @@ function JoinForm() {
       onError: () => haptics.error(),
     })
   return (
-    <View style={{ gap: 14 }}>
-      <Text variant="subhead">Ask a podmate for their 6-letter invite code. (Demo: try IRONPT as Ben.)</Text>
-      <TextInput
+    <View style={{ gap: space.xl }}>
+      <TextField
+        label="Invite code"
+        hint="Demo: try IRONPT as Ben."
         value={code}
         onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
         maxLength={6}
         autoCapitalize="characters"
         placeholder="ABC123"
-        placeholderTextColor={colors.ink.subtle}
-        style={{ height: 64, borderRadius: 14, backgroundColor: colors.raised, textAlign: 'center', fontSize: 30, fontWeight: '700', letterSpacing: 8, color: colors.ink.DEFAULT }}
+        style={{ height: 64, textAlign: 'center', fontSize: 30, fontWeight: '600', letterSpacing: 8 }}
       />
-      {join.error ? (
-        <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-          {join.error.message}
+      <FormAction error={join.error?.message}>
+        <Button label="Join pod" size="lg" disabled={code.length !== 6} loading={join.isPending} onPress={submit} />
+      </FormAction>
+    </View>
+  )
+}
+
+/** The sheet's main button at the end of the content, with its error under it (as SheetScreen's `action`). */
+function FormAction({ error, children }: { error?: string; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: space.sm }}>
+      {children}
+      {error ? (
+        <Text variant="caption" center style={{ color: colors.danger.DEFAULT }}>
+          {error}
         </Text>
       ) : null}
-      <Button label="Join pod" size="lg" disabled={code.length !== 6} loading={join.isPending} onPress={submit} />
     </View>
-  )
-}
-
-function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
-  return (
-    <View style={{ gap: 8 }}>
-      <Text variant="overline">{label}</Text>
-      <TextInput placeholderTextColor={colors.ink.subtle} {...props} style={{ height: 46, borderRadius: 12, backgroundColor: colors.raised, paddingHorizontal: 14, color: colors.ink.DEFAULT, fontSize: 16 }} />
-    </View>
-  )
-}
-
-function Stepper({ icon, label, onPress }: { icon: 'arrowUp' | 'arrowDown'; label: string; onPress: () => void }) {
-  return (
-    <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.9}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={18} weight="semibold" />
-      </View>
-    </PressableScale>
   )
 }

@@ -37,7 +37,14 @@ const ICONS = {
   timer: { ios: 'timer', android: 'timer' },
   arrowUp: { ios: 'arrow.up', android: 'arrow_upward' },
   arrowDown: { ios: 'arrow.down', android: 'arrow_downward' },
+  arrowUpRight: { ios: 'arrow.up.right', android: 'north_east' },
   comment: { ios: 'bubble.left', android: 'chat_bubble_outline' },
+  bubble: { ios: 'bubble.right', android: 'chat_bubble_outline' },
+  thumbsUp: { ios: 'hand.thumbsup', android: 'thumb_up' },
+  thumbsUpFill: { ios: 'hand.thumbsup.fill', android: 'thumb_up' },
+  thumbsDown: { ios: 'hand.thumbsdown', android: 'thumb_down' },
+  thumbsDownFill: { ios: 'hand.thumbsdown.fill', android: 'thumb_down' },
+  sendPlane: { ios: 'paperplane', android: 'send' },
   more: { ios: 'ellipsis', android: 'more_horiz' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },
   share: { ios: 'square.and.arrow.up', android: 'share' },
@@ -51,6 +58,12 @@ const ICONS = {
   signOut: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   hammer: { ios: 'hammer', android: 'build' },
   moon: { ios: 'moon.stars', android: 'bedtime' },
+  book: { ios: 'book.fill', android: 'menu_book' },
+  run: { ios: 'figure.run', android: 'directions_run' },
+  swim: { ios: 'figure.pool.swim', android: 'pool' },
+  mindful: { ios: 'figure.mind.and.body', android: 'self_improvement' },
+  dumbbell: { ios: 'dumbbell.fill', android: 'fitness_center' },
+  brain: { ios: 'brain.head.profile', android: 'psychology' },
 } as const
 
 export type IconName = keyof typeof ICONS
@@ -78,7 +91,33 @@ export function Icon({
   )
 }
 
-/** For habit SF symbols that come from the database (habits.sf_symbol). */
+/**
+ * habits.sf_symbol → Material Symbol. expo-symbols only reads `name.android` on Android, so a bare
+ * SF name renders nothing there. Add a row here when a habit with a new symbol is seeded.
+ */
+const HABIT_MATERIAL: Record<string, string> = {
+  book: 'menu_book',
+  'figure.run': 'directions_run',
+  'figure.pool.swim': 'pool',
+  'figure.mind.and.body': 'self_improvement',
+  dumbbell: 'fitness_center',
+  'pencil.and.scribble': 'edit_note',
+  'figure.walk': 'directions_walk',
+  'chevron.left.forwardslash.chevron.right': 'code',
+  drop: 'water_drop',
+  'moon.zzz': 'bedtime',
+  leaf: 'eco',
+}
+
+/** For habit SF symbols that come from the database (habits.sf_symbol). Unknown symbols fall back to a leaf on Android/web. */
 export function SymbolIcon({ name, size = 22, color = colors.ink.DEFAULT }: { name: string; size?: number; color?: ColorValue }) {
-  return <SymbolView name={name as never} size={size} tintColor={color} style={{ width: size, height: size }} />
+  const material = HABIT_MATERIAL[name] ?? 'eco'
+  return (
+    <SymbolView
+      name={{ ios: name, android: material, web: material } as never}
+      size={size}
+      tintColor={color}
+      style={{ width: size, height: size }}
+    />
+  )
 }
