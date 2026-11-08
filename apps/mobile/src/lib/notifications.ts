@@ -37,7 +37,7 @@ export function useSnapReminders() {
           await Notifications.scheduleNotificationAsync({
             content: {
               title: `📸 Snap time — ${p.name}`,
-              body: `Your window is open for ${p.windowMinutes} minutes. Your tree is counting on you.`,
+              body: `Your window is open for ${p.windowMinutes} minutes. Show your pod you turned up.`,
               data: { podId: p.id },
             },
             trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },

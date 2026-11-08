@@ -4,7 +4,7 @@ import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { Button, Icon, ListRow, Section, SheetScreen, Text, TextField } from '@/components/ui'
+import { Button, Icon, ListRow, ScreenState, Section, SheetScreen, Text, TextField } from '@/components/ui'
 import { podWindow, useHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useSendSnap } from '@/features/snaps/hooks'
 import { takePendingCapture } from '@/features/snaps/pendingCapture'
@@ -24,21 +24,23 @@ export default function SendSheet() {
   const [caption, setCaption] = useState('')
   const [picked, setPicked] = useState<Set<string> | null>(null)
 
+  // Only pods whose tree is alive can take a snap (a dead tree is replanted first), so only they are listed and picked.
+  const sendable = useMemo(() => pods.data?.filter((p) => p.treeStatus === 'alive') ?? [], [pods.data])
   // Default selection: the pod we came from, else every pod with an open window I haven't snapped for.
   const defaults = useMemo(() => {
-    if (podId) return new Set([podId])
-    return new Set(pods.data?.filter((p) => !p.meContributedToday && podWindow(p, now).status === 'open').map((p) => p.id))
-  }, [podId, pods.data, now])
+    if (podId && sendable.some((p) => p.id === podId)) return new Set([podId])
+    return new Set(sendable.filter((p) => !p.meContributedToday && podWindow(p, now).status === 'open').map((p) => p.id))
+  }, [podId, sendable, now])
   const selected = picked ?? defaults
 
   const grouped = useMemo(() => {
     const out: { habit: string; pods: PodSummary[] }[] = []
     for (const h of habits.data ?? []) {
-      const list = pods.data?.filter((p) => p.habitId === h.id && p.treeStatus === 'alive') ?? []
+      const list = sendable.filter((p) => p.habitId === h.id)
       if (list.length) out.push({ habit: h.name, pods: list })
     }
     return out
-  }, [habits.data, pods.data])
+  }, [habits.data, sendable])
 
   const toggle = (id: string) => {
     haptics.select()
@@ -48,7 +50,8 @@ export default function SendSheet() {
     setPicked(next)
   }
 
-  const chosen = pods.data?.filter((p) => selected.has(p.id)) ?? []
+  const chosen = sendable.filter((p) => selected.has(p.id))
+  const noPods = !pods.isLoading && !habits.isLoading && grouped.length === 0
 
   async function submit() {
     if (!chosen.length) return
@@ -66,9 +69,10 @@ export default function SendSheet() {
   return (
     <SheetScreen
       title="Send to"
-      subtitle="Pods with an open window are picked for you."
+      subtitle={noPods ? undefined : 'Pods with an open window are picked for you.'}
       error={send.error?.message}
       action={
+        noPods ? undefined : (
         <Button
           size="lg"
           icon="paperplane"
@@ -77,6 +81,7 @@ export default function SendSheet() {
           loading={send.isPending}
           onPress={submit}
         />
+        )
       }
     >
       <View style={{ flexDirection: 'row', gap: space.md }}>
@@ -85,6 +90,17 @@ export default function SendSheet() {
           <TextField value={caption} onChangeText={setCaption} placeholder="Add a caption…" maxLength={200} multiline style={{ minHeight: 128 }} />
         </View>
       </View>
+
+      {noPods ? (
+        <ScreenState
+          empty={{
+            icon: 'tree',
+            title: pods.data?.length ? 'No pod can take a snap' : 'No pods yet',
+            body: pods.data?.length ? 'Your pods’ trees need replanting first. Open a pod to replant it.' : 'Snaps go to a pod. Start one or join a friend’s, then snap again.',
+            action: pods.data?.length ? undefined : <Button label="Start or join a pod" icon="plus" onPress={() => { router.dismissAll(); router.push('/pod/new') }} />,
+          }}
+        />
+      ) : null}
 
       {grouped.map((g) => (
         <Section key={g.habit} label={g.habit}>
