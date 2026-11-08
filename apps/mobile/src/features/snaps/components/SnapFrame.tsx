@@ -5,7 +5,7 @@ import { goBack } from '@/lib/nav'
 import type { ReactNode } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Chip, IconButton, PressableScale, Text } from '@/components/ui'
+import { Avatar, Chip, Icon, PressableScale, Text } from '@/components/ui'
 import { timeAgo } from '@/lib/format'
 import { imageUri } from '@/lib/images'
 import type { Snap } from '../hooks'
@@ -19,6 +19,12 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 10, gap: 10 }}>
         {top}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {/* Top-left, on a dark disc: readable over any photo and clear of Expo Go's top-right dev button. */}
+          <PressableScale onPress={goBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8} scaleTo={0.9}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="back" size={20} color="#fff" weight="semibold" />
+            </View>
+          </PressableScale>
           <PressableScale onPress={() => router.push({ pathname: '/user/[id]', params: { id: snap.author.id } })} accessibilityLabel={snap.author.display_name}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Avatar person={snap.author} size={34} />
@@ -30,8 +36,6 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
               </View>
             </View>
           </PressableScale>
-          <View style={{ flex: 1 }} />
-          <IconButton icon="close" label="Close" onPress={goBack} color="#fff" />
         </View>
       </View>
       <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 28, gap: 10, alignItems: 'flex-start' }}>

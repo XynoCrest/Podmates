@@ -38,3 +38,5 @@ supabase/.temp/
 
 # Agents (local settings only)
 .claude/settings.local.json
+.claude/
+PodMate_AppAssets/
