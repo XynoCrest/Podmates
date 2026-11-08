@@ -87,7 +87,7 @@ export default function PodsScreen() {
             <HeroSheet clip>
               {hasPods ? (
                 <>
-                  <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/connect')} addBadge={incomingRequests} />
+                  <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} />
                   {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
                   <View style={{ paddingHorizontal: space.gutter, paddingVertical: space.sm }}>
                     <Segmented

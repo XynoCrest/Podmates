@@ -1,6 +1,7 @@
 import { colors } from '@podmates/ui-tokens'
 import { NativeTabs } from 'expo-router/native-tabs'
 import { useMyPods, needsSnap } from '@/features/pods/hooks'
+import { useIncomingRequestCount } from '@/features/friends/hooks'
 import { useNow } from '@/lib/useNow'
 
 /**
@@ -11,6 +12,7 @@ export default function TabsLayout() {
   const now = useNow()
   const pods = useMyPods()
   const due = pods.data?.filter((p) => needsSnap(p, now)).length ?? 0
+  const requests = useIncomingRequestCount()
   return (
     <NativeTabs tintColor={colors.ink.DEFAULT} iconColor={{ default: colors.ink.muted, selected: colors.ink.DEFAULT }}>
       <NativeTabs.Trigger name="index">
@@ -21,6 +23,12 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'safari', selected: 'safari.fill' }} md="explore" />
+      </NativeTabs.Trigger>
+      {/* Center tab: friends and pods. Its badge counts friend requests waiting for an answer. */}
+      <NativeTabs.Trigger name="connect">
+        <NativeTabs.Trigger.Label>Connect</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }} md="add_circle" />
+        {requests > 0 ? <NativeTabs.Trigger.Badge>{String(requests)}</NativeTabs.Trigger.Badge> : null}
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="camera">
         <NativeTabs.Trigger.Label>Peacture</NativeTabs.Trigger.Label>

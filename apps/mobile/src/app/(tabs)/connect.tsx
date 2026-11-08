@@ -16,18 +16,26 @@ const WINDOWS = [15, 20, 30, 45]
 type Tab = 'friends' | 'create' | 'join'
 
 /**
- * Connect: friends and pods in one page. Friends (find people, answer requests, your friends) ·
- * Start a pod · Join with code. Home's + opens it on Friends; other entries pass `tab`.
+ * Connect, the center tab: friends and pods in one page. Friends (find people, answer requests,
+ * your friends) · Start a pod · Join a pod. Opens on Friends; other entries (onboarding, empty
+ * states) pass `tab` to land on Start or Join.
  */
 export default function Connect() {
   const params = useLocalSearchParams<{ tab?: string; habit?: string }>()
   const insets = useSafeAreaInsets()
-  const [tab, setTab] = useState<Tab>(params.tab === 'create' || params.tab === 'join' ? params.tab : 'friends')
+  const asTab = (t?: string): Tab => (t === 'create' || t === 'join' ? t : 'friends')
+  const [tab, setTab] = useState<Tab>(asTab(params.tab))
+  // As a tab the screen stays mounted: follow a new `tab` param when another screen links here.
+  const [linked, setLinked] = useState(params.tab)
+  if (params.tab !== linked) {
+    setLinked(params.tab)
+    if (params.tab) setTab(asTab(params.tab))
+  }
   const incoming = useIncomingRequestCount()
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header title="Connect" />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.gutter, gap: space.xl, paddingBottom: insets.bottom + space.xxl }}>
+      <Header title="Connect" leading="none" />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.gutter, gap: space.xl, paddingBottom: insets.bottom + 96 }}>
         <Segmented
           fill
           value={tab}
@@ -179,7 +187,7 @@ function CreateForm({ initialHabit }: { initialHabit?: string }) {
       {
         onSuccess: (id) => {
           haptics.success()
-          router.replace({ pathname: '/pod/[id]', params: { id } })
+          router.push({ pathname: '/pod/[id]', params: { id } })
         },
         onError: () => haptics.error(),
       },
@@ -220,7 +228,7 @@ function JoinForm() {
     join.mutate(code, {
       onSuccess: (id) => {
         haptics.success()
-        router.replace({ pathname: '/pod/[id]', params: { id } })
+        router.push({ pathname: '/pod/[id]', params: { id } })
       },
       onError: () => haptics.error(),
     })
