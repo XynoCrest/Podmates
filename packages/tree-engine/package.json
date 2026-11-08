@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The ONLY place tree health, growth, energy, stars and streaks are computed. Pure, unit-tested.",
+  "description": "The ONLY place streaks, tree health and tree stage are computed. Pure, unit-tested.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "sideEffects": false,

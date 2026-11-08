@@ -1,182 +1,134 @@
 /**
- * Podmates tree engine — the ONLY place tree health, growth, energy, stars and
- * streaks are computed. Pure functions, no I/O, no clock: callers pass state in
- * and persist what comes out (apps/api settlement), or show it (mobile forecast).
+ * Podmates rules engine: the ONLY place streaks, tree health and tree stage are computed.
+ * Pure functions, no I/O, no clock: callers pass history in and persist what comes out
+ * (apps/api settlement) or show it (the app). See docs/PRODUCT_SPEC.md §3.
  *
- * The game, per pod and per pod-day:
- *   everyone snapped on time   → THRIVE: tree gains HP, its max HP grows, growth +1, ⭐ for everyone
- *   ≥ 70% snapped on time      → STEADY: tree holds
- *   < 70% snapped on time      → WILT:   tree loses HP, more the fewer showed up
- *   HP reaches 0               → the tree dies; the pod can replant
- * Every on-time snap earns its author ⚡ energy and extends their 🔥 streak.
+ * The game, per user and habit:
+ *   a verified snap that day → streak +1
+ *   a declared rest day      → streak holds (max 2 per Monday–Sunday week)
+ *   neither                  → streak back to 0
+ * Per pod:
+ *   tree health = members on an active streak ÷ members counted (resting members are left out)
+ *   tree stage  = grows with the pod's lifetime verified snaps; it never shrinks or dies
  */
 
 export const RULES = {
-  startHp: 100,
-  startMaxHp: 100,
-  /** Share of members that must snap for the tree to hold steady. */
-  steadyThreshold: 0.7,
-  /** HP gained on a perfect day (capped at the new max). */
-  thriveHp: 15,
-  /** Max HP added on a perfect day — the tree "gets higher energy". */
-  thriveMaxHp: 5,
-  /** HP lost when nobody snaps; scales linearly with the share that missed. */
-  wiltMaxLoss: 40,
-  energyPerCheckin: 10,
-  starsPerPerfectDay: 1,
+  /** Declared rest days allowed per habit per Monday–Sunday week. Mirrored in SQL (declare_rest). */
+  restDaysPerWeek: 2,
+  /** Flags that hide a snap pending team review. Mirrored in SQL (snap_flags trigger). */
+  flagsToHide: 5,
 } as const
 
-export type TreeStatus = 'alive' | 'dead'
-export type DayOutcome = 'thrive' | 'steady' | 'wilt' | 'dormant'
-
-export interface TreeState {
-  hp: number
-  maxHp: number
-  /** Number of perfect days the tree has lived through; drives its stage. */
-  growth: number
-  status: TreeStatus
-}
-
-export interface MemberDay {
-  userId: string
-  /** Streak before this day. */
-  streak: number
-  contributed: boolean
-}
-
-export interface MemberUpdate {
-  userId: string
-  energyDelta: number
-  starsDelta: number
-  /** Streak after this day. */
-  streak: number
-}
-
-export interface SettleResult {
-  outcome: DayOutcome
-  contributors: number
-  members: number
-  hpDelta: number
-  maxHpDelta: number
-  growthDelta: number
-  died: boolean
-  tree: TreeState
-  memberUpdates: MemberUpdate[]
-  /** One line for the pod chat. */
-  summary: string
-}
-
-export function newTree(): TreeState {
-  return { hp: RULES.startHp, maxHp: RULES.startMaxHp, growth: 0, status: 'alive' }
-}
-
-export function outcomeFor(contributors: number, members: number): Exclude<DayOutcome, 'dormant'> {
-  if (members <= 0) return 'steady'
-  if (contributors >= members) return 'thrive'
-  return contributors / members >= RULES.steadyThreshold ? 'steady' : 'wilt'
-}
-
-/** HP change before capping. Wilt loss is ceil(maxLoss × missed share), so any wilt costs at least 1. */
-export function rawHpDelta(contributors: number, members: number): number {
-  const outcome = outcomeFor(contributors, members)
-  if (outcome === 'thrive') return RULES.thriveHp
-  if (outcome === 'steady') return 0
-  const missedShare = 1 - contributors / members
-  return -Math.ceil(RULES.wiltMaxLoss * missedShare)
-}
-
-/** "If the day ended right now" — what the tree screen shows live. */
-export function forecast(tree: TreeState, contributors: number, members: number) {
-  if (tree.status === 'dead') return { outcome: 'dormant' as const, hpDelta: 0, hpAfter: 0 }
-  const outcome = outcomeFor(contributors, members)
-  const maxHp = tree.maxHp + (outcome === 'thrive' ? RULES.thriveMaxHp : 0)
-  const hpAfter = clamp(tree.hp + rawHpDelta(contributors, members), 0, maxHp)
-  /** How many more snaps today would reach the next better outcome. */
-  const toSteady = Math.max(0, Math.ceil(members * RULES.steadyThreshold) - contributors)
-  const toThrive = Math.max(0, members - contributors)
-  return { outcome, hpDelta: hpAfter - tree.hp, hpAfter, toSteady, toThrive }
-}
-
-export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
-  const contributors = members.filter((m) => m.contributed).length
-  const total = members.length
-
-  if (tree.status === 'dead') {
-    return {
-      outcome: 'dormant',
-      contributors,
-      members: total,
-      hpDelta: 0,
-      maxHpDelta: 0,
-      growthDelta: 0,
-      died: false,
-      tree,
-      memberUpdates: members.map((m) => ({ userId: m.userId, energyDelta: 0, starsDelta: 0, streak: m.streak })),
-      summary: 'The tree is resting. Replant it to start growing again.',
-    }
-  }
-
-  const outcome = outcomeFor(contributors, total)
-  const maxHpDelta = outcome === 'thrive' ? RULES.thriveMaxHp : 0
-  const growthDelta = outcome === 'thrive' ? 1 : 0
-  const maxHp = tree.maxHp + maxHpDelta
-  const hp = clamp(tree.hp + rawHpDelta(contributors, total), 0, maxHp)
-  const died = hp === 0
-  const next: TreeState = { hp, maxHp, growth: tree.growth + growthDelta, status: died ? 'dead' : 'alive' }
-
-  const memberUpdates = members.map((m) => ({
-    userId: m.userId,
-    energyDelta: m.contributed ? RULES.energyPerCheckin : 0,
-    starsDelta: m.contributed && outcome === 'thrive' ? RULES.starsPerPerfectDay : 0,
-    streak: m.contributed ? m.streak + 1 : 0,
-  }))
-
-  return {
-    outcome,
-    contributors,
-    members: total,
-    hpDelta: hp - tree.hp,
-    maxHpDelta,
-    growthDelta,
-    died,
-    tree: next,
-    memberUpdates,
-    summary: summarize(outcome, contributors, total, hp - tree.hp, died),
-  }
-}
-
-function summarize(outcome: DayOutcome, contributors: number, members: number, hpDelta: number, died: boolean) {
-  if (died) return `Only ${contributors} of ${members} showed up. The tree ran out of energy and died.`
-  if (outcome === 'thrive') return `Everyone showed up! The tree grew${hpDelta > 0 ? ` +${hpDelta} HP` : ''}.`
-  if (outcome === 'steady') return `${contributors} of ${members} showed up. The tree held steady.`
-  return `Only ${contributors} of ${members} showed up. The tree lost ${-hpDelta} HP.`
-}
-
+/** Tree stages by the pod's lifetime verified snaps. */
 export const STAGES = [
-  { minGrowth: 0, name: 'Seed' },
-  { minGrowth: 2, name: 'Sprout' },
-  { minGrowth: 5, name: 'Sapling' },
-  { minGrowth: 10, name: 'Young tree' },
-  { minGrowth: 20, name: 'Grown tree' },
-  { minGrowth: 40, name: 'Ancient tree' },
+  { minSnaps: 0, name: 'Seed' },
+  { minSnaps: 25, name: 'Sprout' },
+  { minSnaps: 100, name: 'Sapling' },
+  { minSnaps: 300, name: 'Young tree' },
+  { minSnaps: 1000, name: 'Grown tree' },
+  { minSnaps: 3000, name: 'Ancient tree' },
 ] as const
 
-export function stageFor(growth: number) {
+/** What a day counted as for one user and habit. Days with no entry were missed. */
+export type DayStatus = 'snapped' | 'rest'
+
+export interface Streak {
+  current: number
+  best: number
+}
+
+// ─── Dates ('YYYY-MM-DD', calendar only, no timezones) ───────────────────────
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Monday of the week containing `date`. */
+export function weekStart(date: string): string {
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay() // 0 = Sunday
+  return addDays(date, -((weekday + 6) % 7))
+}
+
+// ─── Streaks ──────────────────────────────────────────────────────────────────
+
+/**
+ * Replays a user's history for one habit from `from` through `through` (inclusive) and returns
+ * the streak at the end plus the best streak seen. Recomputing from history (rather than adding
+ * to a stored number) makes settlement safe to re-run and lets a rejected snap fix itself.
+ */
+export function settleStreak(days: Readonly<Record<string, DayStatus>>, from: string, through: string): Streak {
+  let current = 0
+  let best = 0
+  for (let d = from; d <= through; d = addDays(d, 1)) {
+    const status = days[d]
+    if (status === 'snapped') current += 1
+    else if (status !== 'rest') current = 0
+    best = Math.max(best, current)
+  }
+  return { current, best }
+}
+
+/** The streak to show right now: settled through yesterday, plus today if already snapped. */
+export function liveStreak(settled: number, today: DayStatus | null): number {
+  return today === 'snapped' ? settled + 1 : settled
+}
+
+/** Rest days still available this week, given how many were used since Monday. */
+export function restDaysLeft(usedThisWeek: number): number {
+  return Math.max(0, RULES.restDaysPerWeek - usedThisWeek)
+}
+
+// ─── Trees ────────────────────────────────────────────────────────────────────
+
+export interface MemberToday {
+  /** Streak settled through yesterday. */
+  settledStreak: number
+  /** What today counts as so far (null = nothing yet; the day isn't over). */
+  today: DayStatus | null
+}
+
+export interface TreeHealth {
+  /** 0–1. */
+  health: number
+  active: number
+  counted: number
+}
+
+/**
+ * Share of a pod's members on an active streak. Snapped today → active. Resting today → left out
+ * of both numbers. Nothing yet today → active if their streak is still alive (the day isn't over).
+ * A pod with nobody counted is fully healthy: there is nothing to lose.
+ */
+export function treeHealth(members: readonly MemberToday[]): TreeHealth {
+  let active = 0
+  let counted = 0
+  for (const m of members) {
+    if (m.today === 'rest') continue
+    counted += 1
+    if (m.today === 'snapped' || m.settledStreak > 0) active += 1
+  }
+  return { health: counted ? active / counted : 1, active, counted }
+}
+
+/** Stage from the pod's lifetime verified snaps. `toNext` is null at the top stage. */
+export function stageFor(totalSnaps: number) {
   let index = 0
-  for (let i = 0; i < STAGES.length; i++) if (growth >= STAGES[i]!.minGrowth) index = i
+  for (let i = 0; i < STAGES.length; i++) if (totalSnaps >= STAGES[i]!.minSnaps) index = i
   const next = STAGES[index + 1]
   return {
     level: index + 1,
     levels: STAGES.length,
     name: STAGES[index]!.name,
-    /** Perfect days until the next stage, or null at the top. */
-    toNext: next ? next.minGrowth - growth : null,
+    nextName: next?.name ?? null,
+    toNext: next ? next.minSnaps - totalSnaps : null,
   }
 }
 
-/** 0–1 health ratio for bars. */
-export const healthRatio = (tree: Pick<TreeState, 'hp' | 'maxHp'>) => (tree.maxHp > 0 ? clamp(tree.hp / tree.maxHp, 0, 1) : 0)
-
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
+/** Plain-language health band for labels and colours. */
+export function healthBand(health: number): 'thriving' | 'okay' | 'struggling' {
+  if (health >= 0.75) return 'thriving'
+  if (health >= 0.4) return 'okay'
+  return 'struggling'
 }
