@@ -9,15 +9,22 @@ export const HERO_OVERLAP = 22
 /** The hero heading: a dark lead-in, then the bright line in white. One size on every tab. */
 export const HERO_TITLE = { fontSize: 30, lineHeight: 34, fontWeight: '700', letterSpacing: -0.8 } as const
 
-export function HeroHeading({ lead, bright, sub, fit }: { lead: string; bright: string; sub?: string; fit?: boolean }) {
+/** `oneLine` sets lead and bright on a single line (a short heading with no art beside it). */
+export function HeroHeading({ lead, bright, sub, fit, oneLine }: { lead: string; bright: string; sub?: string; fit?: boolean; oneLine?: boolean }) {
   return (
     <View style={{ gap: space.sm }} accessible accessibilityRole="header" accessibilityLabel={[lead, bright, sub].filter(Boolean).join(' ')}>
-      <View>
-        <Text style={[HERO_TITLE, { color: hero.ink }]}>{lead}</Text>
-        <Text style={[HERO_TITLE, { color: hero.bright }]} numeric adjustsFontSizeToFit={fit} numberOfLines={fit ? 1 : undefined}>
-          {bright}
+      {oneLine ? (
+        <Text style={[HERO_TITLE, { color: hero.ink }]} numberOfLines={1} adjustsFontSizeToFit>
+          {lead} <Text style={[HERO_TITLE, { color: hero.bright }]}>{bright}</Text>
         </Text>
-      </View>
+      ) : (
+        <View>
+          <Text style={[HERO_TITLE, { color: hero.ink }]}>{lead}</Text>
+          <Text style={[HERO_TITLE, { color: hero.bright }]} numeric adjustsFontSizeToFit={fit} numberOfLines={fit ? 1 : undefined}>
+            {bright}
+          </Text>
+        </View>
+      )}
       {sub ? (
         <Text variant="subhead" style={{ color: hero.soft }} numberOfLines={3}>
           {sub}

@@ -5,9 +5,9 @@ import { useCallback, useMemo, useState } from 'react'
 import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HeroHeading, HeroSheet, Icon, PressableScale, ScreenState, TabHero, Text } from '@/components/ui'
-import { CommunityCircles, SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
+import { SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
 import { PostCard } from '@/features/explore/components/PostCard'
-import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
+import { useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
 import { showActionSheet } from '@/lib/actionSheet'
 import { haptics } from '@/lib/haptics'
 
@@ -17,13 +17,12 @@ const SORTS: { key: FeedSort; label: string }[] = [
   { key: 'top', label: 'Top' },
 ]
 
-/** Feed: green hero (heading, search + "Home ⌄" switcher), then the sheet: community circles, Active/New/Top tabs, cards. */
+/** Feed: green hero (heading, search + "Home ⌄" switcher), then the sheet: Active/New/Top tabs, cards. */
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets()
   const [mode, setMode] = useState<FeedMode>('home')
   const [sort, setSort] = useState<FeedSort>('hot')
   const feed = useFeed(mode, sort)
-  const communities = useCommunities()
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(true)
   const [pastHero, setPastHero] = useState(false)
@@ -35,7 +34,6 @@ export default function ExploreScreen() {
   )
   // Search narrows both the circles and the posts already loaded, by name, title or body.
   const q = query.trim().toLowerCase()
-  const shownCommunities = useMemo(() => communities.data?.filter((c) => !q || c.name.toLowerCase().includes(q)), [communities.data, q])
   const posts = useMemo(
     () => (q ? feed.data?.filter((p) => [p.title, p.body, p.community.name].some((t) => t.toLowerCase().includes(q))) : feed.data),
     [feed.data, q],
@@ -68,9 +66,9 @@ export default function ExploreScreen() {
         scrollEventThrottle={32}
         ListHeaderComponent={
           <View>
-            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="people." />}>
+            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="people." oneLine />}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <SearchBar value={query} onChange={setQuery} placeholder="Search posts, communities" />
+                <SearchBar value={query} onChange={setQuery} placeholder="Search posts" />
                 <PressableScale
                   onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
                   accessibilityLabel={`Feed: ${mode}`}
@@ -83,7 +81,6 @@ export default function ExploreScreen() {
               </View>
             </TabHero>
             <HeroSheet>
-              {shownCommunities?.length ? <CommunityCircles communities={shownCommunities} /> : null}
               <UnderlineTabs tabs={SORTS} value={sort} onChange={setSort} />
             </HeroSheet>
           </View>
@@ -92,9 +89,9 @@ export default function ExploreScreen() {
           feed.isLoading || feed.error ? (
             <ScreenState loading={feed.isLoading} error={feed.error} onRetry={() => void feed.refetch()} />
           ) : q ? (
-            <ScreenState empty={{ icon: 'explore', title: 'Nothing matches', body: `No posts or communities for "${query.trim()}"` }} />
+            <ScreenState empty={{ icon: 'explore', title: 'Nothing matches', body: `No posts for "${query.trim()}"` }} />
           ) : (
-            <ScreenState empty={{ icon: 'explore', title: 'Your home feed is empty', body: 'Join a community above, or switch to Popular' }} />
+            <ScreenState empty={{ icon: 'explore', title: 'Your home feed is empty', body: 'Switch to Popular to find communities to join' }} />
           )
         }
         refreshControl={<RefreshControl tintColor={hero.ink} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
