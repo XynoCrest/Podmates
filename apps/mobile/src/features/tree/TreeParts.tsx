@@ -3,16 +3,31 @@ import type { ReactNode } from 'react'
 import { View } from 'react-native'
 import { Avatar, Button, HealthBar, Icon, Section, Text } from '@/components/ui'
 import { firstName } from '@/lib/format'
+import { shareColor } from './healthShare'
 import type { PodDay } from './hooks'
 
 /** Pieces shared by the pod tree screen and the podmate pair tree screen. */
 
-export function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean; restingToday?: boolean }[] }) {
+export function MemberRing({
+  members,
+}: {
+  members: {
+    id: string
+    display_name: string
+    avatar_color: string
+    avatar_url: string | null
+    contributedToday: boolean
+    restingToday?: boolean
+    share?: number
+    fair?: number
+    dragging?: boolean
+  }[]
+}) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 8 }}>
       {members.map((m) => (
-        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday || m.restingToday ? 1 : 0.55 }}>
-          <View>
+        <View key={m.id} style={{ alignItems: 'center', gap: 4 }}>
+          <View style={{ opacity: m.contributedToday || m.restingToday ? 1 : 0.55 }}>
             <Avatar person={m} size={40} />
             <View
               style={{
@@ -33,9 +48,35 @@ export function MemberRing({ members }: { members: { id: string; display_name: s
             </View>
           </View>
           <Text variant="caption">{m.restingToday ? 'Resting' : firstName(m.display_name)}</Text>
+          {m.share != null ? (
+            <Text numeric style={{ fontWeight: '800', fontSize: 16, color: shareColor(m.share, m.fair ?? m.share) }}>
+              {m.share}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>
+  )
+}
+
+/** Health as a percent, parked on the tree's top-right like a sticker. */
+export function HealthStamp({ percent }: { percent: number }) {
+  return (
+    <Text
+      numeric
+      style={{
+        fontSize: 36,
+        lineHeight: 40,
+        fontWeight: '800',
+        letterSpacing: -1.2,
+        color: shareColor(percent, 100),
+        textShadowColor: 'rgba(0,0,0,0.55)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      }}
+    >
+      {percent}%
+    </Text>
   )
 }
 
