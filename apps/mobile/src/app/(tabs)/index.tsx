@@ -48,6 +48,8 @@ export default function PodsScreen() {
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const hasPods = !!pods.data?.length
   const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
+  // The hero speaks for the selected habit tab: my best current streak among that habit's pods.
+  const habitStreak = inHabit.length ? Math.max(...inHabit.map((p) => p.myStreak)) : (profile.data?.streak ?? 0)
   const habitName = myHabits.data.find((h) => h.id === habitId)?.name
   const podmates = usePodmates(useMemo(() => inHabit.map((p) => p.id), [inHabit]))
   // Unread spans every habit: pod chats and one-to-one threads with anything I haven't opened, newest first.
@@ -78,7 +80,7 @@ export default function PodsScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            <StreakHero streak={profile.data?.streak ?? 0} topInset={insets.top} />
+            <StreakHero streak={habitStreak} topInset={insets.top} />
             {/* Clips its children to the rounded corners: the habit tabs' edge fades would otherwise square them off. */}
             <HeroSheet clip>
               {hasPods ? (
@@ -152,8 +154,7 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
   const [lead, count, sub] =
     streak === 0
       ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
-      : // profiles.streak is the longest current streak across your pods, so say "top" (each pod's own is on its card).
-        ['Top streak', `${streak} ${streak === 1 ? 'day' : 'days'}!`, "You're showing up for a healthier, happier you."]
+      : ["You're on a", `${streak}-day streak!`, "You're showing up for a healthier, happier you."]
   return (
     <View style={{ height: topInset + HERO_H, paddingTop: topInset + space.lg, paddingLeft: 28, paddingBottom: HERO_OVERLAP + space.md, flexDirection: 'row', alignItems: 'center', backgroundColor: hero.bg }}>
       {/* Green above the band, so pulling the list down shows more green, not the canvas. */}
