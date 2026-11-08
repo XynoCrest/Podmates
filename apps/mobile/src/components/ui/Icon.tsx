@@ -37,6 +37,7 @@ const ICONS = {
   timer: { ios: 'timer', android: 'timer' },
   arrowUp: { ios: 'arrow.up', android: 'arrow_upward' },
   arrowDown: { ios: 'arrow.down', android: 'arrow_downward' },
+  arrowUpRight: { ios: 'arrow.up.right', android: 'north_east' },
   comment: { ios: 'bubble.left', android: 'chat_bubble_outline' },
   more: { ios: 'ellipsis', android: 'more_horiz' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },

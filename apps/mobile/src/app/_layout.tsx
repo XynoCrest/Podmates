@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ActionSheetHost } from '@/lib/actionSheet'
 import { ConfigError } from '@/components/system/SetupScreens'
 import { SessionProvider, useSession } from '@/ctx/session'
 import { env } from '@/lib/env'
@@ -20,6 +21,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
+        <ActionSheetHost />
         {env ? (
           <QueryClientProvider client={queryClient}>
             <SessionProvider>

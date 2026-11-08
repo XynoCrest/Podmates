@@ -1,16 +1,18 @@
 import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import { type ReactNode } from 'react'
-import { ActionSheetIOS, ActivityIndicator, Dimensions, Platform, ScrollView, Share, View } from 'react-native'
+import { useState } from 'react'
+import { ActivityIndicator, Dimensions, ScrollView, Share, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, Icon, IconButton, PressableScale, SymbolIcon, Text } from '@/components/ui'
+import { Avatar, Button, Icon, IconButton, PressableScale, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
 import { compact } from '@/lib/format'
+import { showActionSheet } from '@/lib/actionSheet'
 import { imageUri } from '@/lib/images'
 import { goBack } from '@/lib/nav'
 import type { Snap } from '../../snaps/hooks'
 import { useProfileBoard } from '../../snaps/hooks'
+import { CardCarousel, type CarouselItem } from '../../pods/components/CardCarousel'
 import { useHabitCards, useProfile, useSharedPods, type HabitCard } from '../hooks'
 
 const SCREEN_W = Dimensions.get('window').width
@@ -42,30 +44,24 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const shareMine = () => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })
 
   // The ☰ menu holds the profile actions (no button row on my own profile).
-  const openMenu = () => {
-    if (Platform.OS !== 'ios') return router.push('/profile/edit')
-    ActionSheetIOS.showActionSheetWithOptions(
-      { options: ['Edit profile', 'Share profile', 'Sign out', 'Cancel'], destructiveButtonIndex: 2, cancelButtonIndex: 3, userInterfaceStyle: 'dark' },
-      (i) => {
-        if (i === 0) router.push('/profile/edit')
-        else if (i === 1) shareMine()
-        else if (i === 2) void auth.signOut()
-      },
-    )
-  }
+  const openMenu = () =>
+    showActionSheet({
+      options: [
+        { label: 'Edit profile', onPress: () => router.push('/profile/edit') },
+        { label: 'Share profile', onPress: shareMine },
+        { label: 'Sign out', destructive: true, onPress: () => void auth.signOut() },
+      ],
+    })
 
   // Pick snaps works per habit (Ben's picker): choose the habit first.
   const pickSnaps = () => {
     const list = cards.data
     if (list.length === 1) return router.push({ pathname: '/profile/pick', params: { habit: list[0]!.habit.id } })
-    if (Platform.OS !== 'ios' || !list.length) return
-    ActionSheetIOS.showActionSheetWithOptions(
-      { title: 'Pick snaps for which habit?', options: [...list.map((c) => c.habit.name), 'Cancel'], cancelButtonIndex: list.length, userInterfaceStyle: 'dark' },
-      (i) => {
-        const c = list[i]
-        if (c) router.push({ pathname: '/profile/pick', params: { habit: c.habit.id } })
-      },
-    )
+    if (!list.length) return
+    showActionSheet({
+      title: 'Pick snaps for which habit?',
+      options: list.map((c) => ({ label: c.habit.name, onPress: () => router.push({ pathname: '/profile/pick', params: { habit: c.habit.id } }) })),
+    })
   }
 
   const bannerColor = avatarColors[p.avatar_color as keyof typeof avatarColors] ?? colors.raised
@@ -92,26 +88,29 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         </View>
 
         <View style={{ paddingHorizontal: PAD }}>
-          <PressableScale onPress={isMe ? () => router.push('/profile/edit') : undefined} disabled={!isMe} accessibilityLabel="Profile photo" style={{ alignSelf: 'flex-start', marginTop: -AVATAR / 2 }}>
-            <View style={{ borderRadius: AVATAR, borderWidth: 4, borderColor: colors.canvas }}>
-              <Avatar person={p} size={AVATAR} />
-            </View>
-          </PressableScale>
-
-          {/* Name on the left, Streak · Best · Snaps beside it. */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
+          {/* Centred stack: avatar overlapping the banner, name, @username, then Streak · Best · Snaps evenly spaced. */}
+          <View style={{ alignItems: 'center' }}>
+            <PressableScale onPress={isMe ? () => router.push('/profile/edit') : undefined} disabled={!isMe} accessibilityLabel="Profile photo" style={{ marginTop: -AVATAR / 2 }}>
+              <View style={{ borderRadius: AVATAR, borderWidth: 4, borderColor: colors.canvas }}>
+                <Avatar person={p} size={AVATAR} />
+              </View>
+            </PressableScale>
+            <Text center style={{ marginTop: 10, fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }} numberOfLines={1}>
+              {p.display_name}
+            </Text>
+            <Text variant="subhead" center numberOfLines={1}>
+              @{p.username}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', marginTop: 16 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }} numberOfLines={1}>
-                {p.display_name}
-              </Text>
-              <Text variant="subhead" numberOfLines={1}>
-                @{p.username}
-              </Text>
+              <Stat value={p.streak} label="Streak" icon="flame" />
             </View>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={12} color={colors.flame.DEFAULT} />} />
-              <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={12} color={colors.energy.DEFAULT} />} />
-              <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={12} color={colors.leaf.DEFAULT} />} />
+            <View style={{ flex: 1 }}>
+              <Stat value={p.best_streak} label="Best" icon="trophy" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Stat value={p.snap_count} label="Snaps" icon="camera" />
             </View>
           </View>
 
@@ -172,35 +171,36 @@ function Column({ items }: { items: { snap: Snap; h: number }[] }) {
 }
 
 /** One card per habit: icon, name, streak. On my own profile a card opens that habit's calendar. */
+/** One carousel card per habit: its figure, the habit, and the streak. Mine open that habit's calendar. */
 function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean }) {
+  const [index, setIndex] = useState(0)
+  const items: CarouselItem[] = cards.map((c) => {
+    const streak = c.streak === null ? null : `${c.streak}-day streak`
+    const best = c.best ? `Best ${c.best} ${c.best === 1 ? 'day' : 'days'}` : null
+    return {
+      id: c.habit.id,
+      figure: c.habit.id,
+      label: best ?? 'Habit',
+      title: c.habit.name,
+      sub: streak ?? 'Streak not shared',
+      about: tappable
+        ? `${streak ? `On a ${streak}` : 'No streak yet'}${best ? `, ${best.toLowerCase()}` : ''}. Tap the card to open your ${c.habit.name.toLowerCase()} calendar.`
+        : streak
+          ? `On a ${streak}${best ? `, ${best.toLowerCase()}` : ''}.`
+          : `Shares ${c.habit.name.toLowerCase()} snaps on their profile. Streaks show for pods you share.`,
+      a11y: `${c.habit.name}, ${streak ?? 'streak not shared'}${tappable ? '. Open calendar' : ''}`,
+    }
+  })
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAD, gap: 10, paddingTop: 18 }}>
-      {cards.map((c) => {
-        const body = (
-          <View style={{ width: 132, padding: 12, gap: 8, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}>
-            <SymbolIcon name={c.habit.sf_symbol} size={22} color={colors.leaf.DEFAULT} />
-            <Text style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
-              {c.habit.name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Icon name="flame" size={12} color={colors.flame.DEFAULT} />
-              <Text variant="caption" numeric>
-                {c.streak === null ? '—' : `${c.streak}-day streak`}
-              </Text>
-            </View>
-          </View>
-        )
-        return tappable ? (
-          <PressableScale key={c.habit.id} onPress={() => router.push({ pathname: '/profile/habit', params: { habit: c.habit.id } })} scaleTo={0.96} accessibilityRole="button" accessibilityLabel={`${c.habit.name}, ${c.streak ?? 0}-day streak. Open calendar`}>
-            {body}
-          </PressableScale>
-        ) : (
-          <View key={c.habit.id} accessible accessibilityLabel={c.streak === null ? c.habit.name : `${c.habit.name}, ${c.streak}-day streak`}>
-            {body}
-          </View>
-        )
-      })}
-    </ScrollView>
+    <View style={{ marginTop: 18 }}>
+      <CardCarousel
+        items={items}
+        index={Math.min(index, Math.max(0, items.length - 1))}
+        onIndex={setIndex}
+        onPickCentre={tappable ? (i) => router.push({ pathname: '/profile/habit', params: { habit: cards[i]!.habit.id } }) : undefined}
+        label="Habit"
+      />
+    </View>
   )
 }
 
@@ -218,16 +218,16 @@ function SharedPods({ names }: { names: string[] }) {
   )
 }
 
-function Stat({ value, label, icon }: { value: number; label: string; icon: ReactNode }) {
+function Stat({ value, label, icon }: { value: number; label: string; icon: 'flame' | 'trophy' | 'camera' }) {
   return (
-    <View style={{ alignItems: 'flex-start' }}>
+    <View style={{ alignItems: 'center' }}>
+      <Text numeric style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 }}>
+        {compact(value)}
+      </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        {icon}
-        <Text numeric style={{ fontSize: 17, fontWeight: '700' }}>
-          {compact(value)}
-        </Text>
+        <Icon name={icon} size={12} color={colors.ink.muted} />
+        <Text style={{ fontSize: 15, lineHeight: 19, color: colors.ink.muted }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 13, color: colors.ink.muted }}>{label}</Text>
     </View>
   )
 }
