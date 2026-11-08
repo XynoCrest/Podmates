@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(24);
+select plan(26);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -79,6 +79,11 @@ select throws_ok(
   '42501', null, 'Snap count is trigger-owned (column grant)'
 );
 select ok((select snap_count from public.profiles where username = 'maya.reads') > 0, 'Anyone signed in can read another person''s snap count');
+
+-- Banner: you can set your own, not someone else's (no matching row to update).
+select lives_ok($$ update public.profiles set banner_url = 'a0000000-0000-4000-8000-000000000001/banner.jpg' where id = 'a0000000-0000-4000-8000-000000000001' $$, 'Ben can set his own banner');
+update public.profiles set banner_url = 'x' where username = 'maya.reads';
+select is((select banner_url from public.profiles where username = 'maya.reads'), null, 'Ben cannot change Maya''s banner');
 
 select * from finish();
 rollback;

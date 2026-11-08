@@ -1,37 +1,39 @@
-import { colors } from '@podmates/ui-tokens'
+import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import { goBack } from '@/lib/nav'
-import { useState, type ReactNode } from 'react'
-import { ActionSheetIOS, ActivityIndicator, Dimensions, FlatList, Platform, Share, View } from 'react-native'
+import { type ReactNode } from 'react'
+import { ActionSheetIOS, ActivityIndicator, Dimensions, Platform, ScrollView, Share, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Button, Icon, IconButton, PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
-import { imageUri } from '@/lib/images'
 import { compact } from '@/lib/format'
+import { imageUri } from '@/lib/images'
+import { goBack } from '@/lib/nav'
 import type { Snap } from '../../snaps/hooks'
-import { useProfileSnaps } from '../../snaps/hooks'
-import { useProfile, useProfileHabits, useSharedPods } from '../hooks'
-import { MonthCalendar } from './MonthCalendar'
+import { useProfileBoard } from '../../snaps/hooks'
+import { useHabitCards, useProfile, useSharedPods, type HabitCard } from '../hooks'
 
-const GAP = 2
-const TILE_W = (Dimensions.get('window').width - GAP * 2) / 3
-const TILE_H = TILE_W * (4 / 3) // Instagram's 3:4 portrait grid
+const SCREEN_W = Dimensions.get('window').width
+const BANNER_H = 128
+const AVATAR = 96
+const PAD = 16
+const GAP = 8
+const COL_W = (SCREEN_W - PAD * 2 - GAP) / 2
+/** Masonry rhythm: varied tile heights (× column width), Pinterest-style. */
+const RHYTHM = [1.35, 1.05, 1.5, 1.2, 1.0, 1.4]
 
 /**
- * Profile as proof of progress: avatar + Streak · Best · Snaps, bio, actions,
- * then my month calendar (only on my own profile) — or, for someone else, the
- * pods we share — then one icon tab per habit over a 3:4 grid of chosen snaps.
+ * Profile, LinkedIn/Pinterest-inspired: a banner with the avatar overlapping it, name and
+ * @username, Streak · Best · Snaps, actions, one card per habit (mine open that habit's
+ * calendar), then a masonry board of the snaps this person chose to show.
  */
 export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean }) {
   const insets = useSafeAreaInsets()
   const me = useMe()
   const isMe = userId === me
   const profile = useProfile(userId)
-  const habits = useProfileHabits(userId)
-  const [picked, setHabitId] = useState<string>()
-  const habitId = picked && habits.data.some((h) => h.id === picked) ? picked : habits.data[0]?.id
-  const snaps = useProfileSnaps(userId, habitId)
+  const cards = useHabitCards(userId)
+  const board = useProfileBoard(userId)
   const shared = useSharedPods(userId)
 
   const p = profile.data
@@ -45,72 +47,22 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
     } else void auth.signOut()
   }
 
-  // A leading "+" tile on my own grid opens the picker.
-  const tiles: (Snap | 'add')[] = isMe && habitId ? ['add', ...(snaps.data ?? [])] : (snaps.data ?? [])
+  // Pick snaps works per habit (Ben's picker): choose the habit first.
+  const pickSnaps = () => {
+    const list = cards.data
+    if (list.length === 1) return router.push({ pathname: '/profile/pick', params: { habit: list[0]!.habit.id } })
+    if (Platform.OS !== 'ios' || !list.length) return
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title: 'Pick snaps for which habit?', options: [...list.map((c) => c.habit.name), 'Cancel'], cancelButtonIndex: list.length, userInterfaceStyle: 'dark' },
+      (i) => {
+        const c = list[i]
+        if (c) router.push({ pathname: '/profile/pick', params: { habit: c.habit.id } })
+      },
+    )
+  }
 
-  const header = (
-    <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, gap: 24 }}>
-        <PressableScale onPress={isMe ? () => router.push('/profile/edit') : undefined} disabled={!isMe} accessibilityLabel="Profile photo">
-          <View>
-            <Avatar person={p} size={88} />
-            {isMe ? (
-              <View style={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.ink.DEFAULT, borderWidth: 3, borderColor: colors.canvas, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="plus" size={13} color={colors.ink.inverse} weight="bold" />
-              </View>
-            ) : null}
-          </View>
-        </PressableScale>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ fontSize: 17, fontWeight: '600' }}>{p.display_name}</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: 8 }}>
-            <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
-            <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={13} color={colors.energy.DEFAULT} />} />
-            <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={13} color={colors.leaf.DEFAULT} />} />
-          </View>
-        </View>
-      </View>
-
-      {p.bio ? <Text style={{ paddingHorizontal: 16, paddingTop: 12, fontSize: 15, lineHeight: 20 }}>{p.bio}</Text> : null}
-
-      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
-        {isMe ? (
-          <>
-            <Button label="Edit profile" variant="secondary" size="sm" flex onPress={() => router.push('/profile/edit')} />
-            <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })} />
-            <PressableScale onPress={() => router.push({ pathname: '/pod/new', params: { tab: 'join' } })} accessibilityLabel="Join a pod">
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="personAdd" size={16} />
-              </View>
-            </PressableScale>
-          </>
-        ) : (
-          <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
-        )}
-      </View>
-
-      {isMe ? <MonthCalendar /> : shared.data?.length ? <SharedPods names={shared.data} /> : null}
-
-      {/* Habit tabs: icon per habit, underline on the active one (Instagram's grid tabs). */}
-      <View style={{ flexDirection: 'row', marginTop: 16, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
-        {habits.data.map((h) => {
-          const active = h.id === habitId
-          return (
-            <PressableScale key={h.id} flex onPress={() => setHabitId(h.id)} accessibilityRole="tab" accessibilityLabel={h.name} accessibilityState={{ selected: active }} scaleTo={0.94}>
-              <View style={{ alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1.5, borderBottomColor: active ? colors.ink.DEFAULT : 'transparent' }}>
-                <SymbolIcon name={h.sf_symbol} size={22} color={active ? colors.ink.DEFAULT : colors.ink.subtle} />
-              </View>
-            </PressableScale>
-          )
-        })}
-      </View>
-      {habitId ? (
-        <Text variant="caption" style={{ textAlign: 'center', paddingVertical: 8 }}>
-          {habits.data.find((h) => h.id === habitId)?.name}
-        </Text>
-      ) : null}
-    </View>
-  )
+  const bannerColor = avatarColors[p.avatar_color as keyof typeof avatarColors] ?? colors.raised
+  const [left, right] = masonry(board.data ?? [])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
@@ -126,34 +78,129 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </>
         ) : null}
       </View>
-      <FlatList
-        data={tiles}
-        numColumns={3}
-        keyExtractor={(t) => (t === 'add' ? 'add' : t.id)}
-        ListHeaderComponent={header}
-        columnWrapperStyle={{ gap: GAP }}
-        contentContainerStyle={{ gap: GAP, paddingBottom: insets.bottom + 96 }}
-        renderItem={({ item }) =>
-          item === 'add' ? (
-            <PressableScale onPress={() => router.push({ pathname: '/profile/pick', params: { habit: habitId! } })} accessibilityLabel="Pick snaps for your profile">
-              <View style={{ width: TILE_W, height: TILE_H, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Icon name="plus" size={26} color={colors.ink.muted} />
-                <Text variant="caption">Pick snaps</Text>
-              </View>
-            </PressableScale>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
+        {/* Banner: their cover photo, or a wash of their avatar colour until they set one. */}
+        <View style={{ height: BANNER_H, backgroundColor: bannerColor }}>
+          {p.banner_url ? (
+            <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: BANNER_H }} contentFit="cover" transition={150} accessibilityLabel="Profile banner" />
           ) : (
-            <PressableScale onPress={() => router.push({ pathname: '/snap/[id]', params: { id: item.id } })} scaleTo={0.98} accessibilityLabel="Open snap">
-              <Image source={{ uri: imageUri(item.image) }} style={{ width: TILE_W, height: TILE_H, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={item.id} />
-            </PressableScale>
-          )
-        }
-        ListEmptyComponent={
+            <View style={{ flex: 1, backgroundColor: 'rgba(11, 12, 15, 0.35)' }} />
+          )}
+        </View>
+
+        <View style={{ paddingHorizontal: PAD }}>
+          <PressableScale onPress={isMe ? () => router.push('/profile/edit') : undefined} disabled={!isMe} accessibilityLabel="Profile photo" style={{ alignSelf: 'flex-start', marginTop: -AVATAR / 2 }}>
+            <View style={{ borderRadius: AVATAR, borderWidth: 4, borderColor: colors.canvas }}>
+              <Avatar person={p} size={AVATAR} />
+            </View>
+          </PressableScale>
+
+          <Text style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4, marginTop: 10 }}>{p.display_name}</Text>
+          <Text variant="subhead">@{p.username}</Text>
+
+          <View style={{ flexDirection: 'row', gap: 28, marginTop: 14 }}>
+            <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
+            <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={13} color={colors.energy.DEFAULT} />} />
+            <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={13} color={colors.leaf.DEFAULT} />} />
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+            {isMe ? (
+              <>
+                <Button label="Edit profile" variant="secondary" size="sm" flex onPress={() => router.push('/profile/edit')} />
+                <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })} />
+                <PressableScale onPress={() => router.push({ pathname: '/pod/new', params: { tab: 'join' } })} accessibilityLabel="Join a pod">
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="personAdd" size={16} />
+                  </View>
+                </PressableScale>
+              </>
+            ) : (
+              <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
+            )}
+          </View>
+
+          {!isMe && shared.data?.length ? <SharedPods names={shared.data} /> : null}
+        </View>
+
+        {cards.data.length ? <HabitCards cards={cards.data} tappable={isMe} /> : null}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: 20, marginBottom: 10 }}>
+          <Text variant="overline">Board</Text>
+          {isMe && cards.data.length ? <Button label="Pick snaps" icon="plus" variant="secondary" size="sm" onPress={pickSnaps} /> : null}
+        </View>
+
+        {board.data?.length ? (
+          <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: PAD }}>
+            <Column items={left} />
+            <Column items={right} />
+          </View>
+        ) : (
           <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>
-            {habits.data.length ? 'No snaps on the profile for this habit yet' : isMe ? 'Join a pod to start snapping' : 'Nothing shared yet'}
+            {isMe ? 'Pick your best snaps to show here.' : 'Nothing shared yet.'}
           </Text>
-        }
-      />
+        )}
+      </ScrollView>
     </View>
+  )
+}
+
+/** Split tiles into two columns, each tile going to the shorter one. */
+function masonry(snaps: Snap[]): [{ snap: Snap; h: number }[], { snap: Snap; h: number }[]] {
+  const cols: [{ snap: Snap; h: number }[], { snap: Snap; h: number }[]] = [[], []]
+  const height = [0, 0]
+  snaps.forEach((snap, i) => {
+    const h = Math.round(COL_W * RHYTHM[i % RHYTHM.length]!)
+    const c = height[0]! <= height[1]! ? 0 : 1
+    cols[c].push({ snap, h })
+    height[c]! += h + GAP
+  })
+  return cols
+}
+
+function Column({ items }: { items: { snap: Snap; h: number }[] }) {
+  return (
+    <View style={{ flex: 1, gap: GAP }}>
+      {items.map(({ snap, h }) => (
+        <PressableScale key={snap.id} onPress={() => router.push({ pathname: '/snap/[id]', params: { id: snap.id } })} scaleTo={0.97} accessibilityLabel="Open snap">
+          <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: 14, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
+        </PressableScale>
+      ))}
+    </View>
+  )
+}
+
+/** One card per habit: icon, name, streak. On my own profile a card opens that habit's calendar. */
+function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAD, gap: 10, paddingTop: 18 }}>
+      {cards.map((c) => {
+        const body = (
+          <View style={{ width: 132, padding: 12, gap: 8, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}>
+            <SymbolIcon name={c.habit.sf_symbol} size={22} color={colors.leaf.DEFAULT} />
+            <Text style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
+              {c.habit.name}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name="flame" size={12} color={colors.flame.DEFAULT} />
+              <Text variant="caption" numeric>
+                {c.streak === null ? '—' : `${c.streak}-day streak`}
+              </Text>
+            </View>
+          </View>
+        )
+        return tappable ? (
+          <PressableScale key={c.habit.id} onPress={() => router.push({ pathname: '/profile/habit', params: { habit: c.habit.id } })} scaleTo={0.96} accessibilityRole="button" accessibilityLabel={`${c.habit.name}, ${c.streak ?? 0}-day streak. Open calendar`}>
+            {body}
+          </PressableScale>
+        ) : (
+          <View key={c.habit.id} accessible accessibilityLabel={c.streak === null ? c.habit.name : `${c.habit.name}, ${c.streak}-day streak`}>
+            {body}
+          </View>
+        )
+      })}
+    </ScrollView>
   )
 }
 
@@ -161,7 +208,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 function SharedPods({ names }: { names: string[] }) {
   const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
       <Icon name="people" size={16} color={colors.leaf.DEFAULT} />
       <Text style={{ flex: 1, fontSize: 14, color: colors.ink.muted }}>
         {"You're both in "}
@@ -176,7 +223,7 @@ function Stat({ value, label, icon }: { value: number; label: string; icon: Reac
     <View style={{ alignItems: 'flex-start' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         {icon}
-        <Text numeric style={{ fontSize: 17, fontWeight: '600' }}>
+        <Text numeric style={{ fontSize: 18, fontWeight: '700' }}>
           {compact(value)}
         </Text>
       </View>

@@ -15,7 +15,7 @@ const FILL = {
   two: 'rgba(123, 214, 75, 0.68)',
   more: colors.leaf.DEFAULT,
   late: 'rgba(123, 214, 75, 0.13)',
-  missed: colors.raised,
+  missed: colors.surface,
 } as const
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -36,15 +36,15 @@ function describe(date: string, day: CalendarDay | undefined) {
 }
 
 /**
- * My month at a glance, Monday-first. Only shown on my own profile.
+ * My month for one habit, Monday-first (opened from that habit's card on my own profile).
  * Tapping a day with snaps opens them; ‹ › move between months (never past this month).
  */
-export function MonthCalendar() {
+export function MonthCalendar({ habitId }: { habitId: string }) {
   const today = new Date()
   const [offset, setOffset] = useState(0) // 0 = this month, -1 = last month…
   const first = new Date(today.getFullYear(), today.getMonth() + offset, 1)
   const monthStart = iso(first)
-  const month = useMyMonth(monthStart)
+  const month = useMyMonth(monthStart, habitId)
   const days = month.data ?? {}
 
   const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
@@ -61,7 +61,7 @@ export function MonthCalendar() {
   }
 
   return (
-    <View style={{ marginHorizontal: 16, marginTop: 16, padding: 14, borderRadius: 16, backgroundColor: colors.surface, gap: 10 }}>
+    <View style={{ padding: 14, borderRadius: 16, backgroundColor: colors.raised, gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <IconButton icon="back" label="Previous month" onPress={() => move(-1)} />
         <View style={{ flex: 1, alignItems: 'center' }}>

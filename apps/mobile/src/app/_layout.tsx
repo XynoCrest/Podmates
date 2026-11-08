@@ -64,6 +64,7 @@ function SessionGate() {
           <Stack.Screen name="pod/new" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/edit" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/pick" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
+          <Stack.Screen name="profile/habit" options={{ ...sheet, sheetAllowedDetents: [0.75, 1] }} />
           <Stack.Screen name="profile/day" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
           <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
           <Stack.Screen name="user/[id]" />

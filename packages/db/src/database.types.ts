@@ -395,14 +395,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_color": string,"avatar_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"snap_count": number,"stars": number,"streak": number,"username": string
+                    "avatar_color": string,"avatar_url": string | null,"banner_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"snap_count": number,"stars": number,"streak": number,"username": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username": string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username": string
                   }
                   Update: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username"?: string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username"?: string
                   }
                   Relationships: [
                     
