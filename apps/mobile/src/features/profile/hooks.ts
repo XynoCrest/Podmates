@@ -12,8 +12,6 @@ export interface Profile {
   bio: string
   avatar_color: string
   avatar_url: string | null
-  energy: number
-  stars: number
   /** Best current streak across my pods (settlement). */
   streak: number
   /** Longest streak ever (settlement; never goes down). */
@@ -22,6 +20,8 @@ export interface Profile {
   snap_count: number
   /** Cover photo behind the avatar (storage path); null = the avatar colour. */
   banner_url: string | null
+  /** When onboarding was finished; null = show it. */
+  onboarded_at: string | null
 }
 
 export function useProfile(userId: string) {
@@ -30,7 +30,7 @@ export function useProfile(userId: string) {
     queryFn: async (): Promise<Profile> => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, display_name, bio, avatar_color, avatar_url, energy, stars, streak, best_streak, snap_count, banner_url')
+        .select('id, username, display_name, bio, avatar_color, avatar_url, streak, best_streak, snap_count, banner_url, onboarded_at')
         .eq('id', userId)
         .single()
       if (error) throw error

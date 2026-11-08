@@ -1,6 +1,5 @@
 /**
- * Settlement: turns a pod's finished days into tree, energy, star and streak
- * changes. Every number comes from @podmates/tree-engine; this module only
+ * Settlement: turns a pod's finished days into tree and streak changes. Every number comes from @podmates/tree-engine; this module only
  * gathers inputs and persists outputs (atomically, via apply_day_settlement).
  */
 import type { DbClient } from '@podmates/db'
@@ -64,8 +63,6 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
         p_day: { outcome: r.outcome, contributors: r.contributors, members: r.members, hp_delta: r.hpDelta, hp_after: r.tree.hp },
         p_members: r.memberUpdates.map((u) => ({
           user_id: u.userId,
-          energy_delta: u.energyDelta,
-          stars_delta: u.starsDelta,
           streak: u.streak,
           best_streak: u.bestStreak,
         })),

@@ -14,6 +14,8 @@ export interface Community {
   description: string
   emoji: string
   color: string
+  /** The habit this community is about (null = general). */
+  habitId: string | null
   memberCount: number
   joined: boolean
 }
@@ -73,6 +75,7 @@ export function useCommunities() {
         description: c.description,
         emoji: c.emoji,
         color: c.color,
+        habitId: c.habit_id,
         memberCount: c.member_count,
         // RLS lets everyone read memberships; we only need to know about our own row.
         joined: c.community_members.some((m) => m.user_id === me),

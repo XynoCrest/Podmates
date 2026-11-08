@@ -1,7 +1,7 @@
 -- Demo data for local development. Loaded by `supabase db reset`.
 --
 -- What is seeded here is RAW activity only: people, pods, snaps, contributions, chat,
--- communities. Tree health, energy, stars, streaks and the day log are NOT faked —
+-- communities. Tree health, streaks and the day log are NOT faked —
 -- every tree starts fresh 12 days ago and apps/api settlement (packages/tree-engine)
 -- replays those days on boot / `npm run settle`, exactly as in production.
 --

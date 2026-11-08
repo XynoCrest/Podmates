@@ -25,8 +25,8 @@ select throws_ok(
   '42501', null, 'Clients cannot forge system messages'
 );
 select throws_ok(
-  $$ update public.profiles set energy = 9999 where id = 'a0000000-0000-4000-8000-000000000001' $$,
-  '42501', null, 'Energy is settlement-owned (column grant)'
+  $$ update public.profiles set streak = 9999 where id = 'a0000000-0000-4000-8000-000000000001' $$,
+  '42501', null, 'Streak is settlement-owned (column grant)'
 );
 -- No update policy on trees: the write matches zero rows rather than raising.
 update public.trees set hp = 999 where pod_id = 'b0000000-0000-4000-8000-000000000001';
@@ -69,7 +69,7 @@ select throws_ok(
 select isnt(public.join_pod('IRONPT'), null, 'Ben can join Iron Pact with its invite code');
 select is((select count(*)::int from public.pods), 6, 'After joining, Ben sees Iron Pact');
 
--- Profile numbers (Best, Snaps) are settlement/trigger-owned, like energy.
+-- Profile numbers (Best, Snaps) are settlement/trigger-owned, like the streak.
 select throws_ok(
   $$ update public.profiles set best_streak = 999 where id = 'a0000000-0000-4000-8000-000000000001' $$,
   '42501', null, 'Best streak is settlement-owned (column grant)'

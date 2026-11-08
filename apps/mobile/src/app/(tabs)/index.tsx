@@ -1,5 +1,5 @@
 import { colors } from '@podmates/ui-tokens'
-import { router, useFocusEffect } from 'expo-router'
+import { Redirect, router, useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
@@ -15,11 +15,10 @@ import { TodayCard } from '@/features/pods/components/TodayCard'
 import { needsSnap, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
+import { HERO } from '@/features/tree/GroveFigure'
 import { LeafTree } from '@/features/tree/LeafTree'
 import { useNow } from '@/lib/useNow'
 
-/** The hero band: a neutral green, with dark ink on it. */
-const HERO = { bg: '#46A862', ink: '#0C2414', soft: 'rgba(12, 36, 20, 0.72)' }
 const HERO_H = 196
 /** How far the sheet rides up over the hero. */
 const OVERLAP = 22
@@ -61,6 +60,9 @@ export default function PodsScreen() {
       [...(pods.data?.filter((p) => p.unread > 0) ?? []), ...everyone.data.filter((t) => t.unread > 0)].sort((a, b) => lastAt(b).localeCompare(lastAt(a))),
     [pods.data, everyone.data],
   )
+  // First sign-in: onboarding once (profiles.onboarded_at).
+  if (profile.data && !profile.data.onboarded_at) return <Redirect href="/onboarding" />
+
   const rows: (PodSummary | PodmateThread)[] = !hasPods ? [] : list === 'pods' ? inHabit : list === 'podmates' ? podmates.data : unread
   const heroTotal = insets.top + HERO_H
 

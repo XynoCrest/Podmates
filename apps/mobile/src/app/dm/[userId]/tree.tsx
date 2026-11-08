@@ -84,7 +84,7 @@ export default function PairTreeScreen() {
         <Headline>
           {dead ? (
             <>
-              Your tree <Hl color={colors.danger.DEFAULT}>ran out of energy</Hl>. Plant a new seed together.
+              Your tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
             </>
           ) : f.outcome === 'thrive' ? (
             <>

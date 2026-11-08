@@ -55,6 +55,7 @@ function SessionGate() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
         <Stack.Protected guard={signedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="pod/[id]/index" />
           <Stack.Screen name="dm/[userId]/index" />
           {/* The tree is its own little world: full screen, closes with an X like a game screen. */}
