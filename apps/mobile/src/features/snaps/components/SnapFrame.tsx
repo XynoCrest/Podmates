@@ -39,7 +39,8 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
         </View>
       </View>
       <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 28, gap: 10, alignItems: 'flex-start' }}>
-        {snap.onTime ? <Chip icon="bolt" label="ON TIME · +10 ENERGY" color={colors.ink.inverse} bg={colors.energy.DEFAULT} /> : <Chip icon="clock" label="LATE" color="#fff" bg="rgba(0,0,0,0.55)" />}
+        <Chip icon="check" label={snap.podName ? `${snap.podName.toUpperCase()} · VERIFIED` : 'VERIFIED'} color={colors.ink.inverse} bg={colors.leaf.DEFAULT} />
+        {snap.cheers ? <Chip icon="sparkles" label={`${snap.cheers} ${snap.cheers === 1 ? 'CHEER' : 'CHEERS'}`} color="#fff" bg="rgba(0,0,0,0.55)" /> : null}
         {snap.caption ? (
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
             <Text style={{ color: '#fff', fontSize: 16 }}>{snap.caption}</Text>

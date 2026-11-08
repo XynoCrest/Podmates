@@ -1,11 +1,13 @@
 import { colors } from '@podmates/ui-tokens'
+import { router } from 'expo-router'
 import { useState } from 'react'
-import { ActionSheetIOS, ActivityIndicator, FlatList, Platform, RefreshControl, View } from 'react-native'
+import { ActionSheetIOS, ActivityIndicator, FlatList, Platform, RefreshControl, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { EmptyState, Icon, PressableScale, Text } from '@/components/ui'
-import { CommunityChips } from '@/features/explore/components/CommunityChips'
+import { EmptyState, Icon, PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { PostCard } from '@/features/explore/components/PostCard'
-import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
+import { useFeed, type FeedSort } from '@/features/explore/hooks'
+import { useHabits, useMyHabits, usePods, type Pod } from '@/features/pods/hooks'
+import { compact } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 
 const SORTS: { key: FeedSort; label: string; icon: 'flame' | 'clock' | 'trophy' }[] = [
@@ -14,45 +16,36 @@ const SORTS: { key: FeedSort; label: string; icon: 'flame' | 'clock' | 'trophy' 
   { key: 'top', label: 'Top', icon: 'trophy' },
 ]
 
-/** Apollo-style feed: "Home ⌄" switcher, community strip, cards separated by black gutters. */
+/** Explore: discover habit pods (top strip), then trending posts from every pod. */
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets()
-  const [mode, setMode] = useState<FeedMode>('home')
   const [sort, setSort] = useState<FeedSort>('hot')
-  const feed = useFeed(mode, sort)
-  const communities = useCommunities()
+  const feed = useFeed(sort)
+  const pods = usePods()
   const current = SORTS.find((s) => s.key === sort)!
 
-  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) => {
-    if (Platform.OS !== 'ios') return onPick(options[0]!.value) // the product targets iOS; other platforms get the default
-    ActionSheetIOS.showActionSheetWithOptions({ title, options: [...options.map((o) => o.label), 'Cancel'], cancelButtonIndex: options.length, userInterfaceStyle: 'dark' }, (i) => {
-      if (i < options.length) {
+  const pickSort = () => {
+    if (Platform.OS !== 'ios') return
+    ActionSheetIOS.showActionSheetWithOptions({ title: 'Sort by', options: [...SORTS.map((s) => s.label), 'Cancel'], cancelButtonIndex: SORTS.length, userInterfaceStyle: 'dark' }, (i) => {
+      if (i < SORTS.length) {
         haptics.select()
-        onPick(options[i]!.value)
+        setSort(SORTS[i]!.key)
       }
     })
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }}>
-        <PressableScale
-          onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
-          accessibilityLabel={`Feed: ${mode}`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: colors.raised }}>
-            <Text style={{ fontSize: 17, fontWeight: '600' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
-            <Icon name="chevronDown" size={13} color={colors.ink.muted} weight="bold" />
+      <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+        <Text variant="title" style={{ flex: 1 }}>
+          Explore
+        </Text>
+        <PressableScale onPress={pickSort} accessibilityLabel={`Sort: ${current.label}`}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.raised }}>
+            <Icon name={current.icon} size={16} color={colors.ink.DEFAULT} />
+            <Text style={{ fontSize: 15, fontWeight: '600' }}>{current.label}</Text>
           </View>
         </PressableScale>
-        <View style={{ position: 'absolute', right: 12 }}>
-          <PressableScale onPress={() => pick('Sort by', SORTS.map((s) => ({ label: s.label, value: s.key })), setSort)} accessibilityLabel={`Sort: ${current.label}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.raised }}>
-              <Icon name={current.icon} size={16} color={colors.ink.DEFAULT} />
-              <Icon name="more" size={16} color={colors.ink.DEFAULT} weight="bold" />
-            </View>
-          </PressableScale>
-        </View>
       </View>
 
       <FlatList
@@ -60,17 +53,56 @@ export default function ExploreScreen() {
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => <PostCard post={item} />}
         ItemSeparatorComponent={() => <View style={{ height: 8, backgroundColor: colors.sunken }} />}
-        ListHeaderComponent={communities.data ? <CommunityChips communities={communities.data} /> : undefined}
+        ListHeaderComponent={pods.data ? <DiscoverPods pods={pods.data} /> : undefined}
         ListEmptyComponent={
-          feed.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
-          ) : (
-            <EmptyState icon="explore" title="Your home feed is empty" body="Join a community above, or switch to Popular" />
-          )
+          feed.isLoading ? <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} /> : <EmptyState icon="explore" title="No posts yet" body="Open a pod and start the conversation" />
         }
-        refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
+        refreshControl={
+          <RefreshControl
+            tintColor={colors.ink.muted}
+            refreshing={feed.isRefetching}
+            onRefresh={() => {
+              void feed.refetch()
+              void pods.refetch()
+            }}
+          />
+        }
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
       />
+    </View>
+  )
+}
+
+/** Horizontal strip of habit pods, busiest first; pods I'm in are marked. */
+function DiscoverPods({ pods }: { pods: Pod[] }) {
+  const habits = useHabits()
+  const mine = useMyHabits()
+  const tracked = new Set(mine.data.map((h) => h.pod.id))
+  const sorted = [...pods].sort((a, b) => b.memberCount - a.memberCount || b.tree.totalSnaps - a.tree.totalSnaps)
+  return (
+    <View style={{ paddingVertical: 12, gap: 10 }}>
+      <Text variant="overline" style={{ paddingHorizontal: 16 }}>
+        Discover pods
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+        {sorted.map((p) => {
+          const symbol = habits.data?.find((h) => h.id === p.habitId)?.sf_symbol ?? 'leaf'
+          const mineP = tracked.has(p.id)
+          return (
+            <PressableScale key={p.id} onPress={() => router.push({ pathname: '/pod/[id]', params: { id: p.id } })} scaleTo={0.96} accessibilityLabel={`${p.name} pod${mineP ? ', in your habits' : ''}`}>
+              <View style={{ width: 132, padding: 12, gap: 8, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: mineP ? colors.leaf.DEFAULT : colors.line }}>
+                <SymbolIcon name={symbol} size={22} color={mineP ? colors.leaf.DEFAULT : colors.ink.muted} />
+                <Text style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
+                  {p.name}
+                </Text>
+                <Text variant="caption" numberOfLines={1}>
+                  {compact(p.memberCount)} members · {Math.round(p.tree.health * 100)}%
+                </Text>
+              </View>
+            </PressableScale>
+          )
+        })}
+      </ScrollView>
     </View>
   )
 }

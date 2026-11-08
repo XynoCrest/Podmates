@@ -65,7 +65,7 @@ function SessionGate() {
           <Stack.Screen name="profile/pick" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
           <Stack.Screen name="user/[id]" />
-          <Stack.Screen name="community/[slug]" />
+          <Stack.Screen name="admin/flagged" />
           <Stack.Screen name="post/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn} redirectTo="/">

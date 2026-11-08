@@ -4,11 +4,12 @@ import { View } from 'react-native'
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg'
 
 /**
- * The pod's tree, drawn from its stage (growth) and health (hp / max_hp).
- * Leaves yellow then brown as health drops; a dead tree is bare.
+ * A pod's tree, drawn from its stage (lifetime verified snaps) and health
+ * (share of members on a streak). Leaves yellow then brown as health drops.
+ * Trees never die in this model; `dead` is kept for a bare look if ever needed.
  */
-export function TreeArt({ growth, health, dead = false, size = 220 }: { growth: number; health: number; dead?: boolean; size?: number }) {
-  const { level } = stageFor(growth)
+export function TreeArt({ totalSnaps, health, dead = false, size = 220 }: { totalSnaps: number; health: number; dead?: boolean; size?: number }) {
+  const { level } = stageFor(totalSnaps)
   const leaf = dead ? '#5B5148' : leafColor(health)
   const leafLight = dead ? '#6B6158' : mix(leaf, '#FFFFFF', 0.28)
   const leafDark = dead ? '#463E37' : mix(leaf, '#000000', 0.25)

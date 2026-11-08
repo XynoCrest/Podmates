@@ -4,45 +4,35 @@ import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
 
-export interface PodDay {
-  podDate: string
-  outcome: 'thrive' | 'steady' | 'wilt' | 'dormant'
-  contributors: number
-  members: number
-  hpDelta: number
+export interface TreeDay {
+  day: string
+  health: number
+  active: number
+  counted: number
 }
 
-/** The tree's last 7 settled days (oldest first) for the week strip. */
+/** A pod tree's last 7 days of health (oldest first) for the week strip. */
 export function useTreeHistory(podId: string) {
   const query = useQuery({
     queryKey: qk.tree(podId),
-    queryFn: async (): Promise<PodDay[]> => {
-      const { data, error } = await supabase
-        .from('pod_days')
-        .select('pod_date, outcome, contributors, members, hp_delta')
-        .eq('pod_id', podId)
-        .order('pod_date', { ascending: false })
-        .limit(7)
+    enabled: !!podId,
+    queryFn: async (): Promise<TreeDay[]> => {
+      const { data, error } = await supabase.from('tree_days').select('day, health, active, counted').eq('pod_id', podId).order('day', { ascending: false }).limit(7)
       if (error) throw error
-      return data
-        .map((d) => ({ podDate: d.pod_date, outcome: d.outcome as PodDay['outcome'], contributors: d.contributors, members: d.members, hpDelta: d.hp_delta }))
-        .reverse()
+      return data.reverse()
     },
   })
-  useRealtimeInvalidate('trees', `pod_id=eq.${podId}`, [qk.tree(podId), qk.pods])
+  useRealtimeInvalidate('trees', `pod_id=eq.${podId}`, [qk.tree(podId), qk.pods], !!podId)
   return query
 }
 
-function useTreeMutation(fn: (podId: string) => Promise<unknown>, podId: string) {
+/** Local demo helper: close today for my habits now, so streaks and trees update immediately. */
+export function useEndDay() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => fn(podId),
+    mutationFn: () => api.endDay(),
     onSettled: () => {
-      for (const key of [qk.pods, qk.tree(podId), qk.members(podId), qk.messages(podId)]) void queryClient.invalidateQueries({ queryKey: key })
+      for (const key of [qk.myHabits, qk.pods, ['tree'], ['profileStats'], ['podMembers']]) void queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }
-
-export const useReplant = (podId: string) => useTreeMutation(api.replant, podId)
-export const useEndDay = (podId: string) => useTreeMutation(api.endDay, podId)
-export const useOpenWindow = (podId: string) => useTreeMutation(api.openWindow, podId)

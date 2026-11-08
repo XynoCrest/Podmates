@@ -4,7 +4,8 @@ import { useMe } from '@/ctx/session'
 import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
-import { PERSON_FIELDS, type ChatMessage, type Person } from '../pods/hooks'
+import { PERSON_FIELDS, type Person } from '../pods/hooks'
+import type { ChatMessage } from './types'
 
 export interface DirectMessage {
   id: string
@@ -17,8 +18,6 @@ export interface DirectMessage {
 
 export interface PodmateThread {
   person: Person
-  /** Names of the pods we share in this habit. */
-  pods: string[]
   last: DirectMessage | null
   /** Messages from them I haven't opened yet. */
   unread: number
@@ -34,19 +33,25 @@ const toDm = (m: { id: string; sender_id: string; recipient_id: string; body: st
   readAt: m.read_at,
 })
 
-/** Everyone in these pods but me, each with the last direct message between us. Threads with messages first. */
-export function usePodmates(podIds: string[]) {
+/**
+ * People I can message: everyone I follow who follows me back (DMs are mutual-follows only),
+ * each with the last direct message between us. Threads with messages first.
+ */
+export function usePodmates() {
   const me = useMe()
-  const key = [...podIds].sort().join(',')
   const members = useQuery({
-    queryKey: qk.podmates(key),
-    enabled: podIds.length > 0,
+    queryKey: ['mutuals'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('pod_members').select(`pod:pods(name), profile:profiles(${PERSON_FIELDS})`).in('pod_id', podIds)
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`follower_id, followee_id, status, followee:profiles!follows_followee_id_fkey(${PERSON_FIELDS})`)
+        .eq('status', 'accepted')
       if (error) throw error
-      return data.map((m) => ({ pod: (m.pod as { name: string } | null)?.name ?? '', person: m.profile as Person }))
+      const followsMe = new Set(data.filter((f) => f.followee_id === me).map((f) => f.follower_id))
+      return data.filter((f) => f.follower_id === me && followsMe.has(f.followee_id)).map((f) => ({ person: f.followee as unknown as Person }))
     },
   })
+  useRealtimeInvalidate('follows', undefined, [['mutuals']])
   const threads = useQuery({
     queryKey: qk.dmThreads,
     queryFn: async (): Promise<DirectMessage[]> => {
@@ -62,9 +67,7 @@ export function usePodmates(podIds: string[]) {
     const byId = new Map<string, PodmateThread>()
     for (const m of members.data ?? []) {
       if (m.person.id === me) continue
-      const t = byId.get(m.person.id) ?? { person: m.person, pods: [], last: null, unread: 0 }
-      if (m.pod && !t.pods.includes(m.pod)) t.pods.push(m.pod)
-      byId.set(m.person.id, t)
+      byId.set(m.person.id, byId.get(m.person.id) ?? { person: m.person, last: null, unread: 0 })
     }
     for (const dm of threads.data ?? []) {
       const other = dm.senderId === me ? dm.recipientId : dm.senderId

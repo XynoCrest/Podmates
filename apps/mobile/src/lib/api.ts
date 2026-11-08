@@ -1,9 +1,9 @@
 /**
  * The single chokepoint for calls to apps/api. Most data does NOT come through
  * here — the app reads and writes Supabase directly under RLS. The API is only
- * for work that needs server privileges (tree replanting, local demo helpers).
+ * for work that needs server privileges (team review of flagged snaps, local demo helpers).
  */
-import { OpenWindowResponse, ReplantResponse, SettleResponse, type ApiErrorCode } from '@podmates/shared'
+import { FlaggedResponse, ReviewResponse, SettleResponse, type ApiErrorCode } from '@podmates/shared'
 import { env } from './env'
 import { supabase } from './supabase'
 
@@ -49,15 +49,15 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
 }
 
 export const api = {
-  async replant(podId: string) {
-    return ReplantResponse.parse(await request('POST', `/v1/pods/${podId}/replant`, {}))
+  /** Local only: close today for my habits now and recompute streaks and trees. */
+  async endDay() {
+    return SettleResponse.parse(await request('POST', '/v1/dev/end-day', {}))
   },
-  /** Local only: close today now and settle it. */
-  async endDay(podId: string) {
-    return SettleResponse.parse(await request('POST', `/v1/dev/pods/${podId}/end-day`, {}))
+  /** Podmates team: snaps hidden by flags, waiting for review. */
+  async flagged() {
+    return FlaggedResponse.parse(await request('GET', '/v1/admin/flagged'))
   },
-  /** Local only: move the snap window so it is open now. */
-  async openWindow(podId: string) {
-    return OpenWindowResponse.parse(await request('POST', `/v1/dev/pods/${podId}/open-window`, {}))
+  async review(snapId: string, approve: boolean) {
+    return ReviewResponse.parse(await request('POST', `/v1/admin/snaps/${snapId}/review`, { approve }))
   },
 }

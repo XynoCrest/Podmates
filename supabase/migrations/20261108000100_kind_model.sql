@@ -483,4 +483,4 @@ revoke all on all tables in schema public from anon;
 
 -- ─── Realtime ─────────────────────────────────────────────────────────────────
 
-alter publication supabase_realtime add table public.snaps, public.trees, public.cheers, public.follows;
+alter publication supabase_realtime add table public.snaps, public.trees, public.cheers, public.follows, public.user_habits, public.habit_days;

@@ -53,7 +53,7 @@ export default function SignIn() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24, paddingHorizontal: 24, gap: 24 }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: 'center', gap: 8 }}>
-          <TreeArt growth={6} health={1} size={150} />
+          <TreeArt totalSnaps={120} health={1} size={150} />
           <Text variant="display">Podmates</Text>
           <Text variant="subhead" center>
             Build habits with your people. Snap the proof, grow a tree together.

@@ -3,7 +3,7 @@ import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { goBack } from '@/lib/nav'
 import { useState, type ReactNode } from 'react'
-import { ActionSheetIOS, ActivityIndicator, Dimensions, FlatList, Platform, Share, View } from 'react-native'
+import { ActionSheetIOS, ActivityIndicator, Alert, Dimensions, FlatList, Platform, Share, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Button, Icon, IconButton, PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
@@ -11,15 +11,17 @@ import { imageUri } from '@/lib/images'
 import { compact } from '@/lib/format'
 import type { Snap } from '../../snaps/hooks'
 import { useProfileSnaps } from '../../snaps/hooks'
-import { useProfile, useProfileHabits } from '../hooks'
+import { useAnswerFollow, useFollow, useFollows, useProfile, useProfileHabits, useProfileStats, useUnfollow } from '../hooks'
 
 const GAP = 2
 const TILE_W = (Dimensions.get('window').width - GAP * 2) / 3
 const TILE_H = TILE_W * (4 / 3) // Instagram's 3:4 portrait grid
 
 /**
- * Instagram-style profile: avatar + three stats (⚡ energy, ⭐ stars, 🔥 streak),
- * bio, actions, then one icon tab per habit over a 3:4 grid of chosen snaps.
+ * Instagram-style profile: avatar + habits / followers / following, bio, actions,
+ * my KPI cards (consistency, habits) and current streak per habit, then one icon
+ * tab per habit over a 3:4 grid of chosen snaps. Private profiles show the grid to
+ * approved followers only.
  */
 export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean }) {
   const insets = useSafeAreaInsets()
@@ -30,20 +32,44 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const [picked, setHabitId] = useState<string>()
   const habitId = picked && habits.data.some((h) => h.id === picked) ? picked : habits.data[0]?.id
   const snaps = useProfileSnaps(userId, habitId)
+  const stats = useProfileStats(userId)
+  const follows = useFollows()
+  const follow = useFollow()
+  const unfollow = useUnfollow()
+  const answer = useAnswerFollow()
 
   const p = profile.data
   if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}>{profile.isLoading ? <ActivityIndicator style={{ marginTop: 120 }} /> : null}</View>
 
+  const f = follows.data
+  const following = !!f?.following.has(userId)
+  const requested = !!f?.requested.has(userId)
+  const mutual = following && !!f?.followers.has(userId)
+  const locked = !isMe && p.is_private && !following
+
   const openMenu = () => {
+    const items: { label: string; run: () => void; destructive?: boolean }[] = []
+    if (p.is_admin) items.push({ label: 'Review flagged snaps', run: () => router.push('/admin/flagged') })
+    items.push({ label: 'Sign out', run: () => void auth.signOut(), destructive: true })
     if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions({ options: ['Sign out', 'Cancel'], destructiveButtonIndex: 0, cancelButtonIndex: 1, userInterfaceStyle: 'dark' }, (i) => {
-        if (i === 0) void auth.signOut()
-      })
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: [...items.map((i) => i.label), 'Cancel'], destructiveButtonIndex: items.findIndex((i) => i.destructive), cancelButtonIndex: items.length, userInterfaceStyle: 'dark' },
+        (i) => items[i]?.run(),
+      )
     } else void auth.signOut()
   }
 
+  const reviewRequests = () => {
+    const first = f?.incoming[0]
+    if (!first) return
+    Alert.alert('Follow request', `${first.display_name} (@${first.username}) wants to follow you.`, [
+      { text: 'Decline', style: 'destructive', onPress: () => answer.mutate({ follower: first.id, accept: false }) },
+      { text: 'Approve', onPress: () => answer.mutate({ follower: first.id, accept: true }) },
+    ])
+  }
+
   // A leading "+" tile on my own grid opens the picker.
-  const tiles: (Snap | 'add')[] = isMe && habitId ? ['add', ...(snaps.data ?? [])] : (snaps.data ?? [])
+  const tiles: (Snap | 'add')[] = locked ? [] : isMe && habitId ? ['add', ...(snaps.data ?? [])] : (snaps.data ?? [])
 
   const header = (
     <View>
@@ -61,9 +87,15 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         <View style={{ flex: 1, gap: 8 }}>
           <Text style={{ fontSize: 17, fontWeight: '600' }}>{p.display_name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: 8 }}>
-            <Stat value={p.energy} label="energy" icon={<Icon name="bolt" size={13} color={colors.energy.DEFAULT} />} />
-            <Stat value={p.stars} label="stars" icon={<Icon name="star" size={13} color={colors.star.DEFAULT} />} />
-            <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
+            <Stat value={stats.data?.habits ?? 0} label="habits" icon={<Icon name="leaf" size={13} color={colors.leaf.DEFAULT} />} />
+            {isMe ? (
+              <>
+                <Stat value={f?.followers.size ?? 0} label="followers" icon={<Icon name="people" size={13} color={colors.ink.muted} />} />
+                <Stat value={f?.following.size ?? 0} label="following" icon={<Icon name="personAdd" size={13} color={colors.ink.muted} />} />
+              </>
+            ) : (
+              <Stat value={Math.max(0, ...(stats.data?.perHabit.map((h) => h.streak) ?? [0]))} label="best now" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
+            )}
           </View>
         </View>
       </View>
@@ -75,16 +107,46 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           <>
             <Button label="Edit profile" variant="secondary" size="sm" flex onPress={() => router.push('/profile/edit')} />
             <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })} />
-            <PressableScale onPress={() => router.push({ pathname: '/pod/new', params: { tab: 'join' } })} accessibilityLabel="Join a pod">
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="personAdd" size={16} />
-              </View>
-            </PressableScale>
+            {f?.incoming.length ? <Button label={`Requests (${f.incoming.length})`} size="sm" onPress={reviewRequests} /> : null}
           </>
         ) : (
-          <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
+          <>
+            {following ? (
+              <Button label="Following" variant="secondary" size="sm" flex loading={unfollow.isPending} onPress={() => unfollow.mutate(userId)} />
+            ) : requested ? (
+              <Button label="Requested" variant="secondary" size="sm" flex loading={unfollow.isPending} onPress={() => unfollow.mutate(userId)} />
+            ) : (
+              <Button label="Follow" size="sm" flex loading={follow.isPending} onPress={() => follow.mutate(userId)} />
+            )}
+            {mutual ? <Button label="Message" variant="secondary" size="sm" flex onPress={() => router.push({ pathname: '/dm/[userId]', params: { userId } })} /> : null}
+          </>
         )}
       </View>
+
+      {isMe && stats.data ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <KpiCard label="Consistency" value={stats.data.consistency === null ? '—' : `${Math.round(stats.data.consistency * 100)}%`} sub="last 30 days, snaps + rest days" />
+            <KpiCard label="Habits" value={String(stats.data.habits)} sub={stats.data.habits === 1 ? 'pod joined' : 'pods joined'} />
+          </View>
+          {habits.data.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {habits.data.map((h) => {
+                const streak = stats.data!.perHabit.find((x) => x.habitId === h.id)?.streak
+                return streak === undefined ? null : (
+                  <View key={h.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 30, borderRadius: 15, backgroundColor: colors.raised }} accessibilityLabel={`${h.name}: ${streak}-day streak`}>
+                    <SymbolIcon name={h.sf_symbol} size={14} color={colors.ink.muted} />
+                    <Icon name="flame" size={12} color={colors.flame.DEFAULT} />
+                    <Text numeric style={{ fontSize: 14, fontWeight: '600' }}>
+                      {streak}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Habit tabs: icon per habit, underline on the active one (Instagram's grid tabs). */}
       <View style={{ flexDirection: 'row', marginTop: 16, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
@@ -116,7 +178,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         </Text>
         {isMe ? (
           <>
-            <IconButton icon="plusSquare" label="New pod" onPress={() => router.push('/pod/new')} />
+            <IconButton icon="plusSquare" label="Your habits" onPress={() => router.push('/pod/new')} />
             <IconButton icon="menu" label="Menu" onPress={openMenu} />
           </>
         ) : null}
@@ -144,10 +206,22 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         }
         ListEmptyComponent={
           <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>
-            {habits.data.length ? 'No snaps on the profile for this habit yet' : isMe ? 'Join a pod to start snapping' : 'Nothing shared yet'}
+            {locked ? 'This profile is private. Follow to see their snaps.' : habits.data.length ? 'No snaps on the profile for this habit yet' : isMe ? 'Add a habit to start snapping' : 'Nothing shared yet'}
           </Text>
         }
       />
+    </View>
+  )
+}
+
+function KpiCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <View style={{ flex: 1, borderRadius: 14, backgroundColor: colors.surface, padding: 12, gap: 2 }}>
+      <Text variant="overline">{label}</Text>
+      <Text numeric style={{ fontSize: 22, fontWeight: '700', color: colors.leaf.DEFAULT }}>
+        {value}
+      </Text>
+      <Text variant="caption">{sub}</Text>
     </View>
   )
 }

@@ -2,10 +2,10 @@ import { colors, radii } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Avatar, Chip, Icon, PressableScale, Text } from '@/components/ui'
+import { Avatar, Icon, PressableScale, Text } from '@/components/ui'
 import { chatTime, firstName } from '@/lib/format'
 import { imageUri } from '@/lib/images'
-import type { ChatMessage } from '../hooks'
+import type { ChatMessage } from '../../dms/types'
 
 /**
  * One chat row. `grouped` = same author as the message above, so the avatar
@@ -42,13 +42,6 @@ export function MessageBubble({ message, mine, grouped }: { message: ChatMessage
           <PressableScale onPress={() => router.push({ pathname: '/snap/[id]', params: { id: message.snap!.id } })} scaleTo={0.98} accessibilityLabel="Open snap">
             <View style={{ width: 200, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.surface }}>
               <Image source={{ uri: imageUri(message.snap.image) }} style={{ width: 200, height: 266, borderRadius: radii.snap }} contentFit="cover" transition={200} />
-              <View style={{ position: 'absolute', top: 8, left: 8 }}>
-                {message.snap.onTime ? (
-                  <Chip icon="bolt" label="On time" color={colors.ink.inverse} bg={colors.energy.DEFAULT} />
-                ) : (
-                  <Chip icon="clock" label="Late" color={colors.ink.DEFAULT} bg="rgba(0,0,0,0.55)" />
-                )}
-              </View>
               {message.body ? (
                 <Text style={{ paddingHorizontal: 12, paddingVertical: 8, fontSize: 15 }} numberOfLines={3}>
                   {message.body}

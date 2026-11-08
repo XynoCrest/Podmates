@@ -7,10 +7,9 @@ import { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button, Icon, PressableScale, Text } from '@/components/ui'
-import { needsSnap, podWindow, useMyPods } from '@/features/pods/hooks'
+import { useMyHabits } from '@/features/pods/hooks'
 import { setPendingCapture } from '@/features/snaps/pendingCapture'
 import { haptics } from '@/lib/haptics'
-import { useNow } from '@/lib/useNow'
 
 /** The Simulator has no camera; it gets library + demo-photo buttons instead. */
 const HAS_CAMERA = Device.isDevice
@@ -76,7 +75,7 @@ export default function CameraScreen() {
 
       {/* Top: what you're snapping for, and camera toggles. */}
       <View style={{ position: 'absolute', top: insets.top + 8, left: 12, right: 12, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <OpenWindowPill podId={podId} />
+        <HabitPill podId={podId} />
         {HAS_CAMERA ? (
           <View style={{ gap: 10 }}>
             <RoundButton icon={flash === 'on' ? 'flashOn' : 'flashOff'} label="Flash" onPress={() => setFlash(flash === 'on' ? 'off' : 'on')} />
@@ -88,7 +87,8 @@ export default function CameraScreen() {
       {/* Bottom: library · shutter · flip, above the floating tab bar. */}
       {HAS_CAMERA && permission?.granted ? (
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 84, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' }}>
-          <RoundButton icon="photo" label="Choose from library" onPress={pickFromLibrary} />
+          {/* Live camera only on phones, so a snap is proof from today. Keeps the shutter centred. */}
+          <View style={{ width: 44 }} />
           <PressableScale onPress={shoot} scaleTo={0.9} accessibilityLabel="Take snap" disabled={busy}>
             <View style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 6, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
               <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: busy ? colors.ink.muted : 'rgba(255,255,255,0.25)' }} />
@@ -101,17 +101,15 @@ export default function CameraScreen() {
   )
 }
 
-/** Which pod's window is open right now — the reason to snap. */
-function OpenWindowPill({ podId }: { podId?: string }) {
-  const now = useNow()
-  const pods = useMyPods()
-  const target = pods.data?.find((p) => p.id === podId) ?? pods.data?.find((p) => needsSnap(p, now))
+/** What this snap is for: the habit you came from, else the first one not done today. */
+function HabitPill({ podId }: { podId?: string }) {
+  const habits = useMyHabits()
+  const target = habits.data.find((h) => h.pod.id === podId) ?? habits.data.find((h) => !h.today)
   if (!target) return <View />
-  const w = podWindow(target, now)
-  const label = target.meContributedToday ? `${target.name} · done today` : w.status === 'open' ? `${target.name} · ${w.closesInMin}m left` : `${target.name} · window closed`
+  const label = target.today === 'snapped' ? `${target.habit.name} · done today` : `${target.habit.name} · keeps your ${target.streak}-day streak`
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', maxWidth: '75%' }}>
-      <Icon name="timer" size={14} color={w.status === 'open' && !target.meContributedToday ? colors.flame.DEFAULT : '#fff'} weight="semibold" />
+      <Icon name="flame" size={14} color={target.today === 'snapped' ? '#fff' : colors.flame.DEFAULT} weight="semibold" />
       <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
         {label}
       </Text>
@@ -138,12 +136,16 @@ function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' 
         {reason === 'simulator' ? "The Simulator doesn't have a camera" : 'Podmates needs the camera to snap'}
       </Text>
       <Text variant="subhead" center>
-        {reason === 'simulator' ? 'Pick a photo or use a demo shot — everything else works exactly like on a phone.' : 'Your snaps are proof for your pod. Nothing is recorded until you press the shutter.'}
+        {reason === 'simulator' ? 'Pick a photo or use a demo shot. On a phone, snaps are live camera only.' : 'Snaps are live proof for your pod, so there is no photo library here. Nothing is recorded until you press the shutter.'}
       </Text>
       <View style={{ alignSelf: 'stretch', gap: 8, marginTop: 12 }}>
         {reason === 'permission' ? <Button label="Allow camera" icon="camera" onPress={onAllow} /> : null}
-        <Button label="Choose from library" icon="photo" variant="secondary" onPress={onLibrary} />
-        {reason === 'simulator' ? <Button label="Use a demo photo" variant="secondary" onPress={onDemo} /> : null}
+        {reason === 'simulator' ? (
+          <>
+            <Button label="Use a demo photo" variant="secondary" onPress={onDemo} />
+            <Button label="Choose from library" icon="photo" variant="secondary" onPress={onLibrary} />
+          </>
+        ) : null}
       </View>
     </View>
   )

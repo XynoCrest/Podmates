@@ -5,20 +5,23 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import { useMemo } from 'react'
 import { useMe } from '@/ctx/session'
 import { qk } from '@/lib/keys'
+import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
-import { PERSON_FIELDS, type Person, type PodSummary } from '../pods/hooks'
+import { PERSON_FIELDS, type Person, type Pod } from '../pods/hooks'
 
 export interface Snap {
   id: string
   image: string
   caption: string
   takenAt: string
-  onTime: boolean
+  day: string
   onProfile: boolean
   podId: string
   habitId: string
   podName: string | null
   author: Person
+  cheers: number
+  cheeredByMe: boolean
 }
 
 export interface StoryGroup {
@@ -29,24 +32,26 @@ export interface StoryGroup {
   unseen: boolean
 }
 
-const SNAP_FIELDS = `id, image, caption, taken_at, on_time, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS})`
+export const SNAP_FIELDS = `id, image, caption, taken_at, day, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS}), pod:pods(name), cheers(user_id)`
 
-const toSnap = (s: any, podName: string | null = null): Snap => ({
+export const toSnap = (s: any, me: string): Snap => ({
   id: s.id,
   image: s.image,
   caption: s.caption,
   takenAt: s.taken_at,
-  onTime: s.on_time,
+  day: s.day,
   onProfile: s.on_profile,
   podId: s.pod_id,
   habitId: s.habit_id,
-  podName: s.pod?.name ?? podName,
+  podName: s.pod?.name ?? null,
   author: s.author as Person,
+  cheers: (s.cheers as { user_id: string }[] | undefined)?.length ?? 0,
+  cheeredByMe: !!(s.cheers as { user_id: string }[] | undefined)?.some((c) => c.user_id === me),
 })
 
 /**
- * Stories for a habit tab: every snap from the last 24h in my pods of that
- * habit, grouped by person. Mine first, then people with unseen snaps.
+ * Stories for a habit tab: the last 24h of snaps from me and the people I follow
+ * (accepted), grouped by person. Mine first, then people with unseen snaps.
  */
 export function useStories(habitId: string | undefined) {
   const me = useMe()
@@ -54,20 +59,16 @@ export function useStories(habitId: string | undefined) {
     queryKey: qk.stories(habitId ?? ''),
     enabled: !!habitId,
     queryFn: async () => {
+      const { data: follows, error: fErr } = await supabase.from('follows').select('followee_id').eq('follower_id', me).eq('status', 'accepted')
+      if (fErr) throw fErr
+      const people = [me, ...follows.map((f) => f.followee_id)]
       const since = new Date(Date.now() - 24 * 3600_000).toISOString()
-      const { data, error } = await supabase
-        .from('snaps')
-        .select(`${SNAP_FIELDS}, pod:pods!inner(name)`)
-        .eq('habit_id', habitId!)
-        .gte('taken_at', since)
-        .order('taken_at')
+      const { data, error } = await supabase.from('snaps').select(SNAP_FIELDS).eq('habit_id', habitId!).in('user_id', people).gte('taken_at', since).order('taken_at')
       if (error) throw error
       const ids = data.map((s) => s.id)
-      const { data: views, error: vErr } = ids.length
-        ? await supabase.from('snap_views').select('snap_id').in('snap_id', ids)
-        : { data: [], error: null }
+      const { data: views, error: vErr } = ids.length ? await supabase.from('snap_views').select('snap_id').in('snap_id', ids) : { data: [], error: null }
       if (vErr) throw vErr
-      return { snaps: data.map((s) => toSnap(s)), seen: new Set((views ?? []).map((v) => v.snap_id)) }
+      return { snaps: data.map((s) => toSnap(s, me)), seen: new Set((views ?? []).map((v) => v.snap_id)) }
     },
   })
 
@@ -106,19 +107,14 @@ export function useMarkSeen(habitId: string) {
 
 /** A person's profile grid for one habit: the snaps they chose to show. */
 export function useProfileSnaps(userId: string, habitId: string | undefined) {
+  const me = useMe()
   return useQuery({
     queryKey: qk.profileSnaps(userId, habitId ?? ''),
     enabled: !!habitId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('snaps')
-        .select(SNAP_FIELDS)
-        .eq('user_id', userId)
-        .eq('habit_id', habitId!)
-        .eq('on_profile', true)
-        .order('taken_at', { ascending: false })
+      const { data, error } = await supabase.from('snaps').select(SNAP_FIELDS).eq('user_id', userId).eq('habit_id', habitId!).eq('on_profile', true).order('taken_at', { ascending: false })
       if (error) throw error
-      return data.map((s) => toSnap(s))
+      return data.map((s) => toSnap(s, me))
     },
   })
 }
@@ -129,15 +125,9 @@ export function useMySnaps(habitId: string) {
   return useQuery({
     queryKey: qk.mySnaps(habitId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('snaps')
-        .select(SNAP_FIELDS)
-        .eq('user_id', me)
-        .eq('habit_id', habitId)
-        .order('taken_at', { ascending: false })
-        .limit(120)
+      const { data, error } = await supabase.from('snaps').select(SNAP_FIELDS).eq('user_id', me).eq('habit_id', habitId).order('taken_at', { ascending: false }).limit(120)
       if (error) throw error
-      return data.map((s) => toSnap(s))
+      return data.map((s) => toSnap(s, me))
     },
   })
 }
@@ -176,41 +166,73 @@ export async function uploadImage(userId: string, uri: string, maxWidth = 1080):
   return path
 }
 
-/** Upload once, post to every chosen pod. The server decides on-time vs late. */
+/** Upload once, post to every chosen habit's pod. The server stamps the day; the first snap of a day counts. */
 export function useSendSnap() {
   const me = useMe()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ uri, caption, pods }: { uri: string; caption: string; pods: PodSummary[] }) => {
+    mutationFn: async ({ uri, caption, pods }: { uri: string; caption: string; pods: Pod[] }) => {
       const path = await uploadImage(me, uri)
       const { data, error } = await supabase
         .from('snaps')
-        .insert(pods.map((p) => ({ pod_id: p.id, habit_id: p.habitId, image: path, caption })))
-        .select('pod_id, on_time')
+        .insert(pods.map((p) => ({ pod_id: p.id, habit_id: p.habitId, image: path, caption }))) // habit and day are re-stamped by the server
+        .select('pod_id')
       if (error) throw error
       return data
     },
     onSuccess: (_d, { pods }) => {
-      void queryClient.invalidateQueries({ queryKey: qk.pods })
+      for (const key of [qk.myHabits, qk.pods, qk.profileStats(me)]) void queryClient.invalidateQueries({ queryKey: key })
       for (const p of pods) {
-        void queryClient.invalidateQueries({ queryKey: qk.messages(p.id) })
-        void queryClient.invalidateQueries({ queryKey: qk.tree(p.id) })
-        void queryClient.invalidateQueries({ queryKey: qk.members(p.id) })
+        void queryClient.invalidateQueries({ queryKey: ['podFeed', p.id] })
         void queryClient.invalidateQueries({ queryKey: qk.stories(p.habitId) })
       }
     },
   })
 }
 
-/** One snap by id (opened from chat or a profile grid). */
+/** One snap by id (opened from a feed or a profile grid). */
 export function useSnap(snapId: string | undefined) {
-  return useQuery({
+  const me = useMe()
+  const query = useQuery({
     queryKey: ['snap', snapId],
     enabled: !!snapId,
     queryFn: async () => {
       const { data, error } = await supabase.from('snaps').select(SNAP_FIELDS).eq('id', snapId!).single()
       if (error) throw error
-      return toSnap(data)
+      return toSnap(data, me)
+    },
+  })
+  useRealtimeInvalidate('cheers', snapId ? `snap_id=eq.${snapId}` : undefined, [['snap', snapId]], !!snapId)
+  return query
+}
+
+/** Cheer (or un-cheer) a snap. Positive only: there is no opposite. */
+export function useCheer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ snap, on }: { snap: Snap; on: boolean }) => {
+      const { error } = on
+        ? await supabase.from('cheers').insert({ snap_id: snap.id })
+        : await supabase.from('cheers').delete().eq('snap_id', snap.id).eq('user_id', (await supabase.auth.getUser()).data.user!.id)
+      if (error && error.code !== '23505') throw error
+    },
+    onSettled: (_d, _e, { snap }) => {
+      void queryClient.invalidateQueries({ queryKey: ['snap', snap.id] })
+      void queryClient.invalidateQueries({ queryKey: ['podFeed', snap.podId] })
+    },
+  })
+}
+
+/** Flag a snap as fake. Anonymous; five flags hide it until the team reviews it. */
+export function useFlagSnap() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (snap: Snap) => {
+      const { error } = await supabase.from('snap_flags').insert({ snap_id: snap.id })
+      if (error && error.code !== '23505') throw error
+    },
+    onSettled: (_d, _e, snap) => {
+      void queryClient.invalidateQueries({ queryKey: ['podFeed', snap.podId] })
     },
   })
 }

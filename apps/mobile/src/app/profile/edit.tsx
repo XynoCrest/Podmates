@@ -2,7 +2,7 @@ import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useState } from 'react'
-import { ScrollView, TextInput, View } from 'react-native'
+import { ScrollView, Switch, TextInput, View } from 'react-native'
 import { Avatar, Button, PressableScale, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useProfile, useUpdateProfile, type Profile } from '@/features/profile/hooks'
@@ -15,7 +15,7 @@ export default function EditProfile() {
 
 function EditForm({ profile }: { profile: Profile }) {
   const update = useUpdateProfile()
-  const [form, setForm] = useState({ display_name: profile.display_name, username: profile.username, bio: profile.bio, avatar_color: profile.avatar_color })
+  const [form, setForm] = useState({ display_name: profile.display_name, username: profile.username, bio: profile.bio, avatar_color: profile.avatar_color, is_private: profile.is_private })
   const [photo, setPhoto] = useState<string | null>(null)
 
   async function pickPhoto() {
@@ -52,6 +52,13 @@ function EditForm({ profile }: { profile: Profile }) {
       <Labeled label="Name" value={form.display_name} onChangeText={(v) => setForm({ ...form, display_name: v })} />
       <Labeled label="Username" value={form.username} autoCapitalize="none" onChangeText={(v) => setForm({ ...form, username: v })} />
       <Labeled label="Bio" value={form.bio} multiline maxLength={160} onChangeText={(v) => setForm({ ...form, bio: v })} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, backgroundColor: colors.raised, padding: 14 }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600' }}>Private profile</Text>
+          <Text variant="caption">Only followers you approve see your profile grid. Your snaps still count in your pods.</Text>
+        </View>
+        <Switch value={form.is_private} onValueChange={(v) => setForm({ ...form, is_private: v })} accessibilityLabel="Private profile" />
+      </View>
       {update.error ? (
         <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
           {update.error.message}

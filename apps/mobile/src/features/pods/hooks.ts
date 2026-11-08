@@ -1,6 +1,13 @@
-import { podDate, windowState, type WindowState } from '@podmates/shared'
+/**
+ * Habits and their pods. One open pod per habit; tracking a habit = being in its pod.
+ * Streak and tree numbers come from the server (settled by packages/tree-engine);
+ * the app only adds today's snap on top with liveStreak().
+ */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { podDate } from '@podmates/shared'
+import { liveStreak, restDaysLeft, weekStart, type DayStatus } from '@podmates/tree-engine'
 import { useMemo } from 'react'
+import { useMe } from '@/ctx/session'
 import { qk } from '@/lib/keys'
 import { useRealtimeInvalidate } from '@/lib/realtime'
 import { supabase } from '@/lib/supabase'
@@ -13,27 +20,6 @@ export interface Habit {
   sort: number
 }
 
-export interface PodSummary {
-  id: string
-  name: string
-  goal: string
-  habitId: string
-  snapTime: string
-  windowMinutes: number
-  timeZone: string
-  inviteCode: string
-  hp: number
-  maxHp: number
-  growth: number
-  treeStatus: 'alive' | 'dead'
-  memberCount: number
-  contributedToday: number
-  meContributedToday: boolean
-  myStreak: number
-  lastMessage: { kind: string; body: string; author: string | null } | null
-  lastActivityAt: string
-}
-
 export interface Person {
   id: string
   username: string
@@ -43,6 +29,29 @@ export interface Person {
 }
 
 export const PERSON_FIELDS = 'id, username, display_name, avatar_color, avatar_url'
+
+export interface Pod {
+  id: string
+  habitId: string
+  name: string
+  description: string
+  color: string
+  memberCount: number
+  tree: { health: number; active: number; counted: number; totalSnaps: number }
+}
+
+/** A habit I track, with my streak as of right now. */
+export interface MyHabit {
+  pod: Pod
+  habit: Habit
+  /** Streak including today if I've already snapped. */
+  streak: number
+  best: number
+  /** What today counts as so far. */
+  today: DayStatus | null
+  restDaysLeft: number
+  reminderTime: string | null
+}
 
 export function useHabits() {
   return useQuery({
@@ -56,172 +65,150 @@ export function useHabits() {
   })
 }
 
-/** Every pod I'm in (RLS scopes pod_overview to my memberships), newest activity first. */
-export function useMyPods() {
+/** Every pod with its tree and member count (Explore, Home's healthiest tree). */
+export function usePods() {
   const query = useQuery({
     queryKey: qk.pods,
-    queryFn: async (): Promise<PodSummary[]> => {
-      const { data, error } = await supabase.from('pod_overview').select('*').order('last_activity_at', { ascending: false })
+    queryFn: async (): Promise<Pod[]> => {
+      const { data, error } = await supabase.from('pods').select('id, habit_id, name, description, color, trees(health, active, counted, total_snaps), user_habits(count)')
       if (error) throw error
-      return data.map((p) => ({
-        id: p.id!,
-        name: p.name!,
-        goal: p.goal ?? '',
-        habitId: p.habit_id!,
-        snapTime: p.snap_time!,
-        windowMinutes: p.window_minutes!,
-        timeZone: p.timezone!,
-        inviteCode: p.invite_code!,
-        hp: p.hp ?? 0,
-        maxHp: p.max_hp ?? 100,
-        growth: p.growth ?? 0,
-        treeStatus: (p.tree_status as 'alive' | 'dead') ?? 'alive',
-        memberCount: p.member_count ?? 0,
-        contributedToday: p.contributed_today ?? 0,
-        meContributedToday: p.me_contributed_today ?? false,
-        myStreak: p.my_streak ?? 0,
-        lastMessage: p.last_message_kind
-          ? { kind: p.last_message_kind, body: p.last_message_body ?? '', author: p.last_message_author }
-          : null,
-        lastActivityAt: p.last_activity_at!,
-      }))
-    },
-  })
-  // Chat previews and "snapped today" counts change whenever anyone posts.
-  useRealtimeInvalidate('messages', undefined, [qk.pods])
-  return query
-}
-
-export function usePod(podId: string) {
-  const pods = useMyPods()
-  return { ...pods, data: pods.data?.find((p) => p.id === podId) }
-}
-
-/** The habits I have pods in, in catalogue order — the chat screen's top tabs. */
-export function useMyHabits() {
-  const habits = useHabits()
-  const pods = useMyPods()
-  const data = useMemo(() => {
-    const mine = new Set(pods.data?.map((p) => p.habitId))
-    return habits.data?.filter((h) => mine.has(h.id)) ?? []
-  }, [habits.data, pods.data])
-  return { data, isLoading: habits.isLoading || pods.isLoading, error: habits.error ?? pods.error, refetch: pods.refetch }
-}
-
-export const podWindow = (pod: PodSummary, now: Date): WindowState =>
-  windowState(now, { snapTime: pod.snapTime, windowMinutes: pod.windowMinutes, timeZone: pod.timeZone })
-
-/** Snap now? true when the window is open and I haven't contributed today. */
-export const needsSnap = (pod: PodSummary, now: Date) => !pod.meContributedToday && podWindow(pod, now).status === 'open' && pod.treeStatus === 'alive'
-
-export interface Member extends Person {
-  role: string
-  streak: number
-  energy: number
-  stars: number
-  contributedToday: boolean
-}
-
-export function usePodMembers(pod: PodSummary | undefined) {
-  return useQuery({
-    queryKey: qk.members(pod?.id ?? ''),
-    enabled: !!pod,
-    queryFn: async (): Promise<Member[]> => {
-      const today = podDate(new Date(), pod!.timeZone)
-      const [members, today_] = await Promise.all([
-        supabase.from('pod_members').select(`role, streak, energy, stars, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
-        supabase.from('contributions').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
-      ])
-      if (members.error) throw members.error
-      if (today_.error) throw today_.error
-      const done = new Set(today_.data.map((c) => c.user_id))
-      return members.data.map((m) => ({
-        ...(m.profile as Person),
-        role: m.role,
-        streak: m.streak,
-        energy: m.energy,
-        stars: m.stars,
-        contributedToday: done.has((m.profile as Person).id),
-      }))
-    },
-  })
-}
-
-export interface ChatMessage {
-  id: string
-  kind: 'text' | 'snap' | 'system'
-  body: string
-  createdAt: string
-  author: Person | null
-  snap: { id: string; image: string; onTime: boolean } | null
-}
-
-export function useMessages(podId: string) {
-  const query = useQuery({
-    queryKey: qk.messages(podId),
-    queryFn: async (): Promise<ChatMessage[]> => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`id, kind, body, created_at, author:profiles(${PERSON_FIELDS}), snap:snaps(id, image, on_time)`)
-        .eq('pod_id', podId)
-        .order('created_at', { ascending: false })
-        .limit(200)
-      if (error) throw error
-      return data.map((m) => ({
-        id: m.id,
-        kind: m.kind as ChatMessage['kind'],
-        body: m.body,
-        createdAt: m.created_at,
-        author: (m.author as Person | null) ?? null,
-        snap: m.snap ? { id: m.snap.id, image: m.snap.image, onTime: m.snap.on_time } : null,
-      }))
-    },
-  })
-  useRealtimeInvalidate('messages', `pod_id=eq.${podId}`, [qk.messages(podId), qk.members(podId), qk.tree(podId)])
-  return query
-}
-
-export function useSendMessage(podId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: string) => {
-      const { error } = await supabase.from('messages').insert({ pod_id: podId, body, kind: 'text' })
-      if (error) throw error
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.messages(podId) })
-      void queryClient.invalidateQueries({ queryKey: qk.pods })
-    },
-  })
-}
-
-export function useCreatePod() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (input: { name: string; habitId: string; goal: string; snapTime: string; timeZone: string; windowMinutes: number }) => {
-      const { data, error } = await supabase.rpc('create_pod', {
-        p_name: input.name,
-        p_habit_id: input.habitId,
-        p_goal: input.goal,
-        p_snap_time: input.snapTime,
-        p_timezone: input.timeZone,
-        p_window_minutes: input.windowMinutes,
+      return data.map((p) => {
+        const t = p.trees as unknown as { health: number; active: number; counted: number; total_snaps: number } | null
+        return {
+          id: p.id,
+          habitId: p.habit_id,
+          name: p.name,
+          description: p.description,
+          color: p.color,
+          memberCount: (p.user_habits as unknown as { count: number }[])[0]?.count ?? 0,
+          tree: { health: t?.health ?? 1, active: t?.active ?? 0, counted: t?.counted ?? 0, totalSnaps: t?.total_snaps ?? 0 },
+        }
       })
-      if (error) throw error
-      return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.pods }),
+  })
+  useRealtimeInvalidate('trees', undefined, [qk.pods])
+  return query
+}
+
+/** The habits I track, in catalogue order, with today's status and live streak. */
+export function useMyHabits() {
+  const me = useMe()
+  const habits = useHabits()
+  const pods = usePods()
+  const mine = useQuery({
+    queryKey: qk.myHabits,
+    queryFn: async () => {
+      const [{ data: profile, error: pErr }, { data: rows, error: hErr }] = await Promise.all([
+        supabase.from('profiles').select('timezone').eq('id', me).single(),
+        supabase.from('user_habits').select('pod_id, current_streak, best_streak, reminder_time').eq('user_id', me),
+      ])
+      if (pErr) throw pErr
+      if (hErr) throw hErr
+      const today = podDate(new Date(), profile.timezone)
+      const { data: days, error: dErr } = await supabase.from('habit_days').select('pod_id, day, status').eq('user_id', me).gte('day', weekStart(today))
+      if (dErr) throw dErr
+      return { today, rows, days }
+    },
+  })
+  useRealtimeInvalidate('user_habits', `user_id=eq.${me}`, [qk.myHabits])
+
+  const data = useMemo<MyHabit[]>(() => {
+    if (!mine.data || !habits.data || !pods.data) return []
+    const { today, rows, days } = mine.data
+    return rows
+      .map((r): MyHabit | null => {
+        const pod = pods.data.find((p) => p.id === r.pod_id)
+        const habit = pod && habits.data.find((h) => h.id === pod.habitId)
+        if (!pod || !habit) return null
+        const todayStatus = (days.find((d) => d.pod_id === r.pod_id && d.day === today)?.status ?? null) as DayStatus | null
+        const rests = days.filter((d) => d.pod_id === r.pod_id && d.status === 'rest').length
+        const streak = liveStreak(r.current_streak, todayStatus)
+        return { pod, habit, streak, best: Math.max(r.best_streak, streak), today: todayStatus, restDaysLeft: restDaysLeft(rests), reminderTime: r.reminder_time }
+      })
+      .filter((h): h is MyHabit => !!h)
+      .sort((a, b) => a.habit.sort - b.habit.sort)
+  }, [mine.data, habits.data, pods.data])
+
+  return {
+    data,
+    isLoading: mine.isLoading || habits.isLoading || pods.isLoading,
+    refetch: () => Promise.all([mine.refetch(), pods.refetch()]),
+    isRefetching: mine.isRefetching || pods.isRefetching,
+  }
+}
+
+function useInvalidateHabits() {
+  const queryClient = useQueryClient()
+  const me = useMe()
+  return () => {
+    for (const key of [qk.myHabits, qk.pods, qk.profileHabits(me), qk.profileStats(me)]) void queryClient.invalidateQueries({ queryKey: key })
+  }
+}
+
+export function useAddHabit() {
+  const invalidate = useInvalidateHabits()
+  return useMutation({
+    mutationFn: async (habitId: string) => {
+      const { error } = await supabase.rpc('add_habit', { p_habit_id: habitId })
+      if (error) throw error
+    },
+    onSettled: invalidate,
   })
 }
 
-export function useJoinPod() {
-  const queryClient = useQueryClient()
+export function useRemoveHabit() {
+  const invalidate = useInvalidateHabits()
   return useMutation({
-    mutationFn: async (code: string) => {
-      const { data, error } = await supabase.rpc('join_pod', { p_invite_code: code })
-      if (error) throw new Error(error.code === 'P0002' ? 'No pod with that code' : error.message)
+    mutationFn: async (habitId: string) => {
+      const { error } = await supabase.rpc('remove_habit', { p_habit_id: habitId })
+      if (error) throw error
+    },
+    onSettled: invalidate,
+  })
+}
+
+/** Declare today a rest day for one habit. The server enforces 2 per week. */
+export function useDeclareRest() {
+  const invalidate = useInvalidateHabits()
+  return useMutation({
+    mutationFn: async (podId: string) => {
+      const { data, error } = await supabase.rpc('declare_rest', { p_pod_id: podId })
+      if (error) throw new Error(error.message.includes('no rest days') ? 'No rest days left this week' : error.message.includes('already counts') ? 'Today already counts' : error.message)
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.pods }),
+    onSettled: invalidate,
+  })
+}
+
+export function useSetReminder() {
+  const me = useMe()
+  const invalidate = useInvalidateHabits()
+  return useMutation({
+    mutationFn: async ({ podId, time }: { podId: string; time: string | null }) => {
+      const { error } = await supabase.from('user_habits').update({ reminder_time: time }).eq('user_id', me).eq('pod_id', podId)
+      if (error) throw error
+    },
+    onSettled: invalidate,
+  })
+}
+
+export interface PodMember extends Person {
+  streak: number
+}
+
+/** A pod's members with their settled streak (pod page, tree screen). */
+export function usePodMembers(podId: string | undefined) {
+  return useQuery({
+    queryKey: qk.podMembers(podId ?? ''),
+    enabled: !!podId,
+    queryFn: async (): Promise<PodMember[]> => {
+      const { data, error } = await supabase
+        .from('user_habits')
+        .select(`current_streak, profile:profiles(${PERSON_FIELDS})`)
+        .eq('pod_id', podId!)
+        .order('current_streak', { ascending: false })
+      if (error) throw error
+      return data.map((m) => ({ ...(m.profile as unknown as Person), streak: m.current_streak }))
+    },
   })
 }

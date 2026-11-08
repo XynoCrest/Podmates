@@ -1,162 +1,89 @@
 import { formatSnapTime } from '@podmates/shared'
 import { colors } from '@podmates/ui-tokens'
-import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
-import { ScrollView, TextInput, View } from 'react-native'
+import { Alert, ScrollView, View } from 'react-native'
 import { Button, Icon, PressableScale, SymbolIcon, Text } from '@/components/ui'
-import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
-import { deviceTimeZone } from '@/lib/format'
+import { useAddHabit, useHabits, useMyHabits, usePods, useRemoveHabit, useSetReminder, type MyHabit } from '@/features/pods/hooks'
+import { compact } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 
-const WINDOWS = [15, 20, 30]
+/**
+ * Your habits: pick from the fixed list. Adding a habit joins its pod; removing it leaves the pod
+ * (your history stays, the streak goes). Tracked habits can have an optional daily reminder.
+ */
+export default function HabitsSheet() {
+  const habits = useHabits()
+  const pods = usePods()
+  const mine = useMyHabits()
+  const add = useAddHabit()
+  const remove = useRemoveHabit()
 
-/** Start a pod (habit · goal · daily snap time) or join one with an invite code. */
-export default function NewPod() {
-  const params = useLocalSearchParams<{ tab?: string }>()
-  const [tab, setTab] = useState<'create' | 'join'>(params.tab === 'join' ? 'join' : 'create')
+  const tracked = new Map(mine.data.map((h) => [h.habit.id, h]))
+
+  const confirmRemove = (h: MyHabit) =>
+    Alert.alert(`Remove ${h.habit.name}?`, `You'll leave the ${h.habit.name} pod and lose your ${h.streak}-day streak. Your snaps stay.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => remove.mutate(h.habit.id, { onSuccess: () => haptics.tap() }) },
+    ])
+
+  // The ScrollView must be the sheet's root: react-native-screens' formSheet doesn't lay out a nested one.
   return (
-    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
-      <View style={{ flexDirection: 'row', backgroundColor: colors.raised, borderRadius: 12, padding: 3 }}>
-        {(['create', 'join'] as const).map((t) => (
-          <PressableScale key={t} flex onPress={() => setTab(t)} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} scaleTo={0.97}>
-            <View style={{ height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tab === t ? colors.line : 'transparent' }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>{t === 'create' ? 'Start a pod' : 'Join with code'}</Text>
-            </View>
-          </PressableScale>
-        ))}
+    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 16 }}>
+      <View style={{ gap: 4 }}>
+        <Text variant="title">Your habits</Text>
+        <Text variant="subhead">Each habit has a pod of people building it too. Snap once a day, any time, to keep your streak.</Text>
       </View>
-      {tab === 'create' ? <CreateForm /> : <JoinForm />}
+      {habits.data?.map((habit) => {
+        const mineH = tracked.get(habit.id)
+        const pod = pods.data?.find((p) => p.habitId === habit.id)
+        return (
+          <View key={habit.id} style={{ borderRadius: 14, backgroundColor: colors.raised, padding: 14, gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                <SymbolIcon name={habit.sf_symbol} size={20} color={mineH ? colors.leaf.DEFAULT : colors.ink.muted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '600' }}>{habit.name}</Text>
+                <Text variant="caption">{pod ? `${compact(pod.memberCount)} in the pod` : ''}</Text>
+              </View>
+              {mineH ? (
+                <Button label="Remove" variant="ghost" size="sm" onPress={() => confirmRemove(mineH)} />
+              ) : (
+                <Button label="Add" icon="plus" size="sm" loading={add.isPending && add.variables === habit.id} onPress={() => add.mutate(habit.id, { onSuccess: () => haptics.success() })} />
+              )}
+            </View>
+            {mineH ? <ReminderRow habit={mineH} /> : null}
+          </View>
+        )
+      })}
     </ScrollView>
   )
 }
 
-function CreateForm() {
-  const habits = useHabits()
-  const create = useCreatePod()
-  const [name, setName] = useState('')
-  const [goal, setGoal] = useState('')
-  const [habitId, setHabitId] = useState<string>('reading')
-  const [minutes, setMinutes] = useState(21 * 60)
-  const [windowMinutes, setWindowMinutes] = useState(20)
-
-  // Windows can't cross midnight.
-  const step = (delta: number) => setMinutes((m) => Math.min(24 * 60 - windowMinutes - 15, Math.max(0, m + delta)))
-  const snapTime = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
-
-  const submit = () =>
-    create.mutate(
-      { name: name.trim(), habitId, goal: goal.trim(), snapTime, timeZone: deviceTimeZone(), windowMinutes },
-      {
-        onSuccess: (id) => {
-          haptics.success()
-          router.back()
-          router.push({ pathname: '/pod/[id]', params: { id } })
-        },
-        onError: () => haptics.error(),
-      },
-    )
-
+/** Optional daily reminder for one habit, in 30-minute steps; off by default. */
+function ReminderRow({ habit }: { habit: MyHabit }) {
+  const set = useSetReminder()
+  const minutes = habit.reminderTime ? Number(habit.reminderTime.slice(0, 2)) * 60 + Number(habit.reminderTime.slice(3, 5)) : null
+  const save = (m: number | null) => {
+    haptics.select()
+    set.mutate({ podId: habit.pod.id, time: m === null ? null : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` })
+  }
+  const step = (delta: number) => save(((minutes ?? 19 * 60) + delta + 24 * 60) % (24 * 60))
   return (
-    <View style={{ gap: 20 }}>
-      <Field label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
-      <View style={{ gap: 8 }}>
-        <Text variant="overline">Habit</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {habits.data?.map((h) => {
-            const active = h.id === habitId
-            return (
-              <PressableScale key={h.id} onPress={() => setHabitId(h.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} scaleTo={0.95}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
-                  <SymbolIcon name={h.sf_symbol} size={16} color={active ? colors.leaf.DEFAULT : colors.ink.muted} />
-                  <Text style={{ fontWeight: '500', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
-                </View>
-              </PressableScale>
-            )
-          })}
-        </View>
-      </View>
-      <Field label="Daily goal" value={goal} onChangeText={setGoal} placeholder="20 pages a day" maxLength={120} />
-      <View style={{ gap: 8 }}>
-        <Text variant="overline">Daily snap time</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.raised, borderRadius: 14, padding: 8 }}>
-          <Stepper icon="arrowDown" label="Earlier" onPress={() => step(-15)} />
-          <View style={{ alignItems: 'center' }}>
-            <Text numeric style={{ fontSize: 28, fontWeight: '600' }}>
-              {formatSnapTime(snapTime)}
-            </Text>
-            <Text variant="caption">{deviceTimeZone()}</Text>
-          </View>
-          <Stepper icon="arrowUp" label="Later" onPress={() => step(15)} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {WINDOWS.map((w) => (
-            <PressableScale key={w} flex onPress={() => setWindowMinutes(w)} accessibilityRole="radio" accessibilityState={{ selected: w === windowMinutes }}>
-              <View style={{ height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: w === windowMinutes ? colors.flame.soft : colors.raised, borderWidth: 1, borderColor: w === windowMinutes ? colors.flame.DEFAULT : 'transparent' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: w === windowMinutes ? colors.flame.DEFAULT : colors.ink.DEFAULT }}>{w} min window</Text>
-              </View>
-            </PressableScale>
-          ))}
-        </View>
-        <Text variant="caption">Everyone gets a reminder at this time and has {windowMinutes} minutes to snap proof.</Text>
-      </View>
-      {create.error ? (
-        <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-          {create.error.message}
-        </Text>
-      ) : null}
-      <Button label="Plant the seed 🌱" size="lg" disabled={!name.trim()} loading={create.isPending} onPress={submit} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Icon name="clock" size={16} color={colors.ink.muted} />
+      <Text style={{ flex: 1, fontSize: 14, color: colors.ink.muted }}>{minutes === null ? 'No reminder' : `Reminder at ${formatSnapTime(habit.reminderTime!)}`}</Text>
+      <Stepper label="Earlier" text="−" onPress={() => step(-30)} />
+      <Stepper label="Later" text="+" onPress={() => step(30)} />
+      {minutes !== null ? <Stepper label="Turn off reminder" text="Off" onPress={() => save(null)} /> : null}
     </View>
   )
 }
 
-function JoinForm() {
-  const join = useJoinPod()
-  const [code, setCode] = useState('')
-  const submit = () =>
-    join.mutate(code, {
-      onSuccess: (id) => {
-        haptics.success()
-        router.back()
-        router.push({ pathname: '/pod/[id]', params: { id } })
-      },
-      onError: () => haptics.error(),
-    })
-  return (
-    <View style={{ gap: 14 }}>
-      <Text variant="subhead">Ask a podmate for their 6-letter invite code. (Demo: try IRONPT as Ben.)</Text>
-      <TextInput
-        value={code}
-        onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-        maxLength={6}
-        autoCapitalize="characters"
-        placeholder="ABC123"
-        placeholderTextColor={colors.ink.subtle}
-        style={{ height: 64, borderRadius: 14, backgroundColor: colors.raised, textAlign: 'center', fontSize: 30, fontWeight: '600', letterSpacing: 8, color: colors.ink.DEFAULT }}
-      />
-      {join.error ? (
-        <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-          {join.error.message}
-        </Text>
-      ) : null}
-      <Button label="Join pod" size="lg" disabled={code.length !== 6} loading={join.isPending} onPress={submit} />
-    </View>
-  )
-}
-
-function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
-  return (
-    <View style={{ gap: 8 }}>
-      <Text variant="overline">{label}</Text>
-      <TextInput placeholderTextColor={colors.ink.subtle} {...props} style={{ height: 46, borderRadius: 12, backgroundColor: colors.raised, paddingHorizontal: 14, color: colors.ink.DEFAULT, fontSize: 16 }} />
-    </View>
-  )
-}
-
-function Stepper({ icon, label, onPress }: { icon: 'arrowUp' | 'arrowDown'; label: string; onPress: () => void }) {
+function Stepper({ label, text, onPress }: { label: string; text: string; onPress: () => void }) {
   return (
     <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.9}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={18} weight="semibold" />
+      <View style={{ minWidth: 36, height: 32, paddingHorizontal: 8, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 15, fontWeight: '600' }}>{text}</Text>
       </View>
     </PressableScale>
   )

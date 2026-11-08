@@ -7,8 +7,8 @@ import { compact, timeAgo } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 import { useVote, type Post } from '../hooks'
 
-/** Apollo-style card: title first, media full-bleed, community · author, stats, and vote arrows on the right. */
-export function PostCard({ post, full }: { post: Post; full?: boolean }) {
+/** Apollo-style card: title first, media full-bleed, pod · author, stats, and vote arrows on the right. */
+export function PostCard({ post, full, showPod = true }: { post: Post; full?: boolean; showPod?: boolean }) {
   const open = () => router.push({ pathname: '/post/[id]', params: { id: post.id } })
   return (
     <View style={{ backgroundColor: colors.surface, paddingTop: 16 }}>
@@ -23,12 +23,12 @@ export function PostCard({ post, full }: { post: Post; full?: boolean }) {
           {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={{ width: '100%', aspectRatio: 3 / 2, backgroundColor: colors.raised }} contentFit="cover" transition={200} /> : null}
         </View>
       </PressableScale>
-      <PostMeta post={post} />
+      <PostMeta post={post} showPod={showPod} />
     </View>
   )
 }
 
-/** Community mark: its initial on its colour, like a person's avatar. */
+/** Pod mark: its initial on its colour, like a person's avatar. */
 export function CommunityIcon({ name, color, size = 26 }: { name: string; color: string; size?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: avatarColors[color as keyof typeof avatarColors] ?? colors.raised, alignItems: 'center', justifyContent: 'center' }}>
@@ -37,7 +37,7 @@ export function CommunityIcon({ name, color, size = 26 }: { name: string; color:
   )
 }
 
-function PostMeta({ post }: { post: Post }) {
+function PostMeta({ post, showPod }: { post: Post; showPod: boolean }) {
   const vote = useVote()
   const cast = (value: -1 | 1) => {
     haptics.select()
@@ -47,21 +47,26 @@ function PostMeta({ post }: { post: Post }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
       <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
-        <PressableScale onPress={() => router.push({ pathname: '/community/[slug]', params: { slug: post.community.slug } })} scaleTo={0.98} accessibilityLabel={post.community.name}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <CommunityIcon name={post.community.name} color={post.community.color} size={22} />
-            <Text numberOfLines={1} style={{ fontSize: 15, color: colors.ink.muted, flexShrink: 1 }}>
-              <Text style={{ fontWeight: '600', color: colors.ink.muted }}>{post.community.name}</Text> by {post.author.username}
-            </Text>
-          </View>
-        </PressableScale>
+        {showPod ? (
+          <PressableScale onPress={() => router.push({ pathname: '/pod/[id]', params: { id: post.pod.id } })} scaleTo={0.98} accessibilityLabel={`${post.pod.name} pod`}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <CommunityIcon name={post.pod.name} color={post.pod.color} size={22} />
+              <Text numberOfLines={1} style={{ fontSize: 15, color: colors.ink.muted, flexShrink: 1 }}>
+                <Text style={{ fontWeight: '600', color: colors.ink.muted }}>{post.pod.name}</Text> by {post.author.username}
+              </Text>
+            </View>
+          </PressableScale>
+        ) : (
+          <Text numberOfLines={1} style={{ fontSize: 15, color: colors.ink.muted }}>
+            by {post.author.username}
+          </Text>
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Meta icon="arrowUp" label={compact(post.score)} color={scoreColor} />
           <Meta icon="comment" label={compact(post.commentCount)} />
           <Meta icon="clock" label={timeAgo(post.createdAt)} />
         </View>
       </View>
-      <Arrow icon="more" label="More" onPress={() => {}} color={colors.ink.subtle} />
       <Arrow icon="arrowUp" label="Upvote" onPress={() => cast(1)} color={post.myVote === 1 ? colors.flame.DEFAULT : colors.ink.subtle} active={post.myVote === 1} />
       <Arrow icon="arrowDown" label="Downvote" onPress={() => cast(-1)} color={post.myVote === -1 ? colors.sky.DEFAULT : colors.ink.subtle} active={post.myVote === -1} />
     </View>

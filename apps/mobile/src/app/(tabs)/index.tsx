@@ -1,21 +1,22 @@
+import { stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, EmptyState, Segmented, Text } from '@/components/ui'
+import { Button, EmptyState, PressableScale, Segmented, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { PodmateRow } from '@/features/dms/components/PodmateRow'
 import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
 import { HabitTabs } from '@/features/pods/components/HabitTabs'
 import { PodRow } from '@/features/pods/components/PodRow'
 import { StoriesRow } from '@/features/pods/components/StoriesRow'
-import { WindowBanner } from '@/features/pods/components/WindowBanner'
-import { needsSnap, useHabits, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
+import { useDeclareRest, useMyHabits, type MyHabit } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
-import { GroveFigure } from '@/features/tree/GroveFigure'
+import { TreeArt } from '@/features/tree/TreeArt'
+import { haptics } from '@/lib/haptics'
 import { useNow } from '@/lib/useNow'
 
 /** The hero band: a neutral green, with dark ink on it. */
@@ -24,39 +25,36 @@ const HERO_H = 196
 /** How far the sheet rides up over the hero. */
 const OVERLAP = 22
 
-/** Home: a green streak hero, then a sheet with habit tabs → podmates' stories → Pods (group chats) or Podmates (one-to-one chats) for that habit. */
-export default function PodsScreen() {
+/**
+ * Home: a green hero with my streak for the selected habit and the healthiest tree among my pods,
+ * then a sheet: habit tabs → today's card (snap or rest) → stories from people I follow →
+ * the habit's pod, or Podmates (one-to-one chats with mutual follows).
+ */
+export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const me = useMe()
   const now = useNow()
   const profile = useProfile(me)
-  const pods = useMyPods()
-  const habits = useHabits()
   const myHabits = useMyHabits()
   const [picked, setHabitId] = useState<string>()
   const [focused, setFocused] = useState(true)
   const [pastHero, setPastHero] = useState(false)
-  const [list, setList] = useState<'pods' | 'podmates'>('pods')
+  const [list, setList] = useState<'today' | 'podmates'>('today')
   useFocusEffect(
     useCallback(() => {
       setFocused(true)
       return () => setFocused(false)
     }, []),
   )
-  // Until a tab is tapped: the first habit with a window open for me, else the first tab.
-  const habitId =
-    picked && myHabits.data.some((h) => h.id === picked)
-      ? picked
-      : (pods.data?.find((p) => needsSnap(p, now))?.habitId ?? myHabits.data[0]?.id)
 
-  const stories = useStories(habitId)
-  const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
-  const hasPods = !!pods.data?.length
-  const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
-  const urgent = inHabit.find((p) => needsSnap(p, now))
-  const podmates = usePodmates(useMemo(() => inHabit.map((p) => p.id), [inHabit]))
-  const rows: (PodSummary | PodmateThread)[] = !hasPods ? [] : list === 'pods' ? inHabit : podmates.data
-  const symbol = (id: string) => habits.data?.find((h) => h.id === id)?.sf_symbol ?? 'leaf'
+  const habits = myHabits.data
+  // Until a tab is tapped: the first habit not done yet today, else the first one.
+  const current = habits.find((h) => h.habit.id === picked) ?? habits.find((h) => !h.today) ?? habits[0]
+  const healthiest = useMemo(() => [...habits].sort((a, b) => b.pod.tree.health - a.pod.tree.health || b.pod.tree.totalSnaps - a.pod.tree.totalSnaps)[0], [habits])
+  const due = useMemo(() => new Set(habits.filter((h) => !h.today).map((h) => h.habit.id)), [habits])
+  const stories = useStories(current?.habit.id)
+  const podmates = usePodmates()
+  const rows: PodmateThread[] = list === 'podmates' ? podmates.data : []
   const heroTotal = insets.top + HERO_H
 
   return (
@@ -64,10 +62,10 @@ export default function PodsScreen() {
       {focused ? <StatusBar style={pastHero ? 'light' : 'dark'} /> : null}
       <FlatList
         data={rows}
-        keyExtractor={(r) => ('person' in r ? `u:${r.person.id}` : r.id)}
+        keyExtractor={(r) => r.person.id}
         renderItem={({ item }) => (
           <View style={{ backgroundColor: colors.canvas }}>
-            {'person' in item ? <PodmateRow thread={item} now={now} /> : <PodRow pod={item} symbol={symbol(item.habitId)} now={now} />}
+            <PodmateRow thread={item} now={now} />
           </View>
         )}
         onScroll={(e) => setPastHero(e.nativeEvent.contentOffset.y > HERO_H - 8)}
@@ -76,52 +74,51 @@ export default function PodsScreen() {
           <View>
             {/* Rides above the hero inside the scroll content, so pulling down reveals more green, not the canvas. */}
             <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + heroTotal, backgroundColor: HERO.bg }} />
-            <StreakHero streak={profile.data?.streak ?? 0} topInset={insets.top} />
+            <StreakHero current={current} healthiest={healthiest} topInset={insets.top} />
             <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -OVERLAP, paddingTop: 10 }}>
-              {hasPods ? (
+              {current ? (
                 <>
-                  <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
-                  {urgent ? <WindowBanner pod={urgent} now={now} /> : null}
-                  {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
+                  <HabitTabs habits={habits.map((h) => h.habit)} selected={current.habit.id} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
+                  <StoriesRow me={profile.data} groups={stories.groups} habitId={current.habit.id} />
                   <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
                     <Segmented
                       value={list}
                       onChange={setList}
                       segments={[
-                        { key: 'pods', label: 'Pods', badge: inHabit.filter((p) => needsSnap(p, now)).length },
+                        { key: 'today', label: 'Today', badge: current.today ? 0 : 1 },
                         { key: 'podmates', label: 'Podmates', badge: podmates.data.filter((t) => t.unread > 0).length },
                       ]}
                     />
                   </View>
+                  {list === 'today' ? <TodayCard habit={current} /> : null}
                 </>
               ) : null}
             </View>
           </View>
         }
         ListEmptyComponent={
-          pods.isLoading ? (
+          myHabits.isLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
-          ) : !hasPods ? (
+          ) : !current ? (
             <EmptyState
               icon="tree"
-              title="No pods yet"
-              body="A pod is a few friends tracking one habit together. Snap daily, grow a tree."
-              action={<Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />}
+              title="Pick your first habit"
+              body="Each habit has a pod of people building it too. Snap once a day to keep your streak and grow the pod's tree."
+              action={<Button label="Add a habit" icon="plus" onPress={() => router.push('/pod/new')} />}
             />
           ) : list === 'podmates' && !podmates.isLoading ? (
             <Text variant="subhead" center style={{ padding: 32 }}>
-              No podmates in this habit yet. Invite friends to your pod.
+              No one to message yet. Follow people in your pods; when they follow you back, you can chat here.
             </Text>
           ) : undefined
         }
         refreshControl={
           <RefreshControl
             tintColor={HERO.ink}
-            refreshing={pods.isRefetching}
+            refreshing={myHabits.isRefetching}
             onRefresh={() => {
-              void pods.refetch()
+              void myHabits.refetch()
               void stories.refetch()
-              void profile.refetch()
               void podmates.refetch()
             }}
           />
@@ -132,12 +129,75 @@ export default function PodsScreen() {
   )
 }
 
-/** The streak, said big: a dark lead-in, the count in white, and a quiet line of encouragement. */
-function StreakHero({ streak, topInset }: { streak: number; topInset: number }) {
-  const [lead, count, sub] =
-    streak === 0
-      ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
-      : ["You're on a", `${streak}-day streak!`, "You're showing up for a healthier, happier you."]
+/** Today for the selected habit: done, resting, or the two ways to keep the streak (snap or rest). */
+function TodayCard({ habit }: { habit: MyHabit }) {
+  const rest = useDeclareRest()
+  const status =
+    habit.today === 'snapped'
+      ? { text: 'Snapped today. Your streak is safe.', color: colors.leaf.DEFAULT }
+      : habit.today === 'rest'
+        ? { text: 'Resting today. Your streak is held.', color: colors.sky.DEFAULT }
+        : { text: habit.streak > 0 ? `Snap today to make it ${habit.streak + 1} days.` : 'Snap today to start a streak.', color: colors.ink.DEFAULT }
+
+  const confirmRest = () =>
+    Alert.alert(
+      'Rest today?',
+      `Your ${habit.habit.name} streak holds without a snap. ${habit.restDaysLeft} of 2 rest days left this week.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rest today',
+          onPress: () =>
+            rest.mutate(habit.pod.id, {
+              onSuccess: () => haptics.success(),
+              onError: (e) => {
+                haptics.error()
+                Alert.alert("Couldn't rest today", e.message)
+              },
+            }),
+        },
+      ],
+    )
+
+  return (
+    <View style={{ paddingHorizontal: 16, gap: 12, paddingBottom: 8 }}>
+      <View style={{ borderRadius: 16, backgroundColor: colors.surface, padding: 16, gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Text variant="headline">{habit.habit.name}</Text>
+          <Text variant="caption">Best {habit.best} days</Text>
+        </View>
+        <Text style={{ fontSize: 15, color: status.color }}>{status.text}</Text>
+        {!habit.today ? (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Button label="Snap now" icon="camera" onPress={() => router.navigate({ pathname: '/camera', params: { podId: habit.pod.id } })} />
+            </View>
+            <Button
+              label={habit.restDaysLeft ? `Rest (${habit.restDaysLeft} left)` : 'No rest left'}
+              variant="secondary"
+              disabled={!habit.restDaysLeft}
+              loading={rest.isPending}
+              onPress={confirmRest}
+            />
+          </View>
+        ) : null}
+      </View>
+      <View style={{ borderRadius: 16, backgroundColor: colors.surface, overflow: 'hidden' }}>
+        <PodRow pod={habit.pod} symbol={habit.habit.sf_symbol} />
+      </View>
+    </View>
+  )
+}
+
+/** The selected habit's streak, said big, and the healthiest of my pods' trees (tap for its tree). */
+function StreakHero({ current, healthiest, topInset }: { current: MyHabit | undefined; healthiest: MyHabit | undefined; topInset: number }) {
+  const streak = current?.streak ?? 0
+  const name = current?.habit.name.toLowerCase() ?? ''
+  const [lead, count, sub] = !current
+    ? ['Start your', 'first streak!', 'Pick a habit and show up for a healthier, happier you.']
+    : streak === 0
+      ? ['Start your', `${name} streak!`, 'Snap today, or take a rest day when you need one.']
+      : ["You're on a", `${streak}-day streak!`, `You're showing up for ${name}, and for a healthier, happier you.`]
   return (
     <View style={{ height: topInset + HERO_H, paddingTop: topInset + 16, paddingLeft: 20, paddingBottom: OVERLAP + 12, flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 196, gap: 8 }} accessible accessibilityLabel={`${lead} ${count} ${sub}`}>
@@ -147,11 +207,22 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
             {count}
           </Text>
         </View>
-        <Text style={{ fontSize: 14, lineHeight: 19, color: HERO.soft }} numberOfLines={3}>{sub}</Text>
+        <Text style={{ fontSize: 14, lineHeight: 19, color: HERO.soft }} numberOfLines={3}>
+          {sub}
+        </Text>
       </View>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingRight: 64 }}>
-        <GroveFigure height={HERO_H - OVERLAP - 50} ground={HERO.bg} ink={HERO.ink} />
-      </View>
+      {healthiest ? (
+        <PressableScale
+          onPress={() => router.push({ pathname: '/pod/[id]/tree', params: { id: healthiest.pod.id } })}
+          accessibilityLabel={`Healthiest tree: ${healthiest.pod.name} pod, ${Math.round(healthiest.pod.tree.health * 100)} percent healthy`}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingRight: 16 }}
+        >
+          <TreeArt totalSnaps={healthiest.pod.tree.totalSnaps} health={healthiest.pod.tree.health} size={HERO_H - OVERLAP - 52} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: HERO.ink }} numberOfLines={1}>
+            {healthiest.pod.name} · {stageFor(healthiest.pod.tree.totalSnaps).name} · {Math.round(healthiest.pod.tree.health * 100)}%
+          </Text>
+        </PressableScale>
+      ) : null}
     </View>
   )
 }

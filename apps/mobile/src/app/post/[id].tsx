@@ -26,7 +26,7 @@ export default function PostScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header title={post.data?.community.name ?? ''} subtitle={post.data ? `${post.data.commentCount} comments` : undefined} />
+      <Header title={post.data ? `${post.data.pod.name} pod` : ''} subtitle={post.data ? `${post.data.commentCount} comments` : undefined} />
       <FlatList
         data={comments.data}
         keyExtractor={(c) => c.id}

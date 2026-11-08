@@ -1,92 +1,91 @@
-import { formatSnapTime } from '@podmates/shared'
-import { healthRatio } from '@podmates/tree-engine'
+import { stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native'
-import { Header, Icon, PressableScale, Text } from '@/components/ui'
-import { useMe } from '@/ctx/session'
-import { Composer } from '@/features/pods/components/Composer'
-import { MessageBubble } from '@/features/pods/components/MessageBubble'
-import { podWindow, useMessages, usePod, useSendMessage, type PodSummary } from '@/features/pods/hooks'
-import { useNow } from '@/lib/useNow'
+import { useState } from 'react'
+import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Button, EmptyState, Header, HealthBar, IconButton, PressableScale, Segmented, Text } from '@/components/ui'
+import { PostCard } from '@/features/explore/components/PostCard'
+import { usePodFeed, type FeedSort } from '@/features/explore/hooks'
+import { useAddHabit, useMyHabits, usePods } from '@/features/pods/hooks'
+import { SnapCard } from '@/features/snaps/components/SnapCard'
+import { TreeArt } from '@/features/tree/TreeArt'
+import { compact } from '@/lib/format'
+import { haptics } from '@/lib/haptics'
 
-export default function PodChat() {
+/** A habit's pod: a Reddit-like feed of its snaps and posts, with the pod's tree at a glance. */
+export default function PodScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const me = useMe()
-  const pod = usePod(id)
-  const messages = useMessages(id)
-  const send = useSendMessage(id)
-
-  const openTree = () => router.push({ pathname: '/pod/[id]/tree', params: { id } })
-  const p = pod.data
+  const insets = useSafeAreaInsets()
+  const pods = usePods()
+  const mine = useMyHabits()
+  const add = useAddHabit()
+  const [sort, setSort] = useState<FeedSort>('hot')
+  const feed = usePodFeed(id, sort)
+  const pod = pods.data?.find((p) => p.id === id)
+  const member = mine.data.some((h) => h.pod.id === id)
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
       <Header
-        title={
-          <PressableScale onPress={openTree} scaleTo={0.98} accessibilityLabel="Open pod tree">
-            <Text variant="headline" numberOfLines={1}>
-              {p?.name ?? ' '}
-            </Text>
-          </PressableScale>
-        }
-        subtitle={p ? `${p.memberCount} members · snaps at ${formatSnapTime(p.snapTime)}` : undefined}
-        right={p ? <TreeButton pod={p} onPress={openTree} /> : null}
+        title={pod ? `${pod.name} pod` : ''}
+        right={member && pod ? <IconButton icon="plusSquare" label="New post" onPress={() => router.push({ pathname: '/post/new', params: { pod: pod.id } })} /> : null}
       />
-      {p ? <WindowStrip pod={p} /> : null}
-      {messages.isLoading ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ink.muted} />
+      {!pod ? (
+        <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
       ) : (
         <FlatList
-          inverted
-          data={messages.data}
-          keyExtractor={(m) => m.id}
-          renderItem={({ item, index }) => {
-            // Inverted: the message visually above is the next one in the array.
-            const above = messages.data?.[index + 1]
-            const grouped = !!above && above.kind !== 'system' && item.kind !== 'system' && above.author?.id === item.author?.id
-            return <MessageBubble message={item} mine={item.author?.id === me} grouped={grouped} />
-          }}
-          contentContainerStyle={{ paddingVertical: 12 }}
-          keyboardDismissMode="interactive"
+          data={feed.data ?? []}
+          keyExtractor={(i) => (i.kind === 'post' ? `p:${i.post.id}` : `s:${i.snap.id}`)}
+          renderItem={({ item }) => (item.kind === 'post' ? <PostCard post={item.post} showPod={false} /> : <SnapCard snap={item.snap} />)}
+          ItemSeparatorComponent={() => <View style={{ height: 8, backgroundColor: colors.sunken }} />}
+          ListHeaderComponent={
+            <View style={{ padding: 16, gap: 14, backgroundColor: colors.surface, marginBottom: 8 }}>
+              <PressableScale onPress={() => router.push({ pathname: '/pod/[id]/tree', params: { id: pod.id } })} scaleTo={0.98} accessibilityLabel="Open the pod tree">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <TreeArt totalSnaps={pod.tree.totalSnaps} health={pod.tree.health} size={88} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Text variant="subhead">
+                      {compact(pod.memberCount)} members · {stageFor(pod.tree.totalSnaps).name}
+                    </Text>
+                    <HealthBar ratio={pod.tree.health} height={10} />
+                    <Text variant="caption">
+                      {pod.tree.counted ? `${pod.tree.active} of ${pod.tree.counted} members on a streak` : 'Nobody to count today'}
+                    </Text>
+                  </View>
+                </View>
+              </PressableScale>
+              {pod.description ? <Text style={{ fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>{pod.description}</Text> : null}
+              {!member ? (
+                <Button
+                  label={`Add ${pod.name} to my habits`}
+                  icon="plus"
+                  loading={add.isPending}
+                  onPress={() => add.mutate(pod.habitId, { onSuccess: () => haptics.success() })}
+                />
+              ) : null}
+              <Segmented
+                value={sort}
+                onChange={setSort}
+                segments={[
+                  { key: 'hot', label: 'Hot' },
+                  { key: 'new', label: 'New' },
+                  { key: 'top', label: 'Top' },
+                ]}
+              />
+            </View>
+          }
+          ListEmptyComponent={
+            feed.isLoading ? (
+              <ActivityIndicator style={{ marginTop: 24 }} color={colors.ink.muted} />
+            ) : (
+              <EmptyState icon="camera" title="Nothing here yet" body={member ? 'Snap today or start a conversation.' : 'Add this habit to snap and post here.'} />
+            )
+          }
+          refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         />
       )}
-      <Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />
-    </KeyboardAvoidingView>
-  )
-}
-
-/** Header tree chip: the tree's health at a glance, tap for the full tree screen. */
-function TreeButton({ pod, onPress }: { pod: PodSummary; onPress: () => void }) {
-  const ratio = healthRatio(pod)
-  const color = pod.treeStatus === 'dead' ? colors.danger.DEFAULT : ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
-  return (
-    <PressableScale onPress={onPress} accessibilityLabel="Tree" scaleTo={0.92}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
-        <Icon name="tree" size={16} color={color} />
-        <Text numeric style={{ color, fontWeight: '600', fontSize: 14 }}>
-          {pod.treeStatus === 'dead' ? '0' : pod.hp}
-        </Text>
-      </View>
-    </PressableScale>
-  )
-}
-
-function WindowStrip({ pod }: { pod: PodSummary }) {
-  const now = useNow()
-  const w = podWindow(pod, now)
-  const [bg, fg, text] = pod.treeStatus === 'dead'
-    ? [colors.danger.soft, colors.danger.DEFAULT, 'Your tree died. Open it to replant.']
-    : pod.meContributedToday
-      ? [colors.leaf.soft, colors.leaf.DEFAULT, `You snapped today · ${pod.contributedToday}/${pod.memberCount} done`]
-      : w.status === 'open'
-        ? [colors.flame.soft, colors.flame.DEFAULT, `Window open · ${w.closesInMin} min left to snap`]
-        : w.status === 'upcoming'
-          ? [colors.surface, colors.ink.muted, `Window opens at ${formatSnapTime(pod.snapTime)} · ${pod.contributedToday}/${pod.memberCount} done`]
-          : [colors.surface, colors.ink.muted, `Today's window has closed · ${pod.contributedToday}/${pod.memberCount} snapped`]
-  return (
-    <View style={{ backgroundColor: bg, paddingVertical: 8, paddingHorizontal: 16 }}>
-      <Text style={{ color: fg, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>{text}</Text>
     </View>
   )
 }

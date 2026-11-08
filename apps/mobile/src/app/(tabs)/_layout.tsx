@@ -1,16 +1,15 @@
 import { colors } from '@podmates/ui-tokens'
 import { NativeTabs } from 'expo-router/native-tabs'
-import { useMyPods, needsSnap } from '@/features/pods/hooks'
-import { useNow } from '@/lib/useNow'
+import { useMyHabits } from '@/features/pods/hooks'
 
 /**
  * The platform's real tab bar. On iOS 26 the system draws it as the floating
  * Liquid Glass pill; icon over label, outline → filled on select, like Uber's bar.
+ * Home's badge = habits not done (snapped or rested) yet today.
  */
 export default function TabsLayout() {
-  const now = useNow()
-  const pods = useMyPods()
-  const due = pods.data?.filter((p) => needsSnap(p, now)).length ?? 0
+  const habits = useMyHabits()
+  const due = habits.data.filter((h) => !h.today).length
   return (
     <NativeTabs tintColor={colors.ink.DEFAULT} iconColor={{ default: colors.ink.muted, selected: colors.ink.DEFAULT }}>
       <NativeTabs.Trigger name="index">
