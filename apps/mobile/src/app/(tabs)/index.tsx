@@ -11,7 +11,7 @@ import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
 import { HabitTabs } from '@/features/pods/components/HabitTabs'
 import { PodRow } from '@/features/pods/components/PodRow'
 import { StoriesRow } from '@/features/pods/components/StoriesRow'
-import { WindowBanner } from '@/features/pods/components/WindowBanner'
+import { TodayCard } from '@/features/pods/components/TodayCard'
 import { needsSnap, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
@@ -52,7 +52,7 @@ export default function PodsScreen() {
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const hasPods = !!pods.data?.length
   const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
-  const urgent = inHabit.find((p) => needsSnap(p, now))
+  const habitName = myHabits.data.find((h) => h.id === habitId)?.name
   const podmates = usePodmates(useMemo(() => inHabit.map((p) => p.id), [inHabit]))
   // Unread spans every habit: pod chats and one-to-one threads with anything I haven't opened, newest first.
   const everyone = usePodmates(useMemo(() => pods.data?.map((p) => p.id) ?? [], [pods.data]))
@@ -87,7 +87,6 @@ export default function PodsScreen() {
               {hasPods ? (
                 <>
                   <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
-                  {urgent ? <WindowBanner pod={urgent} now={now} /> : null}
                   {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
                   <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
                     <Segmented
@@ -100,6 +99,7 @@ export default function PodsScreen() {
                       ]}
                     />
                   </View>
+                  {habitName ? <TodayCard habitName={habitName} pods={inHabit} now={now} /> : null}
                 </>
               ) : null}
             </View>
