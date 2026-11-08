@@ -1,4 +1,5 @@
 import { RULES } from '@podmates/tree-engine'
+import { useQueryClient } from '@tanstack/react-query'
 import { colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { useState } from 'react'
@@ -9,6 +10,7 @@ import { useAddHabit, useHabits, usePods, useSetReminder } from '@/features/pods
 import { TreeArt } from '@/features/tree/TreeArt'
 import { compact } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
+import { qk } from '@/lib/keys'
 
 const TOUR: { icon: IconName; title: string; body: string }[] = [
   { icon: 'flame', title: 'One snap a day', body: 'Snap your habit any time today to keep your streak. Live camera only, so it really is today.' },
@@ -35,6 +37,7 @@ export default function Onboarding() {
   const pods = usePods()
   const add = useAddHabit()
   const remind = useSetReminder()
+  const queryClient = useQueryClient()
 
   const toggle = (id: string) => {
     haptics.select()
@@ -50,6 +53,10 @@ export default function Onboarding() {
         const pod = pods.data?.find((p) => p.habitId === id)
         if (pod && times[id]) await remind.mutateAsync({ podId: pod.id, time: times[id]! })
       }
+      // Home redirects back here while it thinks I track no habits, so wait for the fresh
+      // list (and pods, which it is joined against) before leaving. refetchQueries also
+      // refetches inactive queries, and Home's are inactive while onboarding is open.
+      await Promise.all([queryClient.refetchQueries({ queryKey: qk.myHabits }), queryClient.refetchQueries({ queryKey: qk.pods })])
       haptics.success()
       router.replace('/')
     } catch (e) {
