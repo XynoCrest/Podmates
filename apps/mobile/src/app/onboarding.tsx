@@ -211,7 +211,7 @@ export default function Onboarding() {
         onPress={() => void finish('create')}
         busy={saving}
       />
-      <ActionRow icon="personAdd" title="Join with a code" detail="A friend sent you an invite code." onPress={() => void finish('join')} busy={saving} />
+      <ActionRow icon="personAdd" title="Join with code" detail="A friend sent you an invite code." onPress={() => void finish('join')} busy={saving} />
       <View style={{ paddingHorizontal: space.gutter, paddingTop: 6 }}>
         <Button label="Skip for now" variant="ghost" onPress={() => void finish()} disabled={saving} />
         {error ? (

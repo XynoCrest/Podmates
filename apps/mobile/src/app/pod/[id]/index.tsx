@@ -1,9 +1,9 @@
 import { formatSnapTime } from '@podmates/shared'
 import { healthRatio } from '@podmates/tree-engine'
-import { colors, space } from '@podmates/ui-tokens'
+import { colors, radii, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { FlatList, View } from 'react-native'
-import { ChatScreen, Chip, Header, PressableScale, ScreenState, Text } from '@/components/ui'
+import { FlatList, Share, View } from 'react-native'
+import { Button, ChatScreen, Chip, Header, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { Composer } from '@/features/pods/components/Composer'
 import { MessageBubble } from '@/features/pods/components/MessageBubble'
@@ -23,7 +23,14 @@ export default function PodChat() {
 
   return (
     <ChatScreen
-      strip={p ? <WindowStrip pod={p} /> : null}
+      strip={
+        p ? (
+          <>
+            <WindowStrip pod={p} />
+            {p.memberCount < INVITE_UNTIL ? <InviteCard pod={p} /> : null}
+          </>
+        ) : null
+      }
       composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />}
       header={
       <Header
@@ -35,7 +42,14 @@ export default function PodChat() {
           </PressableScale>
         }
         subtitle={p ? `${p.memberCount} members · snaps at ${formatSnapTime(p.snapTime)}` : undefined}
-        right={p ? <TreeButton pod={p} onPress={openTree} /> : null}
+        right={
+          p ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginRight: space.sm }}>
+              <IconButton icon="personAdd" label={`Invite friends, code ${p.inviteCode}`} onPress={() => shareInvite(p)} />
+              <TreeButton pod={p} onPress={openTree} />
+            </View>
+          ) : null
+        }
       />
       }
     >
@@ -60,14 +74,35 @@ export default function PodChat() {
   )
 }
 
+/** Pods are meant for 3 to 5 people: the big code card stays until there are three of you. */
+const INVITE_UNTIL = 3
+
+/** Opens the system share sheet with the pod's invite code (it also offers Copy). The wording works for
+    a friend who is new (onboarding's last step) and for one already in a pod (+ on Home): both say "Join with code". */
+const shareInvite = (pod: PodSummary) =>
+  void Share.share({ message: `Join my pod "${pod.name}" on Podmates: tap "Join with code" and enter ${pod.inviteCode}.` })
+
+/** Until the pod has three members: the invite code, big, with a share button. */
+function InviteCard({ pod }: { pod: PodSummary }) {
+  return (
+    <View style={{ margin: space.md, marginBottom: 0, padding: space.lg, borderRadius: radii.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="caption">{pod.memberCount < 2 ? 'Invite friends with this code' : 'Invite one more to make it a pod'}</Text>
+        <Text variant="title" numeric selectable style={{ letterSpacing: 4 }} accessibilityLabel={`Invite code ${pod.inviteCode.split('').join(' ')}`}>
+          {pod.inviteCode}
+        </Text>
+      </View>
+      <Button label="Share" icon="share" size="sm" onPress={() => shareInvite(pod)} />
+    </View>
+  )
+}
+
 /** Header tree chip: the tree's health at a glance, tap for the full tree screen. */
 function TreeButton({ pod, onPress }: { pod: PodSummary; onPress: () => void }) {
   const ratio = healthRatio(pod)
   const color = pod.treeStatus === 'dead' ? colors.danger.DEFAULT : ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
   return (
-    <View style={{ marginRight: space.sm }}>
-      <Chip size="md" icon="tree" label={pod.treeStatus === 'dead' ? '0' : String(pod.hp)} color={color} bg={colors.raised} onPress={onPress} accessibilityLabel="Open pod tree" />
-    </View>
+    <Chip size="md" icon="tree" label={pod.treeStatus === 'dead' ? '0' : String(pod.hp)} color={color} bg={colors.raised} onPress={onPress} accessibilityLabel="Open pod tree" />
   )
 }
 
