@@ -29,9 +29,9 @@ export interface StoryGroup {
   unseen: boolean
 }
 
-const SNAP_FIELDS = `id, image, caption, taken_at, on_time, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS})`
+export const SNAP_FIELDS = `id, image, caption, taken_at, on_time, on_profile, pod_id, habit_id, user_id, author:profiles!snaps_user_id_fkey(${PERSON_FIELDS})`
 
-const toSnap = (s: any, podName: string | null = null): Snap => ({
+export const toSnap = (s: any, podName: string | null = null): Snap => ({
   id: s.id,
   image: s.image,
   caption: s.caption,

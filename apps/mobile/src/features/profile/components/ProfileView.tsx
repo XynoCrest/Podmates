@@ -11,15 +11,17 @@ import { imageUri } from '@/lib/images'
 import { compact } from '@/lib/format'
 import type { Snap } from '../../snaps/hooks'
 import { useProfileSnaps } from '../../snaps/hooks'
-import { useProfile, useProfileHabits } from '../hooks'
+import { useProfile, useProfileHabits, useSharedPods } from '../hooks'
+import { MonthCalendar } from './MonthCalendar'
 
 const GAP = 2
 const TILE_W = (Dimensions.get('window').width - GAP * 2) / 3
 const TILE_H = TILE_W * (4 / 3) // Instagram's 3:4 portrait grid
 
 /**
- * Instagram-style profile: avatar + three stats (⚡ energy, ⭐ stars, 🔥 streak),
- * bio, actions, then one icon tab per habit over a 3:4 grid of chosen snaps.
+ * Profile as proof of progress: avatar + Streak · Best · Snaps, bio, actions,
+ * then my month calendar (only on my own profile) — or, for someone else, the
+ * pods we share — then one icon tab per habit over a 3:4 grid of chosen snaps.
  */
 export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean }) {
   const insets = useSafeAreaInsets()
@@ -30,6 +32,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const [picked, setHabitId] = useState<string>()
   const habitId = picked && habits.data.some((h) => h.id === picked) ? picked : habits.data[0]?.id
   const snaps = useProfileSnaps(userId, habitId)
+  const shared = useSharedPods(userId)
 
   const p = profile.data
   if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}>{profile.isLoading ? <ActivityIndicator style={{ marginTop: 120 }} /> : null}</View>
@@ -61,9 +64,9 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         <View style={{ flex: 1, gap: 8 }}>
           <Text style={{ fontSize: 17, fontWeight: '600' }}>{p.display_name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: 8 }}>
-            <Stat value={p.energy} label="energy" icon={<Icon name="bolt" size={13} color={colors.energy.DEFAULT} />} />
-            <Stat value={p.stars} label="stars" icon={<Icon name="star" size={13} color={colors.star.DEFAULT} />} />
             <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
+            <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={13} color={colors.energy.DEFAULT} />} />
+            <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={13} color={colors.leaf.DEFAULT} />} />
           </View>
         </View>
       </View>
@@ -85,6 +88,8 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
         )}
       </View>
+
+      {isMe ? <MonthCalendar /> : shared.data?.length ? <SharedPods names={shared.data} /> : null}
 
       {/* Habit tabs: icon per habit, underline on the active one (Instagram's grid tabs). */}
       <View style={{ flexDirection: 'row', marginTop: 16, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
@@ -148,6 +153,20 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </Text>
         }
       />
+    </View>
+  )
+}
+
+/** "You're both in Atomic Habits Club and Lane Six" — how we're connected. */
+function SharedPods({ names }: { names: string[] }) {
+  const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
+      <Icon name="people" size={16} color={colors.leaf.DEFAULT} />
+      <Text style={{ flex: 1, fontSize: 14, color: colors.ink.muted }}>
+        {"You're both in "}
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink.DEFAULT }}>{list}</Text>
+      </Text>
     </View>
   )
 }
