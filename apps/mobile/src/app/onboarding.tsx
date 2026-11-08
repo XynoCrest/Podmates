@@ -11,9 +11,6 @@ import { useMe } from '@/ctx/session'
 import { useCommunities } from '@/features/explore/hooks'
 import { useHabits } from '@/features/pods/hooks'
 import type { Profile } from '@/features/profile/hooks'
-import { HairlineFigure, type HairlineDrawing } from '@/features/tree/GroveFigure'
-import { GROVE_ASPECT, GROVE_PATHS, GROVE_VIEWBOX } from '@/features/tree/grovePaths'
-import { ONBOARDING_FIGURES } from '@/features/tree/onboardingPaths'
 import { haptics } from '@/lib/haptics'
 import { qk } from '@/lib/keys'
 import { supabase } from '@/lib/supabase'
@@ -33,10 +30,17 @@ const SCREEN_H = Dimensions.get('window').height
 const MAX_FIG_H = Math.round(SCREEN_H * 0.3)
 const COMPACT_FIG_H = 56
 /** The habit list's height: the sheet shows most of it and scrolls the rest. */
-const LIST_H = Math.round(SCREEN_H * 0.52)
-const GROVE: HairlineDrawing = { viewBox: GROVE_VIEWBOX, aspect: GROVE_ASPECT, paths: GROVE_PATHS }
-/** Onboarding's hero: the intro tone (black ground, green lines and ink). */
-const GREEN = colors.leaf.DEFAULT
+const LIST_H = Math.round(SCREEN_H * 0.4)
+const GIFS = {
+  snap: { src: require('../../assets/onboarding/snap.gif'), aspect: 1 },
+  streak: { src: require('../../assets/onboarding/streak.gif'), aspect: 1536 / 1024 },
+  tree: { src: require('../../assets/onboarding/tree.gif'), aspect: 533 / 800, scale: 1.44 },
+  habits: { src: require('../../assets/onboarding/habits.gif'), aspect: 1 },
+  peas: { src: require('../../assets/onboarding/peas.gif'), aspect: 800 / 533 },
+}
+type Figure = (typeof GIFS)[keyof typeof GIFS]
+/** Onboarding's hero: intro black ground, brand green ink. */
+const GREEN = intro.ink
 const TONE = intro
 const OVERLAP = HERO_OVERLAP
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -74,8 +78,14 @@ export default function Onboarding() {
     try {
       const toJoin = picked.flatMap(communitiesFor).filter((c) => !c.joined)
       if (toJoin.length) {
-        const { error: jErr } = await supabase.from('community_members').insert(toJoin.map((c) => ({ community_id: c.id })))
-        if (jErr) throw jErr
+        const { error: jErr } = await supabase
+          .from('community_members')
+          .upsert(
+            toJoin.map((c) => ({ community_id: c.id, user_id: me })),
+            { onConflict: 'community_id,user_id', ignoreDuplicates: true },
+          )
+        // Skip-for-now still marks onboarding done even if a community join fails.
+        if (jErr && next) throw jErr
       }
       const onboardedAt = new Date().toISOString()
       const { error: pErr } = await supabase.from('profiles').update({ onboarded_at: onboardedAt }).eq('id', me)
@@ -89,7 +99,7 @@ export default function Onboarding() {
       if (next) router.push({ pathname: '/pod/new', params: { tab: next, ...(picked[0] ? { habit: picked[0] } : {}) } })
     } catch (e) {
       haptics.error()
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e && typeof e.message === 'string' ? e.message : 'Something went wrong')
     } finally {
       setSaving(false)
     }
@@ -111,7 +121,7 @@ export default function Onboarding() {
   // 1 · The window — the pod's snap time, and the camera that answers it.
   if (step === 0) {
     return (
-      <HeroScreen top={top} lead="Snap at your" bright="pod’s time." sub="Each pod picks a daily snap time. When the window opens, snap a photo of your habit." figure={ONBOARDING_FIGURES.snap}>
+      <HeroScreen top={top} lead="Snap at your" bright="pod’s time." sub="Each pod picks a daily snap time. When the window opens, snap a photo of your habit." figure={GIFS.snap}>
         {next()}
       </HeroScreen>
     )
@@ -120,7 +130,7 @@ export default function Onboarding() {
   // 2 · The streak — what this week looked like.
   if (step === 1) {
     return (
-      <HeroScreen top={top} lead="On time keeps" bright="your streak." sub="Snaps in the window count. Missed it? Snap anyway: late snaps still show your pod you turned up." figure={ONBOARDING_FIGURES.streak}>
+      <HeroScreen top={top} lead="On time keeps" bright="your streak." sub="Snaps in the window count. Missed it? Snap anyway: late snaps still show your pod you turned up." figure={GIFS.streak}>
         <View style={{ paddingHorizontal: space.gutter, paddingTop: 8, gap: 14 }}>
           <View style={{ gap: 8 }} accessible accessibilityLabel="A 12-day streak: on time Monday to Saturday, today still open.">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -151,7 +161,7 @@ export default function Onboarding() {
   // 3 · The tree — one per pod, grown by everyone.
   if (step === 2) {
     return (
-      <HeroScreen top={top} lead="Grow a tree" bright="together." sub="Your pod shares one tree. It grows when everyone shows up and loses health when too many miss." figure={ONBOARDING_FIGURES.pod}>
+      <HeroScreen top={top} lead="Grow a tree" bright="together." sub="Your pod shares one tree. It grows when everyone shows up and loses health when too many miss." figure={GIFS.tree}>
         <View style={{ paddingHorizontal: space.gutter, paddingTop: 8, gap: 14 }}>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -177,7 +187,7 @@ export default function Onboarding() {
   // 4 · Habits — a short hero, then a list like Home's pod rows.
   if (step === 3) {
     return (
-      <HeroScreen top={top} lead="What are you" bright="working on?" sub="We’ll add you to each habit’s community on Explore." figure={ONBOARDING_FIGURES.habits} compact>
+      <HeroScreen top={top} lead="What are you" bright="working on?" sub="We’ll add you to each habit’s community on Explore." figure={GIFS.habits}>
         <ScrollView style={{ flexGrow: 0, maxHeight: LIST_H }} contentContainerStyle={{ paddingVertical: 4 }}>
           {habits.data?.map((h) => {
             const on = picked.includes(h.id)
@@ -203,7 +213,7 @@ export default function Onboarding() {
 
   // 5 · The pod — the two ways in, as rows.
   return (
-    <HeroScreen top={top} lead="Plant your" bright="first tree." sub="A pod is a few friends with one daily snap time and one tree." figure={GROVE}>
+    <HeroScreen top={top} lead="Plant your" bright="first tree." sub="A pod is a few friends with one daily snap time and one tree." figure={GIFS.peas}>
       <ActionRow
         icon="plus"
         title="Start a pod"
@@ -225,14 +235,14 @@ export default function Onboarding() {
 }
 
 /**
- * Every step's frame, from Home: a black hero with a two-tone heading and a Hairline
- * figure, then the dark sheet riding up over it with the step's content. The figure
- * takes whatever height the sheet leaves. `compact` puts it beside the heading instead.
+ * Every step's frame: a black hero with the two-tone heading and a looping GIF
+ * in the leftover space. `compact` puts the GIF beside the heading instead.
  */
-function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top: ReactNode; lead: string; bright: string; sub: string; figure: HairlineDrawing; compact?: boolean; children: ReactNode }) {
+function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top: ReactNode; lead: string; bright: string; sub: string; figure: Figure; compact?: boolean; children: ReactNode }) {
   const insets = useSafeAreaInsets()
   const [box, setBox] = useState({ w: 0, h: 0 })
-  const figH = Math.max(0, Math.min(box.h - 8, (box.w - 40) / figure.aspect, MAX_FIG_H))
+  const figH = Math.max(0, Math.min(box.h - 8, (box.w - 40) / figure.aspect, MAX_FIG_H * (figure.scale ?? 1)))
+  const gif = (h: number) => <Image source={figure.src} style={{ width: h * figure.aspect, height: h }} contentFit="contain" accessible={false} />
   const heading = <IntroHeading lead={lead} bright={bright} sub={sub} />
   return (
     <View style={{ flex: 1, backgroundColor: TONE.bg }}>
@@ -242,7 +252,7 @@ function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top
         {compact ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.gutter, paddingTop: 8, paddingBottom: OVERLAP + 16, gap: 12 }}>
             <View style={{ flex: 1 }}>{heading}</View>
-            <HairlineFigure drawing={figure} height={COMPACT_FIG_H} ground={TONE.bg} ink={TONE.ink} />
+            {gif(COMPACT_FIG_H)}
           </View>
         ) : (
           <>
@@ -252,7 +262,7 @@ function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top
               onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height - OVERLAP })}
               accessible={false}
             >
-              {figH > 40 ? <HairlineFigure drawing={figure} height={figH} ground={TONE.bg} ink={TONE.ink} /> : null}
+              {figH > 40 ? gif(figH) : null}
             </View>
           </>
         )}
