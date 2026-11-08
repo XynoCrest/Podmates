@@ -70,6 +70,8 @@ function SessionGate() {
         <Stack.Protected guard={!signedIn} redirectTo="/">
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
+        {/* Design review: fixtures only, so it stays reachable while signed out. */}
+        <Stack.Screen name="preview" />
       </Stack>
     </HideSplash>
   )

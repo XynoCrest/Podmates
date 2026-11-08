@@ -1,5 +1,5 @@
 import { colors } from '@podmates/ui-tokens'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -95,6 +95,7 @@ export default function SignIn() {
                 </PressableScale>
               ))}
             </View>
+            <Button variant="ghost" label="Preview the home design" icon="sparkles" onPress={() => router.push('/preview')} />
           </View>
         ) : null}
       </ScrollView>

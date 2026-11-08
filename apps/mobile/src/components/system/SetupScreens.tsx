@@ -1,11 +1,19 @@
 import { colors } from '@podmates/ui-tokens'
+import { useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Text } from '@/components/ui'
+import { Button, Text } from '@/components/ui'
+import { HomePreview } from '@/features/pods/components/HomePreview'
 import { envProblems } from '@/lib/env'
 
-/** Shown instead of the app when EXPO_PUBLIC_* config is missing — never a silent fallback. */
+/**
+ * Shown instead of the app when EXPO_PUBLIC_* config is missing — never a silent fallback.
+ * It does offer the fixture-backed home design, which needs no backend, so the UI
+ * can be reviewed in Expo Go before Docker and Supabase are up.
+ */
 export function ConfigError() {
+  const [preview, setPreview] = useState(false)
+  if (preview) return <HomePreview />
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
@@ -19,6 +27,7 @@ export function ConfigError() {
           <Text style={{ fontFamily: 'Menlo', color: colors.leaf.DEFAULT }}>npm run env:local</Text>
         </View>
         <Text variant="subhead">Then restart Expo with a clean cache: npx expo start -c</Text>
+        <Button label="Preview the home design" icon="sparkles" onPress={() => setPreview(true)} size="lg" />
         <View style={{ gap: 4 }}>
           {envProblems.map((p) => (
             <Text key={p} variant="caption" style={{ color: colors.danger.DEFAULT }}>
