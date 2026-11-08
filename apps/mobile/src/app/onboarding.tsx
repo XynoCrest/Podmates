@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { alpha, colors, overlay } from '@podmates/ui-tokens'
 import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
@@ -36,8 +36,8 @@ const COMPACT_FIG_H = 56
 const LIST_H = Math.round(SCREEN_H * 0.52)
 const GROVE: HairlineDrawing = { viewBox: GROVE_VIEWBOX, aspect: GROVE_ASPECT, paths: GROVE_PATHS }
 /** Onboarding's hero: black ground, green lines and ink. */
-const GREEN = '#00AB5A'
-const TONE = { bg: '#000000', ink: GREEN, soft: 'rgba(0, 171, 90, 0.8)', faint: 'rgba(0, 171, 90, 0.3)' }
+const GREEN = colors.leaf.DEFAULT
+const TONE = { bg: overlay.media, ink: GREEN, soft: alpha(GREEN, 0.8), faint: alpha(GREEN, 0.3) }
 /** Home's hero heading. */
 const HEAD = { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: TONE.ink } as const
 /** How far the sheet rides up over the hero (as on Home). */
@@ -187,7 +187,7 @@ export default function Onboarding() {
             return (
               <PressableScale key={h.id} onPress={() => toggle(h.id)} scaleTo={0.98} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={h.name}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? 'rgba(0, 171, 90, 0.16)' : colors.raised }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? alpha(GREEN, 0.16) : colors.raised }}>
                     <SymbolIcon name={h.sf_symbol} size={20} color={on ? GREEN : colors.ink.muted} />
                   </View>
                   <Text variant="headline" numberOfLines={1} style={{ flex: 1, fontSize: 17 }}>

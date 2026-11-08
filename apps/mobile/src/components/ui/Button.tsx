@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, radii } from '@podmates/ui-tokens'
 import { ActivityIndicator, Pressable, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Icon, type IconName } from './Icon'
@@ -40,7 +40,7 @@ export function Button({
       <View
         style={{
           height,
-          borderRadius: size === 'sm' ? 10 : 14,
+          borderRadius: size === 'sm' ? 10 : radii.control,
           backgroundColor: s.bg,
           paddingHorizontal: 16,
           flexDirection: 'row',
