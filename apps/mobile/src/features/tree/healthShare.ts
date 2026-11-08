@@ -48,3 +48,13 @@ export function shareHealth(members: HealthMember[]): HealthShare[] {
 }
 
 export const healthTotal = (shares: HealthShare[]) => shares.reduce((n, s) => n + s.share, 0)
+
+/** Green when they fill their fair share, then yellow → orange → red as they fall behind. */
+export function shareColor(share: number, fair: number): string {
+  const t = fair > 0 ? share / fair : 0
+  if (t >= 0.98) return '#7BD64B'
+  if (t >= 0.8) return '#C7D93F'
+  if (t >= 0.65) return '#FFC83D'
+  if (t >= 0.45) return '#FF8A3D'
+  return '#FF5D63'
+}

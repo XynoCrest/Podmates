@@ -78,7 +78,7 @@ export default function PairTreeScreen() {
         <MemberRing
           members={members.map((m) => {
             const s = shares.find((x) => x.id === m.id)
-            return { ...m, share: dead ? 0 : s?.share, dragging: s?.dragging }
+            return { ...m, share: dead ? 0 : s?.share, fair: s?.fair, dragging: s?.dragging }
           })}
         />
       </View>
