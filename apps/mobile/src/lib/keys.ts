@@ -19,6 +19,7 @@ export const qk = {
   daySnaps: (date: string) => ['daySnaps', date] as const,
   sharedPods: (userId: string) => ['sharedPods', userId] as const,
   profileHabits: (userId: string) => ['profileHabits', userId] as const,
+  profileStory: (userId: string) => ['profileStory', userId] as const,
   profileSnaps: (userId: string, habitId: string) => ['profileSnaps', userId, habitId] as const,
   mySnaps: (habitId: string) => ['mySnaps', habitId] as const,
   feed: (mode: string, sort: string) => ['feed', mode, sort] as const,

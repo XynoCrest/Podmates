@@ -82,10 +82,14 @@ export default function PodsScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            {/* Rides above the hero inside the scroll content, so pulling down reveals more green, not the canvas. */}
-            <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + heroTotal, backgroundColor: HERO.bg }} />
+            {/*
+              Rides above the hero inside the scroll content, so pulling down reveals more green, not the canvas.
+              It also runs 24pt past the hero, under the sheet, so the green fills behind the sheet's rounded corners.
+            */}
+            <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + heroTotal + 24, backgroundColor: HERO.bg }} />
             <StreakHero streak={profile.data?.streak ?? 0} topInset={insets.top} />
-            <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -OVERLAP, paddingTop: 10 }}>
+            {/* Clips its children to the rounded corners: the habit tabs' edge fades would otherwise square them off. */}
+            <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -OVERLAP, paddingTop: 10, overflow: 'hidden' }}>
               {hasPods ? (
                 <>
                   <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />

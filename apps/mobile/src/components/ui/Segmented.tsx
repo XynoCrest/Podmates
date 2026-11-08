@@ -36,11 +36,11 @@ export function Segmented<K extends string>({ segments, value, onChange }: { seg
             accessibilityLabel={s.badge ? `${s.label}, ${s.badge}` : s.label}
             scaleTo={1}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, height: 38, borderRadius: 999 }}>
-              <Text style={{ fontSize: 16, fontWeight: active ? '600' : '500', color: active ? colors.ink.DEFAULT : colors.ink.muted }}>{s.label}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 36, borderRadius: 999 }}>
+              <Text style={{ fontSize: 15, fontWeight: active ? '600' : '500', color: active ? colors.ink.DEFAULT : colors.ink.muted }}>{s.label}</Text>
               {s.badge ? (
-                <View style={{ minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: colors.ink.subtle, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text numeric style={{ fontSize: 13, lineHeight: 16, fontWeight: '600', color: colors.ink.DEFAULT }}>
+                <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: colors.ink.subtle, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text numeric style={{ fontSize: 12, lineHeight: 15, fontWeight: '600', color: colors.ink.DEFAULT }}>
                     {s.badge}
                   </Text>
                 </View>

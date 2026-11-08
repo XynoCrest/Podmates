@@ -175,3 +175,26 @@ export function useHabitCards(userId: string) {
   const data: HabitCard[] = (habits.data ?? []).filter((h) => q.data?.has(h.id)).map((h) => ({ habit: h, ...q.data!.get(h.id)! }))
   return { data, isLoading: habits.isLoading || q.isLoading }
 }
+
+/**
+ * This person's story ring on their profile: their newest snap from the last 24h that I can see
+ * (RLS: pods we share, or mine), which habit it's in (the story viewer is per habit), and whether
+ * any of their snaps since then are new to me. null = no story.
+ */
+export function useProfileStory(userId: string) {
+  const me = useMe()
+  return useQuery({
+    queryKey: qk.profileStory(userId),
+    queryFn: async (): Promise<{ habitId: string; unseen: boolean } | null> => {
+      const since = new Date(Date.now() - 24 * 3600_000).toISOString()
+      const { data, error } = await supabase.from('snaps').select('id, habit_id').eq('user_id', userId).gte('taken_at', since).order('taken_at', { ascending: false })
+      if (error) throw error
+      const newest = data[0]
+      if (!newest) return null
+      if (userId === me) return { habitId: newest.habit_id, unseen: false }
+      const { data: views, error: vErr } = await supabase.from('snap_views').select('snap_id').in('snap_id', data.map((s) => s.id))
+      if (vErr) throw vErr
+      return { habitId: newest.habit_id, unseen: views.length < data.length }
+    },
+  })
+}
