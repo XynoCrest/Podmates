@@ -1,6 +1,8 @@
 # UI audit: why every page looks different, and the templates that would fix it
 
 Audited on `feature/maria_design_normalization` (from `feat/ui-rework-og` at 43ff69a), 2026-11-08.
+
+**Status:** implemented on this branch. The decisions made are in [TEMPLATES.md](TEMPLATES.md), which is the guide for new screens.
 Every screen in `apps/mobile/src/app` was read and screenshotted in the iOS Simulator (iPhone 17 Pro).
 
 ## 1. The short version

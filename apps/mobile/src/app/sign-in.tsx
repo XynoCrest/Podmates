@@ -1,9 +1,9 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, PressableScale, Text, TextField } from '@/components/ui'
 import { auth } from '@/ctx/session'
 import { TreeArt } from '@/features/tree/TreeArt'
 import { isLocal } from '@/lib/env'
@@ -51,7 +51,7 @@ export default function SignIn() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24, paddingHorizontal: 24, gap: 24 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24, paddingHorizontal: space.gutter, gap: space.xxl }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: 'center', gap: 8 }}>
           <TreeArt growth={6} health={1} size={150} />
           <Text variant="display">Podmates</Text>
@@ -63,12 +63,12 @@ export default function SignIn() {
         <View style={{ gap: 12 }}>
           {mode === 'signUp' ? (
             <>
-              <Field value={name} onChangeText={setName} placeholder="Name" autoCapitalize="words" />
-              <Field value={username} onChangeText={setUsername} placeholder="Username" autoCapitalize="none" />
+              <TextField value={name} onChangeText={setName} placeholder="Name" autoCapitalize="words" />
+              <TextField value={username} onChangeText={setUsername} placeholder="Username" autoCapitalize="none" />
             </>
           ) : null}
-          <Field value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-          <Field value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry autoComplete="password" />
+          <TextField value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
+          <TextField value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry autoComplete="password" />
           {error ? (
             <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
               {error}
@@ -99,15 +99,5 @@ export default function SignIn() {
         ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
-  )
-}
-
-function Field(props: React.ComponentProps<typeof TextInput>) {
-  return (
-    <TextInput
-      placeholderTextColor={colors.ink.subtle}
-      {...props}
-      style={{ height: 48, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 16, color: colors.ink.DEFAULT, fontSize: 16 }}
-    />
   )
 }
