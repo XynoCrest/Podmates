@@ -1,15 +1,14 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast, healthRatio, stageFor } from '@podmates/tree-engine'
+import { forecast } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { goBack } from '@/lib/nav'
-import { ScrollView, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChunkyButton, HealthBar, Icon, IconButton, Text } from '@/components/ui'
+import { View } from 'react-native'
+import { Chip, ChunkyButton, ScreenState, StageScreen } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { podWindow, usePod, usePodMembers } from '@/features/pods/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
-import { DevButton, Headline, Hl, MemberRing, StatCell, WeekStrip } from '@/features/tree/TreeParts'
+import { healthTotal, shareHealth } from '@/features/tree/healthShare'
+import { DemoTools, Headline, HealthStamp, Hl, MemberRing, WeekStrip } from '@/features/tree/TreeParts'
 import { useEndDay, useOpenWindow, useReplant, useTreeHistory } from '@/features/tree/hooks'
 import { isLocal } from '@/lib/env'
 import { haptics } from '@/lib/haptics'
@@ -21,7 +20,6 @@ import { useNow } from '@/lib/useNow'
  */
 export default function TreeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const insets = useSafeAreaInsets()
   const me = useMe()
   const now = useNow(15_000)
   const { data: pod } = usePod(id)
@@ -31,15 +29,18 @@ export default function TreeScreen() {
   const endDay = useEndDay(id)
   const openWindow = useOpenWindow(id)
 
-  if (!pod) return <View style={{ flex: 1, backgroundColor: colors.canvas }} />
+  if (!pod) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading /></View>
 
   const dead = pod.treeStatus === 'dead'
   const tree = { hp: pod.hp, maxHp: pod.maxHp, growth: pod.growth, status: pod.treeStatus }
-  const stage = stageFor(pod.growth)
-  const f = forecast(tree, pod.contributedToday, pod.memberCount)
+  // Members resting today are left out of the count (packages/tree-engine), so the forecast leaves them out too.
+  const counted = pod.memberCount - pod.restingToday
+  const f = forecast(tree, pod.contributedToday, counted)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
-  const ratio = healthRatio(tree)
+  const shares = shareHealth(members.data ?? [])
+  const shown = dead ? 0 : healthTotal(shares)
+  const ratio = shown / 100
 
   const cta = dead
     ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
@@ -52,90 +53,70 @@ export default function TreeScreen() {
           : { label: 'Window closed for today', disabled: true }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 52 }}>
-        <IconButton icon="close" label="Close" onPress={goBack} color={colors.ink.subtle} />
-        <Text variant="headline" numberOfLines={1} style={{ flex: 1, textAlign: 'center', color: colors.ink.muted }}>
-          {pod.name}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, minWidth: 40, justifyContent: 'flex-end' }}>
-          <Icon name="flame" size={20} color={colors.flame.DEFAULT} />
-          <Text numeric style={{ color: colors.flame.DEFAULT, fontWeight: '600', fontSize: 17 }} accessibilityLabel={`Your streak: ${myStats?.streak ?? 0} days`}>
-            {myStats?.streak ?? 0}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 24, alignItems: 'stretch' }}>
-        <View style={{ alignItems: 'center', marginTop: 8 }}>
+    <StageScreen
+      title={pod.name}
+      right={<Chip size="md" icon="flame" label={String(myStats?.streak ?? 0)} color={colors.flame.DEFAULT} bg={colors.raised} accessibilityLabel={`Your streak: ${myStats?.streak ?? 0} days`} />}
+      footer={<ChunkyButton {...cta} />}
+    >
+      <View style={{ alignItems: 'center', marginTop: 8, width: '100%' }}>
+        <View style={{ width: 280, alignItems: 'center' }}>
           <TreeArt growth={pod.growth} health={ratio} dead={dead} size={260} />
-          <MemberRing members={members.data ?? []} />
-        </View>
-
-        <Headline>
-          {dead ? (
-            <>
-              The tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
-            </>
-          ) : f.outcome === 'thrive' ? (
-            <>
-              Everyone snapped. Tonight the tree will <Hl color={colors.leaf.DEFAULT}>grow +{f.hpDelta} HP</Hl>.
-            </>
-          ) : w.status === 'closed' ? (
-            // Nobody can snap any more today: state the outcome instead of asking for snaps.
-            <>
-              {pod.contributedToday} of {pod.memberCount} snapped.{' '}
-              {f.outcome === 'steady' ? (
-                <Hl color={colors.leaf.DEFAULT}>The tree holds steady tonight.</Hl>
-              ) : (
-                <Hl color={colors.flame.DEFAULT}>The tree loses {-f.hpDelta} HP tonight.</Hl>
-              )}
-            </>
-          ) : f.outcome === 'steady' ? (
-            <>
-              <Hl color={colors.leaf.DEFAULT}>{f.toThrive} more {f.toThrive === 1 ? 'snap' : 'snaps'}</Hl> and the tree grows tonight.
-            </>
-          ) : (
-            <>
-              <Hl color={colors.flame.DEFAULT}>
-                {f.toSteady} more {f.toSteady === 1 ? 'snap' : 'snaps'}
-              </Hl>{' '}
-              or the tree loses {-f.hpDelta} HP tonight.
-            </>
-          )}
-        </Headline>
-
-        <View style={{ flexDirection: 'row', borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>
-          <StatCell label="Stage" value={stage.name} sub={`Level ${stage.level} of ${stage.levels}`} />
-          <View style={{ width: 1, backgroundColor: colors.line }} />
-          <StatCell label="Health" value={`${dead ? 0 : pod.hp}/${pod.maxHp}`} sub={`${pod.contributedToday} of ${pod.memberCount} snapped today`}>
-            <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              <HealthBar ratio={dead ? 0 : ratio} height={10} />
-            </View>
-          </StatCell>
-        </View>
-
-        <WeekStrip days={history.data ?? []} />
-
-        {isLocal ? (
-          <View style={{ gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
-            <Text variant="overline">Demo tools · local only</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <DevButton label={openWindow.isPending ? 'Opening…' : 'Open window now'} onPress={() => openWindow.mutate()} />
-              <DevButton label={endDay.isPending ? 'Settling…' : 'End the day now'} onPress={() => endDay.mutate(undefined, { onSuccess: () => haptics.success() })} />
-            </View>
-            {openWindow.error || endDay.error || replant.error ? (
-              <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-                {(openWindow.error ?? endDay.error ?? replant.error)!.message}
-              </Text>
-            ) : null}
+          <View style={{ position: 'absolute', top: 8, right: 0 }}>
+            <HealthStamp percent={shown} />
           </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 12 }}>
-        <ChunkyButton {...cta} />
+        </View>
+        <MemberRing
+          members={(members.data ?? []).map((m) => {
+            const s = shares.find((x) => x.id === m.id)
+            return { ...m, share: dead ? 0 : s?.share, fair: s?.fair, dragging: s?.dragging }
+          })}
+        />
       </View>
-    </View>
+
+      <Headline>
+        {dead ? (
+          <>
+            The tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
+          </>
+        ) : f.outcome === 'thrive' ? (
+          <>
+            Everyone snapped. Tonight the tree will <Hl color={colors.leaf.DEFAULT}>grow +{f.hpDelta} HP</Hl>.
+          </>
+        ) : w.status === 'closed' ? (
+          // Nobody can snap any more today: state the outcome instead of asking for snaps.
+          <>
+            {pod.contributedToday} of {counted} snapped.{' '}
+            {f.outcome === 'steady' ? (
+              <Hl color={colors.leaf.DEFAULT}>The tree holds steady tonight.</Hl>
+            ) : (
+              <Hl color={colors.flame.DEFAULT}>The tree loses {-f.hpDelta} HP tonight.</Hl>
+            )}
+          </>
+        ) : f.outcome === 'steady' ? (
+          <>
+            <Hl color={colors.leaf.DEFAULT}>{f.toThrive} more {f.toThrive === 1 ? 'snap' : 'snaps'}</Hl> and the tree grows tonight.
+          </>
+        ) : (
+          <>
+            <Hl color={colors.flame.DEFAULT}>
+              {f.toSteady} more {f.toSteady === 1 ? 'snap' : 'snaps'}
+            </Hl>{' '}
+            or the tree loses {-f.hpDelta} HP tonight.
+          </>
+        )}
+      </Headline>
+
+      <WeekStrip days={history.data ?? []} />
+
+      {isLocal ? (
+        <DemoTools
+          error={openWindow.error ?? endDay.error ?? replant.error}
+          actions={[
+            { label: openWindow.isPending ? 'Opening…' : 'Open window now', onPress: () => openWindow.mutate() },
+            { label: endDay.isPending ? 'Settling…' : 'End the day now', onPress: () => endDay.mutate(undefined, { onSuccess: () => haptics.success() }) },
+          ]}
+        />
+      ) : null}
+    </StageScreen>
   )
 }

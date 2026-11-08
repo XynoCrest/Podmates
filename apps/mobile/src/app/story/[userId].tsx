@@ -5,7 +5,9 @@ import { Pressable, View } from 'react-native'
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { useMe } from '@/ctx/session'
-import { SnapFrame } from '@/features/snaps/components/SnapFrame'
+import { overlay } from '@podmates/ui-tokens'
+import { ScreenState } from '@/components/ui'
+import { ProgressBars, SnapFrame } from '@/features/snaps/components/SnapFrame'
 import { useMarkSeen, useStories } from '@/features/snaps/hooks'
 
 const SNAP_MS = 5000
@@ -52,20 +54,14 @@ function PersonStory({ userId, habit }: { userId: string; habit: string }) {
 
   const bar = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }))
 
-  if (!snap || !group) return <View style={{ flex: 1, backgroundColor: '#000' }} />
+  if (!snap || !group) return <View style={{ flex: 1, backgroundColor: overlay.media }}><ScreenState fill loading={stories.isLoading} tone="media" /></View>
 
   return (
     <View style={{ flex: 1 }}>
       <SnapFrame
         snap={snap}
         top={
-          <View style={{ flexDirection: 'row', gap: 4 }}>
-            {group.snaps.map((s, i) => (
-              <View key={s.id} style={{ flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' }}>
-                {i < index ? <View style={{ flex: 1, backgroundColor: '#fff' }} /> : i === index ? <Animated.View style={[{ height: '100%', backgroundColor: '#fff' }, bar]} /> : null}
-              </View>
-            ))}
-          </View>
+          <ProgressBars count={group.snaps.length} index={index} current={<Animated.View style={[{ height: '100%', backgroundColor: overlay.ink }, bar]} />} />
         }
       />
       {/* Tap zones sit below the top bar so the close button stays reachable. */}

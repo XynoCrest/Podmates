@@ -1,10 +1,11 @@
+import { hero } from '@podmates/ui-tokens'
 import { memo, useEffect, useState } from 'react'
 import { useReducedMotion } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { GROVE_ASPECT, GROVE_PATHS, GROVE_VIEWBOX } from './grovePaths'
 
-/** The hero band behind the Grove figure: a neutral green, with dark ink on it (Home, onboarding). */
-export const HERO = { bg: '#46A862', ink: '#0C2414', soft: 'rgba(12, 36, 20, 0.72)' }
+/** The hero band's colours (now the `hero` token). Story rings use the same fill. */
+export const HERO = hero
 
 type Kind = 'sil' | 'lo' | 'limb' | 'hi'
 

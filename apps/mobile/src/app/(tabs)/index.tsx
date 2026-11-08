@@ -1,10 +1,10 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, hero, space } from '@podmates/ui-tokens'
 import { Redirect, router, useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
+import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, EmptyState, Segmented, Text } from '@/components/ui'
+import { Button, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { PodmateRow } from '@/features/dms/components/PodmateRow'
 import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
@@ -15,13 +15,10 @@ import { TodayCard } from '@/features/pods/components/TodayCard'
 import { needsSnap, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
-import { HERO } from '@/features/tree/GroveFigure'
 import { LeafTree } from '@/features/tree/LeafTree'
 import { useNow } from '@/lib/useNow'
 
 const HERO_H = 196
-/** How far the sheet rides up over the hero. */
-const OVERLAP = 22
 
 /** Home: a green streak hero, then a sheet with habit tabs → podmates' stories → Pods (group chats) or Podmates (one-to-one chats) for that habit, or Unread (every unopened chat, all habits). */
 export default function PodsScreen() {
@@ -64,7 +61,6 @@ export default function PodsScreen() {
   if (profile.data && !profile.data.onboarded_at) return <Redirect href="/onboarding" />
 
   const rows: (PodSummary | PodmateThread)[] = !hasPods ? [] : list === 'pods' ? inHabit : list === 'podmates' ? podmates.data : unread
-  const heroTotal = insets.top + HERO_H
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
@@ -82,19 +78,14 @@ export default function PodsScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            {/*
-              Rides above the hero inside the scroll content, so pulling down reveals more green, not the canvas.
-              It also runs 24pt past the hero, under the sheet, so the green fills behind the sheet's rounded corners.
-            */}
-            <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + heroTotal + 24, backgroundColor: HERO.bg }} />
             <StreakHero streak={profile.data?.streak ?? 0} topInset={insets.top} />
             {/* Clips its children to the rounded corners: the habit tabs' edge fades would otherwise square them off. */}
-            <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -OVERLAP, paddingTop: 10, overflow: 'hidden' }}>
+            <HeroSheet clip>
               {hasPods ? (
                 <>
                   <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
                   {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
-                  <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+                  <View style={{ paddingHorizontal: space.gutter, paddingVertical: space.sm }}>
                     <Segmented
                       value={list}
                       onChange={setList}
@@ -108,32 +99,30 @@ export default function PodsScreen() {
                   {habitName ? <TodayCard habitName={habitName} pods={inHabit} now={now} /> : null}
                 </>
               ) : null}
-            </View>
+            </HeroSheet>
           </View>
         }
         ListEmptyComponent={
-          pods.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
+          pods.isLoading || pods.error ? (
+            <ScreenState loading={pods.isLoading} error={pods.error} onRetry={() => void pods.refetch()} />
           ) : !hasPods ? (
-            <EmptyState
-              icon="tree"
-              title="No pods yet"
-              body="A pod is a few friends tracking one habit together. Snap daily, grow a tree."
-              action={<Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />}
+            <ScreenState
+              empty={{
+                icon: 'tree',
+                title: 'No pods yet',
+                body: 'A pod is a few friends tracking one habit together. Snap daily, grow a tree.',
+                action: <Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />,
+              }}
             />
           ) : list === 'unread' && !everyone.isLoading ? (
-            <Text variant="subhead" center style={{ padding: 32 }}>
-              {"You're all caught up"}
-            </Text>
+            <ScreenState empty={{ icon: 'checkCircle', title: 'You’re all caught up', body: 'No unread chats in any habit.' }} />
           ) : list === 'podmates' && !podmates.isLoading ? (
-            <Text variant="subhead" center style={{ padding: 32 }}>
-              No podmates in this habit yet. Invite friends to your pod.
-            </Text>
+            <ScreenState empty={{ icon: 'people', title: 'No podmates yet', body: 'Invite friends to your pod to chat one-to-one.' }} />
           ) : undefined
         }
         refreshControl={
           <RefreshControl
-            tintColor={HERO.ink}
+            tintColor={hero.ink}
             refreshing={pods.isRefetching}
             onRefresh={() => {
               void pods.refetch()
@@ -152,27 +141,38 @@ export default function PodsScreen() {
 
 const lastAt = (r: PodSummary | PodmateThread) => ('person' in r ? (r.last?.createdAt ?? '') : r.lastActivityAt)
 
-/** The streak, said big: a dark lead-in, the count in white, and a quiet line of encouragement. */
+/** Ben's hero sizing: a smaller heading than the shared one, so the branch can grow in large from the right. */
+const STREAK_TITLE = { fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.8 } as const
+
+/**
+ * The streak, said big, with Ben's branch growing in from the screen's right edge (his layout:
+ * fixed height, 28pt heading in a 196pt column, 28pt left inset).
+ */
 function StreakHero({ streak, topInset }: { streak: number; topInset: number }) {
   const [lead, count, sub] =
     streak === 0
       ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
-      : ["You're on a", `${streak}-day streak!`, "You're showing up for a healthier, happier you."]
+      : // profiles.streak is the longest current streak across your pods, so say "top" (each pod's own is on its card).
+        ['Top streak', `${streak} ${streak === 1 ? 'day' : 'days'}!`, "You're showing up for a healthier, happier you."]
   return (
-    <View style={{ height: topInset + HERO_H, paddingTop: topInset + 16, paddingLeft: 28, paddingBottom: OVERLAP + 12, flexDirection: 'row', alignItems: 'center' }}>
-      {/* The tree grows in from the screen's right edge, just above where the sheet overlaps the band.
+    <View style={{ height: topInset + HERO_H, paddingTop: topInset + space.lg, paddingLeft: 28, paddingBottom: HERO_OVERLAP + space.md, flexDirection: 'row', alignItems: 'center', backgroundColor: hero.bg }}>
+      {/* Green above the band, so pulling the list down shows more green, not the canvas. */}
+      <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000, backgroundColor: hero.bg }} />
+      {/* The branch grows in from the right edge, just above where the sheet overlaps the band.
           Drawn first, so leaves reaching left sit behind the text. */}
-      <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: OVERLAP - 4 }}>
-        <LeafTree height={HERO_H - OVERLAP - 8} />
+      <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: HERO_OVERLAP - 4 }}>
+        <LeafTree height={HERO_H - HERO_OVERLAP - 8} />
       </View>
-      <View style={{ width: 196, gap: 8 }} accessible accessibilityLabel={`${lead} ${count} ${sub}`}>
+      <View style={{ width: 196, gap: space.sm }} accessible accessibilityRole="header" accessibilityLabel={`${lead} ${count} ${sub}`}>
         <View>
-          <Text style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.8, color: HERO.ink }}>{lead}</Text>
-          <Text style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.8, color: '#FFFFFF' }} numeric adjustsFontSizeToFit numberOfLines={1}>
+          <Text style={[STREAK_TITLE, { color: hero.ink }]}>{lead}</Text>
+          <Text style={[STREAK_TITLE, { color: hero.bright }]} numeric adjustsFontSizeToFit numberOfLines={1}>
             {count}
           </Text>
         </View>
-        <Text style={{ fontSize: 14, lineHeight: 19, color: HERO.soft }} numberOfLines={3}>{sub}</Text>
+        <Text variant="subhead" style={{ color: hero.soft }} numberOfLines={3}>
+          {sub}
+        </Text>
       </View>
     </View>
   )

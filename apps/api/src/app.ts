@@ -4,6 +4,7 @@ import { rateLimit } from 'express-rate-limit'
 import { apiError } from '@podmates/shared'
 import type { Logger } from './lib/logger'
 import { errorHandler, notFound } from './middleware/errors'
+import { accountRouter } from './routes/account'
 import { healthRouter } from './routes/health'
 import { podmatesRouter } from './routes/podmates'
 import { podsRouter } from './routes/pods'
@@ -39,6 +40,7 @@ export function createApp({ services, log, env, worker, corsOrigins }: AppOption
     }),
   )
   app.use(podsRouter(services, { env }))
+  app.use(accountRouter(services))
   app.use(podmatesRouter(services, { env }))
 
   app.use(notFound)

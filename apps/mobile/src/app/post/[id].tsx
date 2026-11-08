@@ -1,68 +1,62 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
-import { FlatList, KeyboardAvoidingView, Platform, TextInput, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Header, Icon, PressableScale, Text } from '@/components/ui'
+import { FlatList, Pressable, View } from 'react-native'
+import { Avatar, ChatScreen, Header, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
+import { useMe } from '@/ctx/session'
+import { useReportFlow } from '@/features/safety/hooks'
+import { goBack } from '@/lib/nav'
 import { PostCard } from '@/features/explore/components/PostCard'
 import { useAddComment, useComments, usePost } from '@/features/explore/hooks'
+import { Composer } from '@/features/pods/components/Composer'
 import { timeAgo } from '@/lib/format'
-import { haptics } from '@/lib/haptics'
 
+/** A post and its comments: the chat template, with the post on top and the shared composer. */
 export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const insets = useSafeAreaInsets()
   const post = usePost(id)
   const comments = useComments(id)
   const add = useAddComment(id)
-  const [text, setText] = useState('')
-
-  const submit = () => {
-    if (!text.trim()) return
-    haptics.tap()
-    add.mutate(text.trim())
-    setText('')
-  }
+  const me = useMe()
+  const reportFlow = useReportFlow()
+  const mine = post.data?.author.id === me
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header title={post.data?.community.name ?? ''} subtitle={post.data ? `${post.data.commentCount} comments` : undefined} />
+    <ChatScreen
+      header={
+        <Header
+          title={post.data?.community.name ?? ''}
+          subtitle={post.data ? `${post.data.commentCount} comments` : undefined}
+          right={post.data && !mine ? <IconButton icon="more" label="Report post" onPress={() => reportFlow('post', id, 'post', goBack)} /> : null}
+        />
+      }
+      composer={<Composer placeholder="Add a comment" onSend={(t) => add.mutate(t)} sending={add.isPending} />}
+    >
       <FlatList
         data={comments.data}
         keyExtractor={(c) => c.id}
-        ListHeaderComponent={post.data ? <View style={{ marginBottom: 10 }}><PostCard post={post.data} full /></View> : undefined}
+        ListHeaderComponent={post.data ? <View style={{ marginBottom: space.sm }}><PostCard post={post.data} full /></View> : <ScreenState loading={post.isLoading} error={post.error} />}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
+          // Long-press someone else's comment to report it.
+          <Pressable
+            onLongPress={item.author.id !== me ? () => reportFlow('comment', item.id, 'comment') : undefined}
+            accessibilityHint={item.author.id !== me ? 'Long-press to report' : undefined}
+            style={{ flexDirection: 'row', gap: space.md, paddingHorizontal: space.gutter, paddingVertical: space.md, backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.line }}
+          >
             <PressableScale onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.author.id } })} accessibilityLabel={item.author.display_name}>
-              <Avatar person={item.author} size={30} />
+              <Avatar person={item.author} size={32} />
             </PressableScale>
-            <View style={{ flex: 1, gap: 3 }}>
+            <View style={{ flex: 1, gap: space.xs }}>
               <Text variant="caption">
-                <Text style={{ fontWeight: '600', color: colors.ink.muted, fontSize: 12 }}>{item.author.username}</Text> · {timeAgo(item.createdAt)}
+                <Text variant="caption" style={{ fontWeight: '600' }}>{item.author.username}</Text> · {timeAgo(item.createdAt)}
               </Text>
-              <Text style={{ fontSize: 15, lineHeight: 21 }}>{item.body}</Text>
+              <Text variant="callout">{item.body}</Text>
             </View>
-          </View>
+          </Pressable>
         )}
-        ListEmptyComponent={comments.isLoading ? undefined : <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>No comments yet. Start the conversation.</Text>}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        ListEmptyComponent={post.data ? <ScreenState loading={comments.isLoading} empty={{ icon: 'comment', title: 'No comments yet', body: 'Start the conversation.' }} /> : undefined}
+        contentContainerStyle={{ paddingBottom: space.lg }}
         keyboardDismissMode="interactive"
       />
-      <View style={{ flexDirection: 'row', gap: 8, padding: 10, paddingBottom: Math.max(insets.bottom, 10), borderTopWidth: 0.5, borderTopColor: colors.line }}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Add a comment"
-          placeholderTextColor={colors.ink.subtle}
-          multiline
-          style={{ flex: 1, minHeight: 40, maxHeight: 120, borderRadius: 20, backgroundColor: colors.raised, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, color: colors.ink.DEFAULT, fontSize: 16 }}
-        />
-        <PressableScale onPress={submit} disabled={!text.trim()} accessibilityLabel="Post comment" scaleTo={0.9}>
-          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: text.trim() ? colors.ink.DEFAULT : colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="send" size={18} color={text.trim() ? colors.ink.inverse : colors.ink.subtle} weight="bold" />
-          </View>
-        </PressableScale>
-      </View>
-    </KeyboardAvoidingView>
+    </ChatScreen>
   )
 }

@@ -37,6 +37,13 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       .gte('pod_date', days[0]!)
       .lte('pod_date', days[days.length - 1]!)
     if (cErr) throw cErr
+    const { data: rests, error: rErr } = await db
+      .from('rest_days')
+      .select('user_id, pod_date')
+      .eq('pod_id', pod.id)
+      .gte('pod_date', days[0]!)
+      .lte('pod_date', days[days.length - 1]!)
+    if (rErr) throw rErr
 
     let tree: TreeState = { hp: t.hp, maxHp: t.max_hp, growth: t.growth, status: t.status as TreeState['status'] }
     const streaks = new Map((members ?? []).map((m) => [m.user_id, m.streak]))
@@ -47,11 +54,13 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       // Only people who had joined by the end of that day count towards it.
       const active = (members ?? []).filter((m) => podDate(new Date(m.joined_at), pod.timezone) <= day)
       const contributed = new Set((contributions ?? []).filter((c) => c.pod_date === day).map((c) => c.user_id))
+      const rested = new Set((rests ?? []).filter((r) => r.pod_date === day).map((r) => r.user_id))
       const memberDays: MemberDay[] = active.map((m) => ({
         userId: m.user_id,
         streak: streaks.get(m.user_id) ?? 0,
         bestStreak: bests.get(m.user_id) ?? 0,
         contributed: contributed.has(m.user_id),
+        rested: rested.has(m.user_id),
       }))
       const r = settleDay(tree, memberDays)
 

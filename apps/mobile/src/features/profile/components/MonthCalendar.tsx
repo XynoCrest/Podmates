@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { alpha, colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import { View } from 'react-native'
@@ -11,10 +11,10 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 /** On-time days get darker with more pods (GitHub-style); a late-only day is faint; a missed day is empty. */
 const FILL = {
-  one: 'rgba(123, 214, 75, 0.38)',
-  two: 'rgba(123, 214, 75, 0.68)',
+  one: alpha(colors.leaf.DEFAULT, 0.38),
+  two: alpha(colors.leaf.DEFAULT, 0.68),
   more: colors.leaf.DEFAULT,
-  late: 'rgba(123, 214, 75, 0.13)',
+  late: alpha(colors.leaf.DEFAULT, 0.13),
   missed: colors.surface,
 } as const
 

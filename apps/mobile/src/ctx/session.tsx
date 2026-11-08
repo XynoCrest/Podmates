@@ -1,6 +1,6 @@
 /**
- * Session: email + password via Supabase Auth. Local builds offer one-tap demo
- * accounts on the sign-in screen (seeded in supabase/seed.sql).
+ * Session: email + password via Supabase Auth. Locally, the seeded demo accounts
+ * (supabase/seed.sql) sign in by hand, or with the `sign-in?demo=<name>` deep link.
  */
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'

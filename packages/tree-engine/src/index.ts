@@ -9,6 +9,9 @@
  *   < 70% snapped on time      → WILT:   tree loses HP, more the fewer showed up
  *   HP reaches 0               → the tree dies; the pod can replant
  * Every on-time snap extends its author's 🔥 streak.
+ *
+ * Rest days: a member who declared rest (and didn't snap) keeps their streak and is left out
+ * of that day's count, so the pod is not punished for it. If everyone rests, the tree holds.
  */
 
 export const RULES = {
@@ -42,6 +45,8 @@ export interface MemberDay {
   /** Longest streak before this day (defaults to the current streak). */
   bestStreak?: number
   contributed: boolean
+  /** Declared a rest day. Ignored if they snapped anyway. */
+  rested?: boolean
 }
 
 export interface MemberUpdate {
@@ -55,7 +60,10 @@ export interface MemberUpdate {
 export interface SettleResult {
   outcome: DayOutcome
   contributors: number
+  /** Members counted for the tree (everyone minus those resting). */
   members: number
+  /** Members who rested (and didn't snap). */
+  resting: number
   hpDelta: number
   maxHpDelta: number
   growthDelta: number
@@ -97,15 +105,20 @@ export function forecast(tree: TreeState, contributors: number, members: number)
   return { outcome, hpDelta: hpAfter - tree.hp, hpAfter, toSteady, toThrive }
 }
 
+/** Resting only counts when they didn't snap: a snap always wins. */
+const isResting = (m: MemberDay) => !!m.rested && !m.contributed
+
 export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
   const contributors = members.filter((m) => m.contributed).length
-  const total = members.length
+  const resting = members.filter(isResting).length
+  const total = members.length - resting
 
   if (tree.status === 'dead') {
     return {
       outcome: 'dormant',
       contributors,
       members: total,
+      resting,
       hpDelta: 0,
       maxHpDelta: 0,
       growthDelta: 0,
@@ -125,7 +138,7 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
   const next: TreeState = { hp, maxHp, growth: tree.growth + growthDelta, status: died ? 'dead' : 'alive' }
 
   const memberUpdates = members.map((m) => {
-    const streak = m.contributed ? m.streak + 1 : 0
+    const streak = m.contributed ? m.streak + 1 : isResting(m) ? m.streak : 0
     return {
       userId: m.userId,
       streak,
@@ -137,17 +150,19 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
     outcome,
     contributors,
     members: total,
+    resting,
     hpDelta: hp - tree.hp,
     maxHpDelta,
     growthDelta,
     died,
     tree: next,
     memberUpdates,
-    summary: summarize(outcome, contributors, total, hp - tree.hp, died),
+    summary: summarize(outcome, contributors, total, hp - tree.hp, died) + (resting && total ? ` ${resting} ${resting === 1 ? 'member rested' : 'members rested'}.` : ''),
   }
 }
 
 function summarize(outcome: DayOutcome, contributors: number, members: number, hpDelta: number, died: boolean) {
+  if (members === 0) return 'Everyone rested. The tree held steady.'
   if (died) return `Only ${contributors} of ${members} showed up. The tree didn't make it.`
   if (outcome === 'thrive') return `Everyone showed up! The tree grew${hpDelta > 0 ? ` +${hpDelta} HP` : ''}.`
   if (outcome === 'steady') return `${contributors} of ${members} showed up. The tree held steady.`

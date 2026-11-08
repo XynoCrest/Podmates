@@ -1,12 +1,12 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { useState } from 'react'
 import { TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Icon, PressableScale } from '@/components/ui'
 import { haptics } from '@/lib/haptics'
 
-/** Camera shortcut · message field · send. */
-export function Composer({ onSend, onCamera, sending }: { onSend: (text: string) => void; onCamera: () => void; sending?: boolean }) {
+/** Camera shortcut (chats) · message field · send. The one composer for chats and comments. */
+export function Composer({ onSend, onCamera, sending, placeholder = 'Message' }: { onSend: (text: string) => void; onCamera?: () => void; sending?: boolean; placeholder?: string }) {
   const insets = useSafeAreaInsets()
   const [text, setText] = useState('')
   const canSend = text.trim().length > 0 && !sending
@@ -17,16 +17,18 @@ export function Composer({ onSend, onCamera, sending }: { onSend: (text: string)
     setText('')
   }
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 10, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: colors.canvas, borderTopWidth: 0.5, borderTopColor: colors.line }}>
-      <PressableScale onPress={onCamera} accessibilityLabel="Snap a photo" scaleTo={0.9}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.sky.deep, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="cameraFill" size={19} color="#fff" />
-        </View>
-      </PressableScale>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: colors.canvas, borderTopWidth: 0.5, borderTopColor: colors.line }}>
+      {onCamera ? (
+        <PressableScale onPress={onCamera} accessibilityLabel="Snap a photo" scaleTo={0.9}>
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.sky.deep, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="cameraFill" size={19} color={colors.ink.DEFAULT} />
+          </View>
+        </PressableScale>
+      ) : null}
       <TextInput
         value={text}
         onChangeText={setText}
-        placeholder="Message"
+        placeholder={placeholder}
         placeholderTextColor={colors.ink.subtle}
         multiline
         style={{ flex: 1, minHeight: 40, maxHeight: 120, borderRadius: 20, backgroundColor: colors.raised, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, color: colors.ink.DEFAULT, fontSize: 16 }}

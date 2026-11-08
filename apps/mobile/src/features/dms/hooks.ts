@@ -45,9 +45,17 @@ export function usePodmates(podIds: string[]) {
     queryKey: qk.podmates(key),
     enabled: podIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.from('pod_members').select(`pod:pods(name), profile:profiles(${PERSON_FIELDS})`).in('pod_id', podIds)
+      const [{ data, error }, blocks] = await Promise.all([
+        supabase.from('pod_members').select(`pod:pods(name), profile:profiles(${PERSON_FIELDS})`).in('pod_id', podIds),
+        supabase.from('blocks').select('blocked_id').eq('blocker_id', me),
+      ])
       if (error) throw error
-      return data.map((m) => ({ pod: (m.pod as { name: string } | null)?.name ?? '', person: m.profile as Person }))
+      if (blocks.error) throw blocks.error
+      // People I blocked don't show up as podmates (we can't message each other).
+      const blocked = new Set(blocks.data.map((b) => b.blocked_id))
+      return data
+        .filter((m) => !blocked.has((m.profile as Person).id))
+        .map((m) => ({ pod: (m.pod as { name: string } | null)?.name ?? '', person: m.profile as Person }))
     },
   })
   const threads = useQuery({

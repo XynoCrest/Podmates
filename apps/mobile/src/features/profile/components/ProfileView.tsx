@@ -1,12 +1,15 @@
-import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
+import { alpha, avatar as avatarColors, colors, radii, space } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useState } from 'react'
-import { ActivityIndicator, Dimensions, ScrollView, Share, View } from 'react-native'
+import { Alert, Dimensions, Share, View } from 'react-native'
+import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, Icon, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, HERO_OVERLAP, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
+import { REPORT_REASONS, useBlocked, useDeleteAccount, useReport, useSetBlocked } from '../../safety/hooks'
+import { haptics } from '@/lib/haptics'
 import { compact } from '@/lib/format'
 import { showActionSheet } from '@/lib/actionSheet'
 import { imageUri } from '@/lib/images'
@@ -19,9 +22,9 @@ import { useHabitCards, useProfile, useProfileStory, useSharedPods, type HabitCa
 const SCREEN_W = Dimensions.get('window').width
 const BANNER_H = 128
 /** How far the rounded sheet below rides up over the banner (as on Home). */
-const OVERLAP = 22
+const OVERLAP = HERO_OVERLAP
 const AVATAR = 96
-const PAD = 16
+const PAD = space.gutter
 const GAP = 8
 const COL_W = (SCREEN_W - PAD * 2 - GAP) / 2
 /** Masonry rhythm: varied tile heights (× column width), Pinterest-style. */
@@ -42,9 +45,19 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const board = useProfileBoard(userId)
   const shared = useSharedPods(userId)
   const story = useProfileStory(userId)
+  const blocked = useBlocked(userId)
+  const setBlocked = useSetBlocked(userId)
+  const report = useReport()
+  const deleteAccount = useDeleteAccount()
+  // No top bar: once the banner scrolls away, a canvas strip fades in behind the status bar.
+  const scrollY = useSharedValue(0)
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y
+  })
+  const statusStrip = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [BANNER_H * 0.5, BANNER_H], [0, 1], 'clamp') }))
 
   const p = profile.data
-  if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}>{profile.isLoading ? <ActivityIndicator style={{ marginTop: 120 }} /> : null}</View>
+  if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading={profile.isLoading} error={profile.error} onRetry={() => void profile.refetch()} /></View>
 
   const shareMine = () => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })
 
@@ -54,7 +67,58 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
       options: [
         { label: 'Edit profile', onPress: () => router.push('/profile/edit') },
         { label: 'Share profile', onPress: shareMine },
-        { label: 'Sign out', destructive: true, onPress: () => void auth.signOut() },
+        { label: 'Sign out', onPress: () => void auth.signOut() },
+        { label: 'Delete account', destructive: true, onPress: confirmDelete },
+      ],
+    })
+
+  // Deleting is for good: photos, snaps, messages' authorship, pods you were alone in. Two steps.
+  const confirmDelete = () =>
+    Alert.alert('Delete your account?', 'Your profile, snaps, photos and messages are deleted for good. Pods you’re alone in are deleted too. This can’t be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete for good',
+        style: 'destructive',
+        onPress: () =>
+          deleteAccount.mutate(undefined, {
+            onError: (e) => {
+              haptics.error()
+              Alert.alert('Couldn’t delete your account', e.message)
+            },
+          }),
+      },
+    ])
+
+  // Someone else's profile: report or block them.
+  const openTheirMenu = () =>
+    showActionSheet({
+      options: [
+        {
+          label: 'Report',
+          onPress: () =>
+            showActionSheet({
+              title: `Why are you reporting @${p.username}?`,
+              options: REPORT_REASONS.map((r) => ({
+                label: r.label,
+                onPress: () =>
+                  report.mutate(
+                    { type: 'profile', id: userId, reason: r.key },
+                    { onSuccess: () => Alert.alert('Thanks for telling us', 'We’ll review it. You can also block them so you don’t see their snaps or messages.') },
+                  ),
+              })),
+            }),
+        },
+        blocked.data
+          ? { label: `Unblock @${p.username}`, onPress: () => setBlocked.mutate(false) }
+          : {
+              label: `Block @${p.username}`,
+              destructive: true,
+              onPress: () =>
+                Alert.alert(`Block @${p.username}?`, 'You won’t see their snaps, posts or messages, and you can’t message each other. They aren’t told.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Block', style: 'destructive', onPress: () => setBlocked.mutate(true, { onSuccess: () => haptics.success() }) },
+                ]),
+            },
       ],
     })
 
@@ -75,20 +139,25 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
         {/* Rides above the cover inside the scroll content, so pulling down reveals more of its colour, not the canvas. */}
         <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }} />
-        {/* Cover: their cover photo (or a wash of their avatar colour), from the top of the screen, under the status bar. */}
+        {/* Cover from the top of the screen (no top bar: the name is right below): their cover photo, or a wash of
+            their avatar colour. Back and menu float on it. */}
         <View style={{ height: insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }}>
           {p.banner_url ? (
             <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: insets.top + BANNER_H + OVERLAP }} contentFit="cover" transition={150} accessibilityLabel="Profile cover photo" />
           ) : (
-            <View style={{ flex: 1, backgroundColor: 'rgba(11, 12, 15, 0.35)' }} />
+            <View style={{ flex: 1, backgroundColor: alpha(colors.canvas, 0.35) }} />
           )}
+          <View style={{ position: 'absolute', top: insets.top + space.xs, left: PAD - space.xs, right: PAD - space.xs, flexDirection: 'row', justifyContent: 'space-between' }}>
+            {asTab ? <View /> : <IconButton icon="back" label="Back" onPress={goBack} tone="media" />}
+            {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} tone="media" /> : <IconButton icon="more" label="Report or block" onPress={openTheirMenu} tone="media" />}
+          </View>
         </View>
 
         {/* A sheet with rounded top corners riding up over the banner, like Home's; the avatar sits on its edge. */}
-        <View style={{ paddingHorizontal: PAD, marginTop: -OVERLAP, backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+        <View style={{ paddingHorizontal: PAD, marginTop: -OVERLAP, backgroundColor: colors.canvas, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet }}>
           {/* Centred stack: avatar overlapping the banner, name, @username, then Streak · Best · Snaps evenly spaced. */}
           <View style={{ alignItems: 'center' }}>
             {/* Avatar in its story ring (flame = something new, grey = seen or none); tap opens their story. */}
@@ -103,19 +172,19 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
                 </View>
               </PressableScale>
             </View>
-            <Text center style={{ marginTop: 10, fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }} numberOfLines={1}>
+            <Text variant="title" center style={{ marginTop: space.sm }} numberOfLines={1}>
               {p.display_name}
             </Text>
             <Text variant="subhead" center numberOfLines={1}>
               @{p.username}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', marginTop: space.lg }}>
             <View style={{ flex: 1 }}>
-              <Stat value={p.streak} label="Streak" icon="flame" />
+              <Stat value={p.streak} label="Top streak" icon="flame" />
             </View>
             <View style={{ flex: 1 }}>
-              <Stat value={p.best_streak} label="Best" icon="trophy" />
+              <Stat value={p.best_streak} label="Best ever" icon="trophy" />
             </View>
             <View style={{ flex: 1 }}>
               <Stat value={p.snap_count} label="Snaps" icon="camera" />
@@ -123,8 +192,16 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
 
           {!isMe ? (
-            <View style={{ flexDirection: 'row', marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', marginTop: space.lg }}>
               <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
+            </View>
+          ) : null}
+
+          {!isMe && blocked.data ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
+              <Icon name="warning" size={16} color={colors.ink.muted} />
+              <Text variant="subhead" style={{ flex: 1 }}>You blocked @{p.username}. Their snaps and messages are hidden.</Text>
+              <Button label="Unblock" variant="secondary" size="sm" onPress={() => setBlocked.mutate(false)} />
             </View>
           ) : null}
 
@@ -133,7 +210,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 
         {cards.data.length ? <HabitCards cards={cards.data} tappable={isMe} /> : null}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: space.xl, marginBottom: space.sm }}>
           <Text variant="overline">Board</Text>
           {isMe && cards.data.length ? <Button label="Pick snaps" icon="plus" variant="secondary" size="sm" onPress={pickSnaps} /> : null}
         </View>
@@ -144,31 +221,10 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
             <Column items={right} />
           </View>
         ) : (
-          <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>
-            {isMe ? 'Pick your best snaps to show here.' : 'Nothing shared yet.'}
-          </Text>
+          <ScreenState loading={board.isLoading} empty={{ icon: 'photo', title: isMe ? 'Your board is empty' : 'Nothing shared yet', body: isMe ? 'Pick your best snaps to show here.' : undefined }} />
         )}
-      </ScrollView>
-      {/* My profile menu: top right, floating over the cover. (PressableScale styles its inner view, so the wrapper does the positioning.) */}
-      {isMe ? (
-        <View style={{ position: 'absolute', top: insets.top + 6, right: 12 }}>
-          <PressableScale onPress={openMenu} accessibilityLabel="Profile menu" scaleTo={0.9}>
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(11, 12, 15, 0.45)', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="menu" size={18} color="#FFFFFF" weight="semibold" />
-            </View>
-          </PressableScale>
-        </View>
-      ) : null}
-      {/* Back (when pushed): floats over the cover, which now runs under the status bar. */}
-      {!asTab ? (
-        <View style={{ position: 'absolute', top: insets.top + 6, left: 12 }}>
-          <PressableScale onPress={goBack} accessibilityLabel="Back" scaleTo={0.9}>
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(11, 12, 15, 0.45)', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="back" size={18} color="#FFFFFF" weight="semibold" />
-            </View>
-          </PressableScale>
-        </View>
-      ) : null}
+      </Animated.ScrollView>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: colors.canvas }, statusStrip]} />
     </View>
   )
 }
@@ -191,7 +247,7 @@ function Column({ items }: { items: { snap: Snap; h: number }[] }) {
     <View style={{ flex: 1, gap: GAP }}>
       {items.map(({ snap, h }) => (
         <PressableScale key={snap.id} onPress={() => router.push({ pathname: '/snap/[id]', params: { id: snap.id } })} scaleTo={0.97} accessibilityLabel="Open snap">
-          <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: 14, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
+          <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: radii.card, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
         </PressableScale>
       ))}
     </View>
@@ -220,7 +276,7 @@ function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean
     }
   })
   return (
-    <View style={{ marginTop: 18 }}>
+    <View style={{ marginTop: space.xl }}>
       <CardCarousel
         items={items}
         index={Math.min(index, Math.max(0, items.length - 1))}
@@ -237,11 +293,11 @@ function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean
 function SharedPods({ names }: { names: string[] }) {
   const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
       <Icon name="people" size={16} color={colors.leaf.DEFAULT} />
-      <Text style={{ flex: 1, fontSize: 14, color: colors.ink.muted }}>
+      <Text variant="subhead" style={{ flex: 1 }}>
         {"You're both in "}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink.DEFAULT }}>{list}</Text>
+        <Text variant="subhead" style={{ fontWeight: '600', color: colors.ink.DEFAULT }}>{list}</Text>
       </Text>
     </View>
   )
@@ -250,12 +306,12 @@ function SharedPods({ names }: { names: string[] }) {
 function Stat({ value, label, icon }: { value: number; label: string; icon: 'flame' | 'trophy' | 'camera' }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text numeric style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 }}>
+      <Text variant="title" numeric>
         {compact(value)}
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
         <Icon name={icon} size={12} color={colors.ink.muted} />
-        <Text style={{ fontSize: 15, lineHeight: 19, color: colors.ink.muted }}>{label}</Text>
+        <Text variant="subhead">{label}</Text>
       </View>
     </View>
   )

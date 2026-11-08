@@ -12,7 +12,7 @@ export interface AvatarPerson {
 
 /**
  * Round avatar: photo if set, else initials on the person's colour.
- * `ring`: 'unseen' = solid flame (new snaps), 'seen' = quiet grey, undefined = none.
+ * `ring`: 'unseen' = hero green (new snaps), 'seen' = quiet grey, undefined = none.
  */
 export function Avatar({ person, size = 40, ring: ringState }: { person: AvatarPerson; size?: number; ring?: 'unseen' | 'seen' }) {
   const bg = avatarColors[person.avatar_color as keyof typeof avatarColors] ?? avatarColors.leaf
@@ -33,5 +33,5 @@ export function Avatar({ person, size = 40, ring: ringState }: { person: AvatarP
   const inner = (
     <View style={{ padding: gap, borderRadius: outer / 2, backgroundColor: colors.canvas }}>{face}</View>
   )
-  return <View style={{ padding: stroke, borderRadius: outer / 2, backgroundColor: ringState === 'unseen' ? colors.flame.DEFAULT : colors.line }}>{inner}</View>
+  return <View style={{ padding: stroke, borderRadius: outer / 2, backgroundColor: ringState === 'unseen' ? colors.hero : colors.line }}>{inner}</View>
 }

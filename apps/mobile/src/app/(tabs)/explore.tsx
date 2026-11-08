@@ -1,13 +1,16 @@
-import { colors } from '@podmates/ui-tokens'
-import { useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
+import { colors, hero } from '@podmates/ui-tokens'
+import { Image } from 'expo-image'
+import { useFocusEffect } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import { useCallback, useMemo, useState } from 'react'
+import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { EmptyState, Icon, PressableScale, Text } from '@/components/ui'
-import { CommunityCircles, SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
+import { HeroHeading, HeroSheet, ScreenState, TabHero } from '@/components/ui'
+import { SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
 import { PostCard } from '@/features/explore/components/PostCard'
-import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
-import { showActionSheet } from '@/lib/actionSheet'
-import { haptics } from '@/lib/haptics'
+import { useFeed, type FeedSort } from '@/features/explore/hooks'
+
+const PEAS = require('../../../assets/images/home-peas.png')
 
 const SORTS: { key: FeedSort; label: string }[] = [
   { key: 'hot', label: 'Active' },
@@ -15,49 +18,30 @@ const SORTS: { key: FeedSort; label: string }[] = [
   { key: 'top', label: 'Top' },
 ]
 
-/** Feed: search + "Home ⌄" switcher, community circles, Active/New/Top tabs, then cards separated by black gutters. */
+/** Feed: green hero (heading, search, peas), then the sheet: Active/New/Top tabs, cards. */
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets()
-  const [mode, setMode] = useState<FeedMode>('home')
   const [sort, setSort] = useState<FeedSort>('hot')
-  const feed = useFeed(mode, sort)
-  const communities = useCommunities()
+  const feed = useFeed('popular', sort)
   const [query, setQuery] = useState('')
+  const [focused, setFocused] = useState(true)
+  const [pastHero, setPastHero] = useState(false)
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true)
+      return () => setFocused(false)
+    }, []),
+  )
   // Search narrows both the circles and the posts already loaded, by name, title or body.
   const q = query.trim().toLowerCase()
-  const shownCommunities = useMemo(() => communities.data?.filter((c) => !q || c.name.toLowerCase().includes(q)), [communities.data, q])
   const posts = useMemo(
     () => (q ? feed.data?.filter((p) => [p.title, p.body, p.community.name].some((t) => t.toLowerCase().includes(q))) : feed.data),
     [feed.data, q],
   )
 
-  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) =>
-    showActionSheet({
-      title,
-      options: options.map((o) => ({
-        label: o.label,
-        onPress: () => {
-          haptics.select()
-          onPick(o.value)
-        },
-      })),
-    })
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 }}>
-        <SearchBar value={query} onChange={setQuery} placeholder="Search posts, communities" />
-        <PressableScale
-          onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
-          accessibilityLabel={`Feed: ${mode}`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.raised }}>
-            <Text style={{ fontSize: 15, fontWeight: '600' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
-            <Icon name="chevronDown" size={12} color={colors.ink.muted} weight="bold" />
-          </View>
-        </PressableScale>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      {focused ? <StatusBar style={pastHero ? 'light' : 'dark'} /> : null}
       <FlatList
         data={posts}
         keyExtractor={(p) => p.id}
@@ -66,22 +50,36 @@ export default function ExploreScreen() {
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => setPastHero(e.nativeEvent.contentOffset.y > 120)}
+        scrollEventThrottle={32}
         ListHeaderComponent={
           <View>
-            {shownCommunities?.length ? <CommunityCircles communities={shownCommunities} /> : null}
-            <UnderlineTabs tabs={SORTS} value={sort} onChange={setSort} />
+            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="people." oneLine />}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SearchBar value={query} onChange={setQuery} placeholder="Search posts" />
+                <Image
+                  source={PEAS}
+                  style={{ width: 156, height: 92, marginTop: -18, transform: [{ rotate: '-30deg' }] }}
+                  contentFit="contain"
+                  accessible={false}
+                />
+              </View>
+            </TabHero>
+            <HeroSheet>
+              <UnderlineTabs tabs={SORTS} value={sort} onChange={setSort} />
+            </HeroSheet>
           </View>
         }
         ListEmptyComponent={
-          feed.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
+          feed.isLoading || feed.error ? (
+            <ScreenState loading={feed.isLoading} error={feed.error} onRetry={() => void feed.refetch()} />
           ) : q ? (
-            <EmptyState icon="explore" title="Nothing matches" body={`No posts or communities for "${query.trim()}"`} />
+            <ScreenState empty={{ icon: 'explore', title: 'Nothing matches', body: `No posts for "${query.trim()}"` }} />
           ) : (
-            <EmptyState icon="explore" title="Your home feed is empty" body="Join a community above, or switch to Popular" />
+            <ScreenState empty={{ icon: 'explore', title: 'No posts yet', body: 'Join a community and be the first to post.' }} />
           )
         }
-        refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
+        refreshControl={<RefreshControl tintColor={hero.ink} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
       />
     </View>

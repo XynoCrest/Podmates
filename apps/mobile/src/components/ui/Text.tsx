@@ -8,6 +8,8 @@ const VARIANTS = StyleSheet.create({
   headline: { fontSize: 19, lineHeight: 24, fontWeight: '600', color: colors.ink.DEFAULT },
   body: { fontSize: 16, lineHeight: 22, color: colors.ink.DEFAULT },
   callout: { fontSize: 15, lineHeight: 20, color: colors.ink.DEFAULT },
+  // Row titles, field labels, small bold names: body size, semibold.
+  label: { fontSize: 16, lineHeight: 21, fontWeight: '600', color: colors.ink.DEFAULT },
   subhead: { fontSize: 14, lineHeight: 19, color: colors.ink.muted },
   caption: { fontSize: 12, lineHeight: 16, color: colors.ink.muted },
   // Section label: sentence case, quiet. Sits closer to its own items than to the section above.

@@ -1,7 +1,7 @@
 /**
  * The single chokepoint for calls to apps/api. Most data does NOT come through
  * here — the app reads and writes Supabase directly under RLS. The API is only
- * for work that needs server privileges (tree replanting, local demo helpers).
+ * for work that needs server privileges (tree replanting, account deletion, local demo helpers).
  */
 import { OpenWindowResponse, PairReplantResponse, PairSettleResponse, ReplantResponse, SettleResponse, type ApiErrorCode } from '@podmates/shared'
 import { env } from './env'
@@ -19,7 +19,7 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 15_000
 
-async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
   if (!env) throw new ApiError('App is not configured', 'internal', 0)
   const { data } = await supabase.auth.getSession()
   const headers: Record<string, string> = { Accept: 'application/json' }
@@ -67,5 +67,9 @@ export const api = {
   /** Local only: close today now and settle this pair's tree. */
   async endPairDay(userId: string) {
     return PairSettleResponse.parse(await request('POST', `/v1/dev/podmates/${userId}/end-day`, {}))
+  },
+  /** Delete my account, photos and data for good. */
+  async deleteAccount() {
+    await request('DELETE', '/v1/me')
   },
 }

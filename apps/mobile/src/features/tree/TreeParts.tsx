@@ -1,18 +1,33 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, radii, space } from '@podmates/ui-tokens'
 import type { ReactNode } from 'react'
 import { View } from 'react-native'
-import { Avatar, Icon, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, HealthBar, Icon, Section, Text } from '@/components/ui'
 import { firstName } from '@/lib/format'
+import { shareColor } from './healthShare'
 import type { PodDay } from './hooks'
 
 /** Pieces shared by the pod tree screen and the podmate pair tree screen. */
 
-export function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean }[] }) {
+export function MemberRing({
+  members,
+}: {
+  members: {
+    id: string
+    display_name: string
+    avatar_color: string
+    avatar_url: string | null
+    contributedToday: boolean
+    restingToday?: boolean
+    share?: number
+    fair?: number
+    dragging?: boolean
+  }[]
+}) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 8 }}>
       {members.map((m) => (
-        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday ? 1 : 0.55 }}>
-          <View>
+        <View key={m.id} style={{ alignItems: 'center', gap: 4 }}>
+          <View style={{ opacity: m.contributedToday || m.restingToday ? 1 : 0.55 }}>
             <Avatar person={m} size={40} />
             <View
               style={{
@@ -24,37 +39,71 @@ export function MemberRing({ members }: { members: { id: string; display_name: s
                 borderRadius: 10,
                 borderWidth: 2,
                 borderColor: colors.canvas,
-                backgroundColor: m.contributedToday ? colors.leaf.DEFAULT : colors.raised,
+                backgroundColor: m.contributedToday ? colors.leaf.DEFAULT : m.restingToday ? colors.sky.DEFAULT : colors.raised,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Icon name={m.contributedToday ? 'check' : 'clock'} size={10} color={m.contributedToday ? colors.ink.inverse : colors.ink.subtle} weight="bold" />
+              <Icon name={m.contributedToday ? 'check' : m.restingToday ? 'moon' : 'clock'} size={10} color={m.contributedToday || m.restingToday ? colors.ink.inverse : colors.ink.subtle} weight="bold" />
             </View>
           </View>
-          <Text variant="caption">{firstName(m.display_name)}</Text>
+          <Text variant="caption">{m.restingToday ? 'Resting' : firstName(m.display_name)}</Text>
+          {m.share != null ? (
+            <Text numeric style={{ fontWeight: '800', fontSize: 16, color: shareColor(m.share, m.fair ?? m.share) }}>
+              {m.share}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>
   )
 }
 
+/** Health as a percent, parked on the tree's top-right like a sticker. */
+export function HealthStamp({ percent }: { percent: number }) {
+  return (
+    <Text
+      numeric
+      style={{
+        fontSize: 36,
+        lineHeight: 40,
+        fontWeight: '800',
+        letterSpacing: -1.2,
+        color: shareColor(percent, 100),
+        textShadowColor: 'rgba(0,0,0,0.55)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      }}
+    >
+      {percent}%
+    </Text>
+  )
+}
+
 export function Headline({ children }: { children: ReactNode }) {
-  return <Text style={{ fontSize: 26, lineHeight: 32, fontWeight: '600', textAlign: 'center', color: colors.ink.DEFAULT, letterSpacing: -0.2 }}>{children}</Text>
+  return (
+    <Text variant="title" center>
+      {children}
+    </Text>
+  )
 }
 
 export function Hl({ children, color }: { children: ReactNode; color: string }) {
-  return <Text style={{ color, fontSize: 26, lineHeight: 32, fontWeight: '600' }}>{children}</Text>
+  return (
+    <Text variant="title" style={{ color }}>
+      {children}
+    </Text>
+  )
 }
 
 export function StatCell({ label, value, sub, children }: { label: string; value: string; sub: string; children?: ReactNode }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12 }}>
+    <View style={{ flex: 1, alignItems: 'center', paddingVertical: space.lg, paddingHorizontal: space.md, gap: space.xs }}>
       <Text variant="overline">{label}</Text>
-      <Text numeric style={{ fontWeight: '600', fontSize: 24, lineHeight: 28, marginTop: 4 }}>
+      <Text variant="title" numeric>
         {value}
       </Text>
-      <Text variant="caption" style={{ marginTop: 4 }}>
+      <Text variant="caption">
         {sub}
       </Text>
       {children}
@@ -95,12 +144,37 @@ export function WeekStrip({ days }: { days: PodDay[] }) {
   )
 }
 
-export function DevButton({ label, onPress }: { label: string; onPress: () => void }) {
+/** Stage and health, side by side in one card. */
+export function TreeStats({ stage, hp, maxHp, ratio, snapped }: { stage: { name: string; level: number; levels: number }; hp: number; maxHp: number; ratio: number; snapped: string }) {
   return (
-    <PressableScale onPress={onPress} flex accessibilityLabel={label}>
-      <View style={{ height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink.muted }}>{label}</Text>
-      </View>
-    </PressableScale>
+    <View style={{ flexDirection: 'row', borderRadius: radii.card, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>
+      <StatCell label="Stage" value={stage.name} sub={`Level ${stage.level} of ${stage.levels}`} />
+      <View style={{ width: 1, backgroundColor: colors.line }} />
+      <StatCell label="Health" value={`${hp}/${maxHp}`} sub={snapped}>
+        <View style={{ alignSelf: 'stretch', marginTop: space.sm }}>
+          <HealthBar ratio={ratio} height={10} />
+        </View>
+      </StatCell>
+    </View>
+  )
+}
+
+/** Local-only buttons to move the game along while testing. */
+export function DemoTools({ actions, error }: { actions: { label: string; onPress: () => void }[]; error?: Error | null }) {
+  return (
+    <View style={{ padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
+      <Section label="Demo tools · local only">
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          {actions.map((a) => (
+            <Button key={a.label} label={a.label} variant="secondary" size="sm" flex onPress={a.onPress} />
+          ))}
+        </View>
+        {error ? (
+          <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
+            {error.message}
+          </Text>
+        ) : null}
+      </Section>
+    </View>
   )
 }

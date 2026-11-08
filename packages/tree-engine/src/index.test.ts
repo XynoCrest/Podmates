@@ -106,3 +106,38 @@ describe('perfectStreak', () => {
     expect(outcomeFor(1, 2)).toBe('wilt')
   })
 })
+
+describe('rest days', () => {
+  const tree = { hp: 80, maxHp: 100, growth: 2, status: 'alive' as const }
+  const m = (userId: string, contributed: boolean, rested = false, streak = 5): MemberDay => ({ userId, streak, contributed, rested })
+
+  it('keeps a resting member’s streak and leaves them out of the count', () => {
+    const r = settleDay(tree, [m('a', true), m('b', true), m('c', false, true)])
+    expect(r.outcome).toBe('thrive') // 2 of 2 counted
+    expect(r.members).toBe(2)
+    expect(r.resting).toBe(1)
+    expect(r.memberUpdates.find((u) => u.userId === 'c')!.streak).toBe(5)
+    expect(r.summary).toContain('1 member rested')
+  })
+
+  it('a snap on a rest day counts as a snap', () => {
+    const r = settleDay(tree, [m('a', true, true), m('b', true)])
+    expect(r.resting).toBe(0)
+    expect(r.members).toBe(2)
+    expect(r.memberUpdates.find((u) => u.userId === 'a')!.streak).toBe(6)
+  })
+
+  it('a miss still resets the streak and still counts', () => {
+    const r = settleDay(tree, [m('a', true), m('b', false), m('c', false, true)])
+    expect(r.members).toBe(2)
+    expect(r.outcome).toBe('wilt') // 1 of 2
+    expect(r.memberUpdates.find((u) => u.userId === 'b')!.streak).toBe(0)
+  })
+
+  it('everyone resting holds the tree steady', () => {
+    const r = settleDay(tree, [m('a', false, true), m('b', false, true)])
+    expect(r.outcome).toBe('steady')
+    expect(r.hpDelta).toBe(0)
+    expect(r.summary).toBe('Everyone rested. The tree held steady.')
+  })
+})

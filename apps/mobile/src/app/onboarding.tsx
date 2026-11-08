@@ -1,19 +1,16 @@
-import { colors } from '@podmates/ui-tokens'
+import { alpha, colors, intro, space } from '@podmates/ui-tokens'
 import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useState, type ReactNode } from 'react'
-import { ActivityIndicator, Dimensions, ScrollView, View } from 'react-native'
+import { Dimensions, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, HealthBar, Icon, IconButton, PressableScale, SymbolIcon, Text, type IconName } from '@/components/ui'
+import { Button, HealthBar, HERO_OVERLAP, Icon, IconButton, IntroHeading, IntroSheet, ListRow, PressableScale, RowIcon, SymbolIcon, Text, type IconName } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useCommunities } from '@/features/explore/hooks'
 import { useHabits } from '@/features/pods/hooks'
 import type { Profile } from '@/features/profile/hooks'
-import { HairlineFigure, type HairlineDrawing } from '@/features/tree/GroveFigure'
-import { GROVE_ASPECT, GROVE_PATHS, GROVE_VIEWBOX } from '@/features/tree/grovePaths'
-import { ONBOARDING_FIGURES } from '@/features/tree/onboardingPaths'
 import { haptics } from '@/lib/haptics'
 import { qk } from '@/lib/keys'
 import { supabase } from '@/lib/supabase'
@@ -33,15 +30,19 @@ const SCREEN_H = Dimensions.get('window').height
 const MAX_FIG_H = Math.round(SCREEN_H * 0.3)
 const COMPACT_FIG_H = 56
 /** The habit list's height: the sheet shows most of it and scrolls the rest. */
-const LIST_H = Math.round(SCREEN_H * 0.52)
-const GROVE: HairlineDrawing = { viewBox: GROVE_VIEWBOX, aspect: GROVE_ASPECT, paths: GROVE_PATHS }
-/** Onboarding's hero: black ground, green lines and ink. */
-const GREEN = '#00AB5A'
-const TONE = { bg: '#000000', ink: GREEN, soft: 'rgba(0, 171, 90, 0.8)', faint: 'rgba(0, 171, 90, 0.3)' }
-/** Home's hero heading. */
-const HEAD = { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: TONE.ink } as const
-/** How far the sheet rides up over the hero (as on Home). */
-const OVERLAP = 22
+const LIST_H = Math.round(SCREEN_H * 0.4)
+const GIFS = {
+  snap: { src: require('../../assets/onboarding/snap.gif'), aspect: 1 },
+  streak: { src: require('../../assets/onboarding/streak.gif'), aspect: 1536 / 1024 },
+  tree: { src: require('../../assets/onboarding/tree.gif'), aspect: 533 / 800, scale: 1.44 },
+  habits: { src: require('../../assets/onboarding/habits.gif'), aspect: 1 },
+  peas: { src: require('../../assets/onboarding/peas.gif'), aspect: 800 / 533 },
+}
+type Figure = { src: number; aspect: number; scale?: number }
+/** Onboarding's hero: the intro tone (black ground, brand-green ink), as on sign-in. */
+const GREEN = colors.leaf.DEFAULT
+const TONE = intro
+const OVERLAP = HERO_OVERLAP
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 /**
@@ -77,8 +78,14 @@ export default function Onboarding() {
     try {
       const toJoin = picked.flatMap(communitiesFor).filter((c) => !c.joined)
       if (toJoin.length) {
-        const { error: jErr } = await supabase.from('community_members').insert(toJoin.map((c) => ({ community_id: c.id })))
-        if (jErr) throw jErr
+        const { error: jErr } = await supabase
+          .from('community_members')
+          .upsert(
+            toJoin.map((c) => ({ community_id: c.id, user_id: me })),
+            { onConflict: 'community_id,user_id', ignoreDuplicates: true },
+          )
+        // Skip-for-now still marks onboarding done even if a community join fails.
+        if (jErr && next) throw jErr
       }
       const onboardedAt = new Date().toISOString()
       const { error: pErr } = await supabase.from('profiles').update({ onboarded_at: onboardedAt }).eq('id', me)
@@ -92,7 +99,7 @@ export default function Onboarding() {
       if (next) router.push({ pathname: '/pod/new', params: { tab: next, ...(picked[0] ? { habit: picked[0] } : {}) } })
     } catch (e) {
       haptics.error()
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e && typeof e.message === 'string' ? e.message : 'Something went wrong')
     } finally {
       setSaving(false)
     }
@@ -106,7 +113,7 @@ export default function Onboarding() {
     />
   )
   const next = (label = 'Next') => (
-    <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+    <View style={{ paddingHorizontal: space.gutter, paddingTop: 8 }}>
       <Button label={label} size="lg" onPress={() => go(step + 1)} />
     </View>
   )
@@ -114,7 +121,7 @@ export default function Onboarding() {
   // 1 · The window — the pod's snap time, and the camera that answers it.
   if (step === 0) {
     return (
-      <HeroScreen top={top} lead="Snap at your" bright="pod’s time." sub="Each pod picks a daily snap time. When the window opens, snap a photo of your habit." figure={ONBOARDING_FIGURES.snap}>
+      <HeroScreen top={top} lead="Snap at your" bright="pod’s time." sub="Each pod picks a daily snap time. When the window opens, snap a photo of your habit." figure={GIFS.snap}>
         {next()}
       </HeroScreen>
     )
@@ -123,8 +130,8 @@ export default function Onboarding() {
   // 2 · The streak — what this week looked like.
   if (step === 1) {
     return (
-      <HeroScreen top={top} lead="On time keeps" bright="your streak." sub="Snaps in the window count. Missed it? Snap anyway: late snaps still show your pod you turned up." figure={ONBOARDING_FIGURES.streak}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, gap: 14 }}>
+      <HeroScreen top={top} lead="On time keeps" bright="your streak." sub="Snaps in the window count. Missed it? Snap anyway: late snaps still show your pod you turned up." figure={GIFS.streak}>
+        <View style={{ paddingHorizontal: space.gutter, paddingTop: 8, gap: 14 }}>
           <View style={{ gap: 8 }} accessible accessibilityLabel="A 12-day streak: on time Monday to Saturday, today still open.">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon name="flame" size={16} color={colors.flame.DEFAULT} />
@@ -154,8 +161,8 @@ export default function Onboarding() {
   // 3 · The tree — one per pod, grown by everyone.
   if (step === 2) {
     return (
-      <HeroScreen top={top} lead="Grow a tree" bright="together." sub="Your pod shares one tree. It grows when everyone shows up and loses health when too many miss." figure={ONBOARDING_FIGURES.pod}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, gap: 14 }}>
+      <HeroScreen top={top} lead="Grow a tree" bright="together." sub="Your pod shares one tree. It grows when everyone shows up and loses health when too many miss." figure={GIFS.tree}>
+        <View style={{ paddingHorizontal: space.gutter, paddingTop: 8, gap: 14 }}>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontSize: 15, color: colors.ink.muted }}>Tree health</Text>
@@ -180,14 +187,14 @@ export default function Onboarding() {
   // 4 · Habits — a short hero, then a list like Home's pod rows.
   if (step === 3) {
     return (
-      <HeroScreen top={top} lead="What are you" bright="working on?" sub="We’ll add you to each habit’s community on Explore." figure={ONBOARDING_FIGURES.habits} compact>
+      <HeroScreen top={top} lead="What are you" bright="working on?" sub="We’ll add you to each habit’s community on Explore." figure={GIFS.habits}>
         <ScrollView style={{ flexGrow: 0, maxHeight: LIST_H }} contentContainerStyle={{ paddingVertical: 4 }}>
           {habits.data?.map((h) => {
             const on = picked.includes(h.id)
             return (
               <PressableScale key={h.id} onPress={() => toggle(h.id)} scaleTo={0.98} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={h.name}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? 'rgba(0, 171, 90, 0.16)' : colors.raised }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.gutter, paddingVertical: 8, gap: 12 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? alpha(GREEN, 0.16) : colors.raised }}>
                     <SymbolIcon name={h.sf_symbol} size={20} color={on ? GREEN : colors.ink.muted} />
                   </View>
                   <Text variant="headline" numberOfLines={1} style={{ flex: 1, fontSize: 17 }}>
@@ -206,7 +213,7 @@ export default function Onboarding() {
 
   // 5 · The pod — the two ways in, as rows.
   return (
-    <HeroScreen top={top} lead="Plant your" bright="first tree." sub="A pod is a few friends with one daily snap time and one tree." figure={GROVE}>
+    <HeroScreen top={top} lead="Plant your" bright="first tree." sub="A pod is a few friends with one daily snap time and one tree." figure={GIFS.peas}>
       <ActionRow
         icon="plus"
         title="Start a pod"
@@ -214,8 +221,8 @@ export default function Onboarding() {
         onPress={() => void finish('create')}
         busy={saving}
       />
-      <ActionRow icon="personAdd" title="Join with a code" detail="A friend sent you an invite code." onPress={() => void finish('join')} busy={saving} />
-      <View style={{ paddingHorizontal: 20, paddingTop: 6 }}>
+      <ActionRow icon="personAdd" title="Join with code" detail="A friend sent you an invite code." onPress={() => void finish('join')} busy={saving} />
+      <View style={{ paddingHorizontal: space.gutter, paddingTop: 6 }}>
         <Button label="Skip for now" variant="ghost" onPress={() => void finish()} disabled={saving} />
         {error ? (
           <Text variant="caption" center style={{ color: colors.danger.DEFAULT }}>
@@ -228,47 +235,39 @@ export default function Onboarding() {
 }
 
 /**
- * Every step's frame, from Home: a black hero with a two-tone heading and a Hairline
- * figure, then the dark sheet riding up over it with the step's content. The figure
- * takes whatever height the sheet leaves. `compact` puts it beside the heading instead.
+ * Every step's frame: a black hero with the two-tone heading and a looping GIF
+ * in the leftover space. `compact` puts the GIF beside the heading instead.
  */
-function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top: ReactNode; lead: string; bright: string; sub: string; figure: HairlineDrawing; compact?: boolean; children: ReactNode }) {
+function HeroScreen({ top, lead, bright, sub, figure, compact, children }: { top: ReactNode; lead: string; bright: string; sub: string; figure: Figure; compact?: boolean; children: ReactNode }) {
   const insets = useSafeAreaInsets()
   const [box, setBox] = useState({ w: 0, h: 0 })
-  const figH = Math.max(0, Math.min(box.h - 8, (box.w - 40) / figure.aspect, MAX_FIG_H))
-  const heading = (
-    <View style={{ gap: 8, flexShrink: 1 }}>
-      <View accessible accessibilityRole="header" accessibilityLabel={`${lead} ${bright}`}>
-        <Text style={HEAD}>{lead}</Text>
-        <Text style={[HEAD, { color: '#FFFFFF' }]}>{bright}</Text>
-      </View>
-      <Text style={{ fontSize: 15, lineHeight: 21, color: TONE.soft }}>{sub}</Text>
-    </View>
-  )
+  const figH = Math.max(0, Math.min(box.h - 8, (box.w - 40) / figure.aspect, MAX_FIG_H * (figure.scale ?? 1)))
+  const gif = (h: number) => <Image source={figure.src} style={{ width: h * figure.aspect, height: h }} contentFit="contain" accessible={false} />
+  const heading = <IntroHeading lead={lead} bright={bright} sub={sub} />
   return (
     <View style={{ flex: 1, backgroundColor: TONE.bg }}>
       <StatusBar style="light" />
       <View style={{ flex: 1, paddingTop: insets.top }}>
         {top}
         {compact ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: OVERLAP + 16, gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.gutter, paddingTop: 8, paddingBottom: OVERLAP + 16, gap: 12 }}>
             <View style={{ flex: 1 }}>{heading}</View>
-            <HairlineFigure drawing={figure} height={COMPACT_FIG_H} ground={TONE.bg} ink={TONE.ink} />
+            {gif(COMPACT_FIG_H)}
           </View>
         ) : (
           <>
-            <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>{heading}</View>
+            <View style={{ paddingHorizontal: space.gutter, paddingTop: 12 }}>{heading}</View>
             <View
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: OVERLAP }}
               onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height - OVERLAP })}
               accessible={false}
             >
-              {figH > 40 ? <HairlineFigure drawing={figure} height={figH} ground={TONE.bg} ink={TONE.ink} /> : null}
+              {figH > 40 ? gif(figH) : null}
             </View>
           </>
         )}
       </View>
-      <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: colors.raised, marginTop: -OVERLAP, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>{children}</View>
+      <IntroSheet bottomInset={insets.bottom}>{children}</IntroSheet>
     </View>
   )
 }
@@ -309,33 +308,16 @@ function Faces({ names, size, dimLast }: { names: (keyof typeof FACES)[]; size: 
   )
 }
 
-/** One way into a pod, laid out like Home's pod rows. */
+/** One way into a pod: the shared list row. */
 function ActionRow({ icon, title, detail, onPress, busy }: { icon: IconName; title: string; detail: string; onPress: () => void; busy: boolean }) {
-  return (
-    <PressableScale onPress={onPress} disabled={busy} scaleTo={0.98} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 12 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.raised }}>
-          <Icon name={icon} size={20} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <Text variant="headline" style={{ fontSize: 17 }}>
-            {title}
-          </Text>
-          <Text numberOfLines={2} style={{ fontSize: 15, lineHeight: 20, color: colors.ink.muted }}>
-            {detail}
-          </Text>
-        </View>
-        {busy ? <ActivityIndicator /> : <Icon name="chevronRight" size={16} color={colors.ink.muted} />}
-      </View>
-    </PressableScale>
-  )
+  return <ListRow leading={<RowIcon name={icon} size={48} />} title={title} detail={detail} detailLines={2} onPress={onPress} busy={busy} chevron accessibilityLabel={`${title}. ${detail}`} />
 }
 
 function Legend({ swatch, label }: { swatch: ReactNode; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       {swatch}
-      <Text style={{ fontSize: 14, color: colors.ink.muted }}>{label}</Text>
+      <Text variant="subhead">{label}</Text>
     </View>
   )
 }

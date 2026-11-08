@@ -1,4 +1,4 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, overlay, space } from '@podmates/ui-tokens'
 import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from 'expo-camera'
 import * as Device from 'expo-device'
 import * as ImagePicker from 'expo-image-picker'
@@ -6,7 +6,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, Icon, PressableScale, Text } from '@/components/ui'
+import { Button, Chip, EmptyState, Icon, IconButton, PressableScale } from '@/components/ui'
 import { needsSnap, podWindow, useMyPods } from '@/features/pods/hooks'
 import { setPendingCapture } from '@/features/snaps/pendingCapture'
 import { haptics } from '@/lib/haptics'
@@ -40,6 +40,9 @@ export default function CameraScreen() {
   const goSend = (uri: string) => {
     setPendingCapture(uri)
     router.push({ pathname: '/send', params: { podId: podId ?? '' } })
+    // "Snap now" opens this tab with a pod; forget it once used, so tapping the Snap tab later
+    // picks pods by open window instead of the old one.
+    if (podId) router.setParams({ podId: undefined })
   }
 
   async function shoot() {
@@ -62,7 +65,7 @@ export default function CameraScreen() {
   const useDemoPhoto = () => goSend(`https://picsum.photos/seed/${Date.now()}/1080/1440`)
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: overlay.media }}>
       {HAS_CAMERA && permission?.granted && focused ? (
         <CameraView ref={camera} style={{ flex: 1 }} facing={facing} flash={flash} mirror={facing === 'front'} />
       ) : (
@@ -90,8 +93,8 @@ export default function CameraScreen() {
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 84, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' }}>
           <RoundButton icon="photo" label="Choose from library" onPress={pickFromLibrary} />
           <PressableScale onPress={shoot} scaleTo={0.9} accessibilityLabel="Take snap" disabled={busy}>
-            <View style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 6, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: busy ? colors.ink.muted : 'rgba(255,255,255,0.25)' }} />
+            <View style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 6, borderColor: overlay.ink, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: busy ? colors.ink.muted : overlay.track }} />
             </View>
           </PressableScale>
           <RoundButton icon="flip" label="Flip camera" onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} />
@@ -110,37 +113,28 @@ function OpenWindowPill({ podId }: { podId?: string }) {
   const w = podWindow(target, now)
   const label = target.meContributedToday ? `${target.name} · done today` : w.status === 'open' ? `${target.name} · ${w.closesInMin}m left` : `${target.name} · window closed`
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', maxWidth: '75%' }}>
-      <Icon name="timer" size={14} color={w.status === 'open' && !target.meContributedToday ? colors.flame.DEFAULT : '#fff'} weight="semibold" />
-      <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-        {label}
-      </Text>
+    <View style={{ maxWidth: '75%' }}>
+      <Chip size="md" icon="timer" label={label} color={w.status === 'open' && !target.meContributedToday ? colors.flame.DEFAULT : overlay.ink} bg={overlay.scrim} />
     </View>
   )
 }
 
 function RoundButton({ icon, label, onPress }: { icon: Parameters<typeof Icon>[0]['name']; label: string; onPress: () => void }) {
   return (
-    <PressableScale onPress={onPress} scaleTo={0.9} accessibilityLabel={label}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={20} color="#fff" weight="medium" />
-      </View>
-    </PressableScale>
+    <IconButton icon={icon} label={label} onPress={onPress} tone="media" />
   )
 }
 
 function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' | 'permission' | 'loading'; onAllow: () => void; onLibrary: () => void; onDemo: () => void }) {
   if (reason === 'loading') return <View style={{ flex: 1 }} />
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12, backgroundColor: colors.sunken }}>
-      <Icon name="camera" size={44} color={colors.ink.subtle} />
-      <Text variant="headline" center>
-        {reason === 'simulator' ? "The Simulator doesn't have a camera" : 'Podmates needs the camera to snap'}
-      </Text>
-      <Text variant="subhead" center>
-        {reason === 'simulator' ? 'Pick a photo or use a demo shot — everything else works exactly like on a phone.' : 'Your snaps are proof for your pod. Nothing is recorded until you press the shutter.'}
-      </Text>
-      <View style={{ alignSelf: 'stretch', gap: 8, marginTop: 12 }}>
+    <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: space.gutter, backgroundColor: colors.sunken }}>
+      <EmptyState
+        icon="camera"
+        title={reason === 'simulator' ? "The Simulator doesn't have a camera" : 'Podmates needs the camera to snap'}
+        body={reason === 'simulator' ? 'Pick a photo or use a demo shot — everything else works exactly like on a phone.' : 'Your snaps are proof for your pod. Nothing is recorded until you press the shutter.'}
+      />
+      <View style={{ gap: space.sm }}>
         {reason === 'permission' ? <Button label="Allow camera" icon="camera" onPress={onAllow} /> : null}
         <Button label="Choose from library" icon="photo" variant="secondary" onPress={onLibrary} />
         {reason === 'simulator' ? <Button label="Use a demo photo" variant="secondary" onPress={onDemo} /> : null}

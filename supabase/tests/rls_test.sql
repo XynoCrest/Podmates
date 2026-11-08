@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(26);
+select plan(43);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -84,6 +84,55 @@ select ok((select snap_count from public.profiles where username = 'maya.reads')
 select lives_ok($$ update public.profiles set banner_url = 'a0000000-0000-4000-8000-000000000001/banner.jpg' where id = 'a0000000-0000-4000-8000-000000000001' $$, 'Ben can set his own banner');
 update public.profiles set banner_url = 'x' where username = 'maya.reads';
 select is((select banner_url from public.profiles where username = 'maya.reads'), null, 'Ben cannot change Maya''s banner');
+
+-- ─── Safety and well-being ────────────────────────────────────────────────────
+-- Rest days: open Zen Den's window now (as the database owner) and clear any snap of Ben's today.
+reset role;
+update public.pods set snap_time = date_trunc('minute', (now() at time zone timezone)::time), window_minutes = 5 where id = 'b0000000-0000-4000-8000-000000000005';
+delete from public.contributions where pod_id = 'b0000000-0000-4000-8000-000000000005' and user_id = 'a0000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select is(public.rest_today('b0000000-0000-4000-8000-000000000005'), (now() at time zone (select timezone from public.pods where id = 'b0000000-0000-4000-8000-000000000005'))::date, 'Ben can take a rest day while the window is open');
+select is((select me_resting_today from public.pod_overview where id = 'b0000000-0000-4000-8000-000000000005'), true, 'The pod summary shows Ben resting');
+select lives_ok($$ select public.cancel_rest('b0000000-0000-4000-8000-000000000005') $$, 'Ben can cancel his rest day');
+select is((select count(*)::int from public.rest_days where pod_id = 'b0000000-0000-4000-8000-000000000005' and user_id = 'a0000000-0000-4000-8000-000000000001'), 0, 'Cancelling removes it');
+select throws_ok(
+  $$ insert into public.rest_days (pod_id, user_id, pod_date) values ('b0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000001', current_date) $$,
+  '42501', null, 'Rest days are only written through rest_today'
+);
+
+-- Removing and leaving. Ben owns Atomic Habits Club; Maya owns Zen Den.
+select throws_ok($$ select public.remove_pod_member('b0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000002') $$, '42501', null, 'Only the pod''s owner can remove members');
+select lives_ok($$ select public.remove_pod_member('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000003') $$, 'The owner can remove a member');
+select lives_ok($$ select public.leave_pod('b0000000-0000-4000-8000-000000000001') $$, 'Ben can leave a pod he owns');
+select is((select count(*)::int from public.pods where id = 'b0000000-0000-4000-8000-000000000001'), 0, 'After leaving, Ben no longer sees the pod');
+reset role;
+select is((select count(*)::int from public.pod_members where pod_id = 'b0000000-0000-4000-8000-000000000001' and role = 'owner'), 1, 'Ownership passes to someone still in the pod');
+set local role authenticated;
+
+-- Blocks: Ben blocks Maya (they still share Zen Den).
+select ok((select count(*) from public.snaps where user_id = 'a0000000-0000-4000-8000-000000000002') > 0, 'Before blocking, Ben sees Maya''s snaps');
+insert into public.blocks (blocked_id) values ('a0000000-0000-4000-8000-000000000002');
+select is((select count(*)::int from public.snaps where user_id = 'a0000000-0000-4000-8000-000000000002'), 0, 'After blocking, Ben no longer sees Maya''s snaps');
+select is((select count(*)::int from public.messages where user_id = 'a0000000-0000-4000-8000-000000000002'), 0, 'or her chat messages');
+select throws_ok(
+  $$ insert into public.direct_messages (recipient_id, body) values ('a0000000-0000-4000-8000-000000000002', 'hi') $$,
+  '42501', null, 'Ben cannot message someone he blocked'
+);
+
+-- Reports: Ben reports someone else's snap. It is hidden from him only.
+insert into public.reports (target_type, target_id, reason)
+select 'snap', id, 'fake' from public.snaps where user_id <> 'a0000000-0000-4000-8000-000000000001' order by id limit 1;
+select is(
+  (select count(*)::int from public.snaps where id = (select target_id from public.reports where reporter_id = 'a0000000-0000-4000-8000-000000000001' and target_type = 'snap')),
+  0, 'A reported snap is hidden from the reporter'
+);
+reset role;
+create temp table reported as select r.target_id, s.user_id as author from public.reports r join public.snaps s on s.id = r.target_id where r.reporter_id = 'a0000000-0000-4000-8000-000000000001';
+grant select on reported to authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', (select author from reported)::text, 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from public.snaps where id = (select target_id from reported)), 1, 'The snap''s author still sees it');
+select is((select count(*)::int from public.reports), 0, 'Nobody can read someone else''s reports');
 
 select * from finish();
 rollback;
