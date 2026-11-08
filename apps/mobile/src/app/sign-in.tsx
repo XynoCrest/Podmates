@@ -60,7 +60,7 @@ export default function SignIn() {
           </Text>
         </View>
 
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 12 }}>
           {mode === 'signUp' ? (
             <>
               <Field value={name} onChangeText={setName} placeholder="Name" autoCapitalize="words" />
@@ -85,7 +85,7 @@ export default function SignIn() {
         {isLocal ? (
           <View style={{ gap: 12 }}>
             <Text variant="overline">Demo accounts · local only</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
               {DEMO.map((d) => (
                 <PressableScale key={d.email} onPress={() => run(d.email, () => auth.signIn(d.email, 'podmates123'))} accessibilityLabel={`Sign in as ${d.name}`}>
                   <View style={{ alignItems: 'center', gap: 6, width: 64, opacity: busy && busy !== d.email ? 0.4 : 1 }}>
@@ -107,7 +107,7 @@ function Field(props: React.ComponentProps<typeof TextInput>) {
     <TextInput
       placeholderTextColor={colors.ink.subtle}
       {...props}
-      style={{ height: 50, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 16, color: colors.ink.DEFAULT, fontSize: 16 }}
+      style={{ height: 48, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 16, color: colors.ink.DEFAULT, fontSize: 16 }}
     />
   )
 }

@@ -40,14 +40,14 @@ export default function ExploreScreen() {
           onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
           accessibilityLabel={`Feed: ${mode}`}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 18, borderRadius: 19, backgroundColor: colors.raised }}>
-            <Text style={{ fontSize: 17, fontWeight: '700' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: colors.raised }}>
+            <Text style={{ fontSize: 17, fontWeight: '600' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
             <Icon name="chevronDown" size={13} color={colors.ink.muted} weight="bold" />
           </View>
         </PressableScale>
         <View style={{ position: 'absolute', right: 12 }}>
           <PressableScale onPress={() => pick('Sort by', SORTS.map((s) => ({ label: s.label, value: s.key })), setSort)} accessibilityLabel={`Sort: ${current.label}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.raised }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.raised }}>
               <Icon name={current.icon} size={16} color={colors.ink.DEFAULT} />
               <Icon name="more" size={16} color={colors.ink.DEFAULT} weight="bold" />
             </View>
@@ -59,13 +59,13 @@ export default function ExploreScreen() {
         data={feed.data}
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => <PostCard post={item} />}
-        ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 8, backgroundColor: colors.sunken }} />}
         ListHeaderComponent={communities.data ? <CommunityChips communities={communities.data} /> : undefined}
         ListEmptyComponent={
           feed.isLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
           ) : (
-            <EmptyState emoji="🧭" title="Your home feed is empty" body="Join a community above, or switch to Popular." />
+            <EmptyState icon="explore" title="Your home feed is empty" body="Join a community above, or switch to Popular" />
           )
         }
         refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}

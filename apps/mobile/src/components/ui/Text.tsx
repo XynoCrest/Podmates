@@ -3,14 +3,15 @@ import { Text as RNText, StyleSheet, type TextProps, type TextStyle } from 'reac
 
 // Size-specific tracking: large type tightens, small type opens up slightly (Apple's tracking tables).
 const VARIANTS = StyleSheet.create({
-  display: { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -0.8, color: colors.ink.DEFAULT },
-  title: { fontSize: 26, lineHeight: 30, fontWeight: '700', letterSpacing: -0.6, color: colors.ink.DEFAULT },
+  display: { fontSize: 34, lineHeight: 40, fontWeight: '600', letterSpacing: -0.6, color: colors.ink.DEFAULT },
+  title: { fontSize: 26, lineHeight: 32, fontWeight: '600', letterSpacing: -0.4, color: colors.ink.DEFAULT },
   headline: { fontSize: 19, lineHeight: 24, fontWeight: '600', color: colors.ink.DEFAULT },
   body: { fontSize: 16, lineHeight: 22, color: colors.ink.DEFAULT },
   callout: { fontSize: 15, lineHeight: 20, color: colors.ink.DEFAULT },
   subhead: { fontSize: 14, lineHeight: 19, color: colors.ink.muted },
-  caption: { fontSize: 12, lineHeight: 16, letterSpacing: 0.3, color: colors.ink.muted },
-  overline: { fontSize: 12, lineHeight: 16, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: colors.ink.subtle },
+  caption: { fontSize: 12, lineHeight: 16, color: colors.ink.muted },
+  // Section label: sentence case, quiet. Sits closer to its own items than to the section above.
+  overline: { fontSize: 13, lineHeight: 16, fontWeight: '500', color: colors.ink.muted },
 })
 
 export type TextVariant = keyof typeof VARIANTS

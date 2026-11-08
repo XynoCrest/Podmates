@@ -38,7 +38,7 @@ export default function PostScreen() {
             </PressableScale>
             <View style={{ flex: 1, gap: 3 }}>
               <Text variant="caption">
-                <Text style={{ fontWeight: '700', color: colors.ink.muted, fontSize: 12 }}>{item.author.username}</Text> · {timeAgo(item.createdAt)}
+                <Text style={{ fontWeight: '600', color: colors.ink.muted, fontSize: 12 }}>{item.author.username}</Text> · {timeAgo(item.createdAt)}
               </Text>
               <Text style={{ fontSize: 15, lineHeight: 21 }}>{item.body}</Text>
             </View>

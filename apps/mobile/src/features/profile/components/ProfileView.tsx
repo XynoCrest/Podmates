@@ -59,7 +59,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
         </PressableScale>
         <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700' }}>{p.display_name}</Text>
+          <Text style={{ fontSize: 17, fontWeight: '600' }}>{p.display_name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: 8 }}>
             <Stat value={p.energy} label="energy" icon={<Icon name="bolt" size={13} color={colors.energy.DEFAULT} />} />
             <Stat value={p.stars} label="stars" icon={<Icon name="star" size={13} color={colors.star.DEFAULT} />} />
@@ -70,13 +70,13 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 
       {p.bio ? <Text style={{ paddingHorizontal: 16, paddingTop: 12, fontSize: 15, lineHeight: 20 }}>{p.bio}</Text> : null}
 
-      <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingTop: 14 }}>
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 16 }}>
         {isMe ? (
           <>
             <Button label="Edit profile" variant="secondary" size="sm" flex onPress={() => router.push('/profile/edit')} />
             <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })} />
             <PressableScale onPress={() => router.push({ pathname: '/pod/new', params: { tab: 'join' } })} accessibilityLabel="Join a pod">
-              <View style={{ width: 38, height: 34, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="personAdd" size={16} />
               </View>
             </PressableScale>
@@ -111,7 +111,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: asTab ? 16 : 4 }}>
         {!asTab ? <IconButton icon="back" label="Back" onPress={goBack} /> : null}
-        <Text style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.3, flex: 1 }} numberOfLines={1}>
+        <Text style={{ fontSize: 22, fontWeight: '600', flex: 1 }} numberOfLines={1}>
           {p.username}
         </Text>
         {isMe ? (
@@ -144,7 +144,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         }
         ListEmptyComponent={
           <Text variant="subhead" style={{ textAlign: 'center', padding: 32 }}>
-            {habits.data.length ? 'No snaps on the profile for this habit yet.' : isMe ? 'Join a pod to start snapping.' : 'Nothing shared yet.'}
+            {habits.data.length ? 'No snaps on the profile for this habit yet' : isMe ? 'Join a pod to start snapping' : 'Nothing shared yet'}
           </Text>
         }
       />
@@ -157,11 +157,11 @@ function Stat({ value, label, icon }: { value: number; label: string; icon: Reac
     <View style={{ alignItems: 'flex-start' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         {icon}
-        <Text numeric style={{ fontSize: 17, fontWeight: '700' }}>
+        <Text numeric style={{ fontSize: 17, fontWeight: '600' }}>
           {compact(value)}
         </Text>
       </View>
-      <Text style={{ fontSize: 14, color: colors.ink.DEFAULT }}>{label}</Text>
+      <Text style={{ fontSize: 14, color: colors.ink.muted }}>{label}</Text>
     </View>
   )
 }

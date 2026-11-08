@@ -108,7 +108,7 @@ function OpenWindowPill({ podId }: { podId?: string }) {
   const target = pods.data?.find((p) => p.id === podId) ?? pods.data?.find((p) => needsSnap(p, now))
   if (!target) return <View />
   const w = podWindow(target, now)
-  const label = target.meContributedToday ? `${target.name} · done today ✓` : w.status === 'open' ? `${target.name} · ${w.closesInMin}m left` : `${target.name} · window closed`
+  const label = target.meContributedToday ? `${target.name} · done today` : w.status === 'open' ? `${target.name} · ${w.closesInMin}m left` : `${target.name} · window closed`
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', maxWidth: '75%' }}>
       <Icon name="timer" size={14} color={w.status === 'open' && !target.meContributedToday ? colors.flame.DEFAULT : '#fff'} weight="semibold" />
@@ -132,7 +132,7 @@ function RoundButton({ icon, label, onPress }: { icon: Parameters<typeof Icon>[0
 function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' | 'permission' | 'loading'; onAllow: () => void; onLibrary: () => void; onDemo: () => void }) {
   if (reason === 'loading') return <View style={{ flex: 1 }} />
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 14, backgroundColor: colors.sunken }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12, backgroundColor: colors.sunken }}>
       <Icon name="camera" size={44} color={colors.ink.subtle} />
       <Text variant="headline" center>
         {reason === 'simulator' ? "The Simulator doesn't have a camera" : 'Podmates needs the camera to snap'}
@@ -140,10 +140,10 @@ function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' 
       <Text variant="subhead" center>
         {reason === 'simulator' ? 'Pick a photo or use a demo shot — everything else works exactly like on a phone.' : 'Your snaps are proof for your pod. Nothing is recorded until you press the shutter.'}
       </Text>
-      <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 8 }}>
+      <View style={{ alignSelf: 'stretch', gap: 8, marginTop: 12 }}>
         {reason === 'permission' ? <Button label="Allow camera" icon="camera" onPress={onAllow} /> : null}
         <Button label="Choose from library" icon="photo" variant="secondary" onPress={onLibrary} />
-        {reason === 'simulator' ? <Button label="Use a demo photo" icon="sparkles" variant="secondary" onPress={onDemo} /> : null}
+        {reason === 'simulator' ? <Button label="Use a demo photo" variant="secondary" onPress={onDemo} /> : null}
       </View>
     </View>
   )

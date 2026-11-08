@@ -62,9 +62,9 @@ function TreeButton({ pod, onPress }: { pod: PodSummary; onPress: () => void }) 
   const color = pod.treeStatus === 'dead' ? colors.danger.DEFAULT : ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
   return (
     <PressableScale onPress={onPress} accessibilityLabel="Tree" scaleTo={0.92}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
         <Icon name="tree" size={16} color={color} />
-        <Text numeric style={{ color, fontWeight: '700', fontSize: 14 }}>
+        <Text numeric style={{ color, fontWeight: '600', fontSize: 14 }}>
           {pod.treeStatus === 'dead' ? '0' : pod.hp}
         </Text>
       </View>

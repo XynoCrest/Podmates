@@ -34,10 +34,10 @@ export default function SendSheet() {
   const selected = picked ?? defaults
 
   const grouped = useMemo(() => {
-    const out: { habit: string; emoji: string; pods: PodSummary[] }[] = []
+    const out: { habit: string; pods: PodSummary[] }[] = []
     for (const h of habits.data ?? []) {
       const list = pods.data?.filter((p) => p.habitId === h.id && p.treeStatus === 'alive') ?? []
-      if (list.length) out.push({ habit: h.name, emoji: h.emoji, pods: list })
+      if (list.length) out.push({ habit: h.name, pods: list })
     }
     return out
   }, [habits.data, pods.data])
@@ -85,10 +85,8 @@ export default function SendSheet() {
         </View>
 
         {grouped.map((g) => (
-          <View key={g.habit} style={{ gap: 6 }}>
-            <Text variant="overline">
-              {g.emoji} {g.habit}
-            </Text>
+          <View key={g.habit} style={{ gap: 8 }}>
+            <Text variant="overline">{g.habit}</Text>
             <View style={{ borderRadius: 16, backgroundColor: colors.raised, overflow: 'hidden' }}>
               {g.pods.map((p, i) => (
                 <PodChoice key={p.id} pod={p} now={now} checked={selected.has(p.id)} onPress={() => toggle(p.id)} divider={i > 0} />

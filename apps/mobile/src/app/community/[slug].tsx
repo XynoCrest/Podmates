@@ -31,7 +31,7 @@ export default function CommunityScreen() {
           ListHeaderComponent={
             <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CommunityIcon emoji={c.emoji} color={c.color} size={56} />
+                <CommunityIcon name={c.name} color={c.color} size={56} />
                 <View style={{ flex: 1 }}>
                   <Text variant="title">{c.name}</Text>
                   <Text variant="subhead">{compact(c.memberCount)} members</Text>
@@ -49,7 +49,7 @@ export default function CommunityScreen() {
               <Text style={{ fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>{c.description}</Text>
             </View>
           }
-          ListEmptyComponent={feed.isLoading ? undefined : <EmptyState emoji="📝" title="No posts yet" body={c.joined ? 'Be the first to post.' : 'Join to start the conversation.'} />}
+          ListEmptyComponent={feed.isLoading ? undefined : <EmptyState icon="comment" title="No posts yet" body={c.joined ? 'Be the first to post' : 'Join to start the conversation'} />}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         />
       ) : null}

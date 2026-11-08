@@ -78,7 +78,33 @@ export function Icon({
   )
 }
 
-/** For habit SF symbols that come from the database (habits.sf_symbol). */
+/**
+ * habits.sf_symbol → Material Symbol. expo-symbols only reads `name.android` on Android, so a bare
+ * SF name renders nothing there. Add a row here when a habit with a new symbol is seeded.
+ */
+const HABIT_MATERIAL: Record<string, string> = {
+  book: 'menu_book',
+  'figure.run': 'directions_run',
+  'figure.pool.swim': 'pool',
+  'figure.mind.and.body': 'self_improvement',
+  dumbbell: 'fitness_center',
+  'pencil.and.scribble': 'edit_note',
+  'figure.walk': 'directions_walk',
+  'chevron.left.forwardslash.chevron.right': 'code',
+  drop: 'water_drop',
+  'moon.zzz': 'bedtime',
+  leaf: 'eco',
+}
+
+/** For habit SF symbols that come from the database (habits.sf_symbol). Unknown symbols fall back to a leaf on Android/web. */
 export function SymbolIcon({ name, size = 22, color = colors.ink.DEFAULT }: { name: string; size?: number; color?: ColorValue }) {
-  return <SymbolView name={name as never} size={size} tintColor={color} style={{ width: size, height: size }} />
+  const material = HABIT_MATERIAL[name] ?? 'eco'
+  return (
+    <SymbolView
+      name={{ ios: name, android: material, web: material } as never}
+      size={size}
+      tintColor={color}
+      style={{ width: size, height: size }}
+    />
+  )
 }

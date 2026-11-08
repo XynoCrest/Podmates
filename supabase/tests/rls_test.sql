@@ -1,6 +1,10 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(12);
+select plan(17);
+
+-- A private thread Ben is not part of.
+insert into public.direct_messages (sender_id, recipient_id, body)
+values ('a0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000003', 'just us');
 
 -- Act as Ben (member of pods 1–5, not 6 "Iron Pact").
 set local role authenticated;
@@ -31,6 +35,22 @@ select throws_ok(
   $$ select public.apply_day_settlement('b0000000-0000-4000-8000-000000000001', current_date, current_date, '{}', '{}', '[]', 'x', now()) $$,
   '42501', null, 'Clients cannot call the settlement writer'
 );
+
+-- Direct messages: only the two people in a thread can read it, and you can only send as yourself.
+select is((select count(*)::int from public.direct_messages where body = 'just us'), 0, 'Ben cannot read a DM between Maya and Theo');
+select throws_ok(
+  $$ insert into public.direct_messages (sender_id, recipient_id, body) values ('a0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001', 'spoof') $$,
+  '42501', null, 'Ben cannot send a DM as someone else'
+);
+select lives_ok(
+  $$ insert into public.direct_messages (recipient_id, body) values ('a0000000-0000-4000-8000-000000000002', 'hey Maya') $$,
+  'Ben can DM a podmate'
+);
+
+-- No update policy: a direct write matches zero rows.
+update public.direct_messages set read_at = now() where read_at is null;
+select is((select count(*)::int from public.direct_messages where read_at is not null and body = 'Your tree is looking healthy this week'), 0, 'Clients cannot write read_at directly');
+select is(public.mark_dm_read('a0000000-0000-4000-8000-000000000005'), 1, 'Opening the Jonas thread marks his unread message read');
 
 -- Joining by invite code works through the RPC.
 select isnt(public.join_pod('IRONPT'), null, 'Ben can join Iron Pact with its invite code');

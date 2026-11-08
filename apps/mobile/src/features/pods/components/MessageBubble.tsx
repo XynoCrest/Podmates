@@ -2,7 +2,7 @@ import { colors, radii } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Avatar, Chip, PressableScale, Text } from '@/components/ui'
+import { Avatar, Chip, Icon, PressableScale, Text } from '@/components/ui'
 import { chatTime, firstName } from '@/lib/format'
 import { imageUri } from '@/lib/images'
 import type { ChatMessage } from '../hooks'
@@ -15,9 +15,10 @@ export function MessageBubble({ message, mine, grouped }: { message: ChatMessage
   if (message.kind === 'system') {
     return (
       <View style={{ alignItems: 'center', paddingHorizontal: 40, paddingVertical: 10 }}>
-        <View style={{ backgroundColor: colors.leaf.soft, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text variant="subhead" center style={{ color: colors.leaf.DEFAULT }}>
-            🌳 {message.body}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.leaf.soft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+          <Icon name="tree" size={14} color={colors.leaf.DEFAULT} />
+          <Text variant="subhead" style={{ color: colors.leaf.DEFAULT, flexShrink: 1 }}>
+            {message.body}
           </Text>
         </View>
         <Text variant="caption" style={{ marginTop: 4, color: colors.ink.subtle }}>
@@ -43,9 +44,9 @@ export function MessageBubble({ message, mine, grouped }: { message: ChatMessage
               <Image source={{ uri: imageUri(message.snap.image) }} style={{ width: 200, height: 266, borderRadius: radii.snap }} contentFit="cover" transition={200} />
               <View style={{ position: 'absolute', top: 8, left: 8 }}>
                 {message.snap.onTime ? (
-                  <Chip icon="bolt" label="ON TIME" color={colors.ink.inverse} bg={colors.energy.DEFAULT} />
+                  <Chip icon="bolt" label="On time" color={colors.ink.inverse} bg={colors.energy.DEFAULT} />
                 ) : (
-                  <Chip icon="clock" label="LATE" color={colors.ink.DEFAULT} bg="rgba(0,0,0,0.55)" />
+                  <Chip icon="clock" label="Late" color={colors.ink.DEFAULT} bg="rgba(0,0,0,0.55)" />
                 )}
               </View>
               {message.body ? (
@@ -61,7 +62,7 @@ export function MessageBubble({ message, mine, grouped }: { message: ChatMessage
               backgroundColor: mine ? colors.sky.deep : colors.raised,
               borderRadius: 20,
               paddingHorizontal: 14,
-              paddingVertical: 9,
+              paddingVertical: 10,
             }}
           >
             <Text style={{ fontSize: 16, lineHeight: 21, color: colors.ink.DEFAULT }}>{message.body}</Text>

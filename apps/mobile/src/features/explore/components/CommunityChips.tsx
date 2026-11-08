@@ -12,9 +12,9 @@ export function CommunityChips({ communities }: { communities: Community[] }) {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}>
       {sorted.map((c) => (
         <PressableScale key={c.id} onPress={() => router.push({ pathname: '/community/[slug]', params: { slug: c.slug } })} scaleTo={0.95} accessibilityLabel={c.name}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 5, paddingRight: 12, borderRadius: 18, backgroundColor: c.joined ? colors.raised : 'transparent', borderWidth: 1, borderColor: c.joined ? colors.raised : colors.line }}>
-            <CommunityIcon emoji={c.emoji} color={c.color} size={26} />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: c.joined ? colors.ink.DEFAULT : colors.ink.muted }}>{c.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, backgroundColor: c.joined ? colors.raised : 'transparent', borderWidth: 1, borderColor: c.joined ? colors.raised : colors.line }}>
+            <CommunityIcon name={c.name} color={c.color} size={28} />
+            <Text style={{ fontSize: 14, fontWeight: '500', color: c.joined ? colors.ink.DEFAULT : colors.ink.muted }}>{c.name}</Text>
           </View>
         </PressableScale>
       ))}

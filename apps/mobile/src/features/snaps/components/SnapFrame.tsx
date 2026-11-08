@@ -29,7 +29,7 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Avatar person={snap.author} size={34} />
               <View>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>
                   {snap.author.display_name} <Text style={{ color: 'rgba(255,255,255,0.75)', fontWeight: '500' }}>{timeAgo(snap.takenAt)}</Text>
                 </Text>
                 {snap.podName ? <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{snap.podName}</Text> : null}

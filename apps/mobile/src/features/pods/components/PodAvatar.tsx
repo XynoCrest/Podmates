@@ -1,10 +1,11 @@
 import { healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
+import { SymbolIcon } from '@/components/ui'
 
-/** Pod icon: the habit's emoji inside a ring that IS the tree's health bar. */
-export function PodAvatar({ emoji, hp, maxHp, dead, size = 54 }: { emoji: string; hp: number; maxHp: number; dead?: boolean; size?: number }) {
+/** Pod icon: the habit's symbol inside a ring that IS the tree's health bar. */
+export function PodAvatar({ symbol, hp, maxHp, dead, size = 54 }: { symbol: string; hp: number; maxHp: number; dead?: boolean; size?: number }) {
   const ratio = dead ? 0 : healthRatio({ hp, maxHp })
   const stroke = 3
   const r = (size - stroke) / 2
@@ -26,7 +27,7 @@ export function PodAvatar({ emoji, hp, maxHp, dead, size = 54 }: { emoji: string
         />
       </Svg>
       <View style={{ width: size - 12, height: size - 12, borderRadius: size, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: size * 0.4, opacity: dead ? 0.4 : 1 }}>{dead ? '🥀' : emoji}</Text>
+        <SymbolIcon name={symbol} size={Math.round(size * 0.4)} color={dead ? colors.ink.subtle : colors.ink.muted} />
       </View>
     </View>
   )

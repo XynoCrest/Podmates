@@ -3,7 +3,7 @@ import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, TextInput, View } from 'react-native'
-import { Button, Icon, PressableScale, Text } from '@/components/ui'
+import { Button, Icon, PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
 import { deviceTimeZone } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
@@ -57,7 +57,7 @@ function CreateForm() {
     )
 
   return (
-    <View style={{ gap: 18 }}>
+    <View style={{ gap: 20 }}>
       <Field label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
       <View style={{ gap: 8 }}>
         <Text variant="overline">Habit</Text>
@@ -67,8 +67,8 @@ function CreateForm() {
             return (
               <PressableScale key={h.id} onPress={() => setHabitId(h.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} scaleTo={0.95}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
-                  <Text>{h.emoji}</Text>
-                  <Text style={{ fontWeight: '600', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
+                  <SymbolIcon name={h.sf_symbol} size={16} color={active ? colors.leaf.DEFAULT : colors.ink.muted} />
+                  <Text style={{ fontWeight: '500', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
                 </View>
               </PressableScale>
             )
@@ -81,7 +81,7 @@ function CreateForm() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.raised, borderRadius: 14, padding: 8 }}>
           <Stepper icon="arrowDown" label="Earlier" onPress={() => step(-15)} />
           <View style={{ alignItems: 'center' }}>
-            <Text numeric style={{ fontSize: 28, fontWeight: '700' }}>
+            <Text numeric style={{ fontSize: 28, fontWeight: '600' }}>
               {formatSnapTime(snapTime)}
             </Text>
             <Text variant="caption">{deviceTimeZone()}</Text>
@@ -131,7 +131,7 @@ function JoinForm() {
         autoCapitalize="characters"
         placeholder="ABC123"
         placeholderTextColor={colors.ink.subtle}
-        style={{ height: 64, borderRadius: 14, backgroundColor: colors.raised, textAlign: 'center', fontSize: 30, fontWeight: '700', letterSpacing: 8, color: colors.ink.DEFAULT }}
+        style={{ height: 64, borderRadius: 14, backgroundColor: colors.raised, textAlign: 'center', fontSize: 30, fontWeight: '600', letterSpacing: 8, color: colors.ink.DEFAULT }}
       />
       {join.error ? (
         <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>

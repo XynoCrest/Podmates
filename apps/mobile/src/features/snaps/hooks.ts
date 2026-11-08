@@ -24,6 +24,8 @@ export interface Snap {
 export interface StoryGroup {
   person: Person
   snaps: Snap[]
+  /** Per snap, in order: whether I've seen it (my own always count as seen). */
+  seen: boolean[]
   unseen: boolean
 }
 
@@ -73,9 +75,11 @@ export function useStories(habitId: string | undefined) {
     if (!query.data) return []
     const byUser = new Map<string, StoryGroup>()
     for (const s of query.data.snaps) {
-      const g = byUser.get(s.author.id) ?? { person: s.author, snaps: [], unseen: false }
+      const g = byUser.get(s.author.id) ?? { person: s.author, snaps: [], seen: [], unseen: false }
+      const seen = s.author.id === me || query.data.seen.has(s.id)
       g.snaps.push(s)
-      if (!query.data.seen.has(s.id) && s.author.id !== me) g.unseen = true
+      g.seen.push(seen)
+      if (!seen) g.unseen = true
       byUser.set(s.author.id, g)
     }
     return [...byUser.values()].sort((a, b) => {

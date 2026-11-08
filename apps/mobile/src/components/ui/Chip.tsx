@@ -7,7 +7,7 @@ export function Chip({ icon, label, color, bg }: { icon?: IconName; label: strin
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, height: 24, borderRadius: 12, backgroundColor: bg }}>
       {icon ? <Icon name={icon} size={12} color={color} weight="bold" /> : null}
-      <Text numeric style={{ color, fontSize: 12, fontWeight: '700' }}>
+      <Text numeric style={{ color, fontSize: 12, fontWeight: '600' }}>
         {label}
       </Text>
     </View>

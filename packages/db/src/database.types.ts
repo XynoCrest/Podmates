@@ -133,6 +133,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"direct_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"id": string,"read_at": string | null,"recipient_id": string,"sender_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"id"?: string,"read_at"?: string | null,"recipient_id": string,"sender_id"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"id"?: string,"read_at"?: string | null,"recipient_id"?: string,"sender_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "direct_messages_recipient_id_fkey"
+      columns: ["recipient_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "direct_messages_sender_id_fkey"
+      columns: ["sender_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"habits": {
                   Row: {
                     "emoji": string,"id": string,"name": string,"sf_symbol": string,"sort": number
@@ -456,6 +482,9 @@ isOneToOne: false
                            },
 "join_pod":
 { Args: { "p_invite_code": string }; Returns: string
+                           },
+"mark_dm_read":
+{ Args: { "p_other": string }; Returns: number
                            },
 "refresh_profile_stats":
 { Args: { "p_user_ids": (string)[] }; Returns: undefined
