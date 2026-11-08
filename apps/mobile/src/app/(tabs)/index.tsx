@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, HeroHeading, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, TabHero } from '@/components/ui'
+import { Button, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { PodmateRow } from '@/features/dms/components/PodmateRow'
 import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
@@ -141,25 +141,39 @@ export default function PodsScreen() {
 
 const lastAt = (r: PodSummary | PodmateThread) => ('person' in r ? (r.last?.createdAt ?? '') : r.lastActivityAt)
 
-/** The streak, said big: the shared hero heading, with the pod tree on the right. */
+/** Ben's hero sizing: a smaller heading than the shared one, so the branch can grow in large from the right. */
+const STREAK_TITLE = { fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.8 } as const
+
+/**
+ * The streak, said big, with Ben's branch growing in from the screen's right edge (his layout:
+ * fixed height, 28pt heading in a 196pt column, 28pt left inset).
+ */
 function StreakHero({ streak, topInset }: { streak: number; topInset: number }) {
   const [lead, count, sub] =
     streak === 0
       ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
       : // profiles.streak is the longest current streak across your pods, so say "top" (each pod's own is on its card).
-        ['Your top streak is', `${streak} ${streak === 1 ? 'day' : 'days'}!`, "You're showing up for a healthier, happier you."]
+        ['Top streak', `${streak} ${streak === 1 ? 'day' : 'days'}!`, "You're showing up for a healthier, happier you."]
   return (
-    <TabHero
-      topInset={topInset}
-      minHeight={topInset + HERO_H}
-      heading={<View style={{ maxWidth: 196 }}><HeroHeading lead={lead} bright={count} sub={sub} fit /></View>}
-      backdrop={
-        // The tree grows in from the screen's right edge, just above where the sheet overlaps the band.
-        // Drawn first, so leaves reaching left sit behind the text.
-        <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: HERO_OVERLAP - 4 }}>
-          <LeafTree height={HERO_H - HERO_OVERLAP - 8} />
+    <View style={{ height: topInset + HERO_H, paddingTop: topInset + space.lg, paddingLeft: 28, paddingBottom: HERO_OVERLAP + space.md, flexDirection: 'row', alignItems: 'center', backgroundColor: hero.bg }}>
+      {/* Green above the band, so pulling the list down shows more green, not the canvas. */}
+      <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000, backgroundColor: hero.bg }} />
+      {/* The branch grows in from the right edge, just above where the sheet overlaps the band.
+          Drawn first, so leaves reaching left sit behind the text. */}
+      <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: HERO_OVERLAP - 4 }}>
+        <LeafTree height={HERO_H - HERO_OVERLAP - 8} />
+      </View>
+      <View style={{ width: 196, gap: space.sm }} accessible accessibilityRole="header" accessibilityLabel={`${lead} ${count} ${sub}`}>
+        <View>
+          <Text style={[STREAK_TITLE, { color: hero.ink }]}>{lead}</Text>
+          <Text style={[STREAK_TITLE, { color: hero.bright }]} numeric adjustsFontSizeToFit numberOfLines={1}>
+            {count}
+          </Text>
         </View>
-      }
-    />
+        <Text variant="subhead" style={{ color: hero.soft }} numberOfLines={3}>
+          {sub}
+        </Text>
+      </View>
+    </View>
   )
 }
