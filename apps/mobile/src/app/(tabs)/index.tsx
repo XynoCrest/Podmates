@@ -15,7 +15,8 @@ import { TodayCard } from '@/features/pods/components/TodayCard'
 import { needsSnap, useMyHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { useStories } from '@/features/snaps/hooks'
-import { GroveFigure, HERO } from '@/features/tree/GroveFigure'
+import { HERO } from '@/features/tree/GroveFigure'
+import { LeafTree } from '@/features/tree/LeafTree'
 import { useNow } from '@/lib/useNow'
 
 const HERO_H = 196
@@ -165,7 +166,7 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
         <Text style={{ fontSize: 14, lineHeight: 19, color: HERO.soft }} numberOfLines={3}>{sub}</Text>
       </View>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingRight: 64 }}>
-        <GroveFigure height={HERO_H - OVERLAP - 50} ground={HERO.bg} ink={HERO.ink} />
+        <LeafTree height={HERO_H - OVERLAP - 40} />
       </View>
     </View>
   )
