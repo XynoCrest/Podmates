@@ -38,9 +38,9 @@ const GIFS = {
   habits: { src: require('../../assets/onboarding/habits.gif'), aspect: 1 },
   peas: { src: require('../../assets/onboarding/peas.gif'), aspect: 800 / 533 },
 }
-type Figure = { src: number; aspect: number; scale?: number }
-/** Onboarding's hero: the intro tone (black ground, brand-green ink), as on sign-in. */
-const GREEN = colors.leaf.DEFAULT
+type Figure = (typeof GIFS)[keyof typeof GIFS]
+/** Onboarding's hero: intro black ground, brand green ink. */
+const GREEN = intro.ink
 const TONE = intro
 const OVERLAP = HERO_OVERLAP
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
