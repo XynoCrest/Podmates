@@ -51,6 +51,12 @@ const ICONS = {
   signOut: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   hammer: { ios: 'hammer', android: 'build' },
   moon: { ios: 'moon.stars', android: 'bedtime' },
+  book: { ios: 'book.fill', android: 'menu_book' },
+  run: { ios: 'figure.run', android: 'directions_run' },
+  swim: { ios: 'figure.pool.swim', android: 'pool' },
+  mindful: { ios: 'figure.mind.and.body', android: 'self_improvement' },
+  dumbbell: { ios: 'dumbbell.fill', android: 'fitness_center' },
+  brain: { ios: 'brain.head.profile', android: 'psychology' },
 } as const
 
 export type IconName = keyof typeof ICONS
