@@ -2,13 +2,14 @@ import { colors, intro, space } from '@podmates/ui-tokens'
 import { useLocalSearchParams } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native'
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button, HERO_OVERLAP, IntroSheet, Segmented, Text, TextField } from '@/components/ui'
 import { auth } from '@/ctx/session'
 import { HairlineFigure } from '@/features/tree/GroveFigure'
 import { ONBOARDING_FIGURES } from '@/features/tree/onboardingPaths'
 import { isLocal } from '@/lib/env'
+import { supabase } from '@/lib/supabase'
 import { haptics } from '@/lib/haptics'
 
 /** The big light title: thin system font in brand green, like a product intro. */
@@ -28,17 +29,37 @@ export default function SignIn() {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   async function submit() {
     setBusy(true)
     setError(null)
-    const { error } =
-      mode === 'signIn' ? await auth.signIn(email.trim(), password) : await auth.signUp(email.trim(), password, username.trim().toLowerCase(), name.trim() || username.trim())
+    setNotice(null)
+    if (mode === 'signIn') {
+      const { error } = await auth.signIn(email.trim(), password)
+      setBusy(false)
+      if (error) return fail(error.message)
+      return haptics.success()
+    }
+    const wanted = username.trim().toLowerCase()
+    const { data, error } = await auth.signUp(email.trim(), password, wanted, name.trim() || username.trim())
     setBusy(false)
-    if (error) {
-      haptics.error()
-      setError(error.message)
-    } else haptics.success()
+    if (error) return fail(error.message)
+    haptics.success()
+    // With email confirmation on, there's no session yet: say so instead of doing nothing.
+    if (!data.session) return setNotice('Check your email to confirm your account, then sign in.')
+    // The server picks a free username (maya → maya2) when the one asked for is taken: tell them.
+    if (wanted && data.user) {
+      const { data: prof } = await supabase.from('profiles').select('username').eq('id', data.user.id).single()
+      if (prof && prof.username !== wanted) {
+        Alert.alert('Username taken', `@${wanted} was taken, so you're @${prof.username}. You can change it in Edit profile.`)
+      }
+    }
+  }
+
+  function fail(message: string) {
+    haptics.error()
+    setError(message)
   }
 
   const signUp = mode === 'signUp'
@@ -67,6 +88,7 @@ export default function SignIn() {
               value={mode}
               onChange={(m) => {
                 setError(null)
+                setNotice(null)
                 setMode(m)
               }}
               segments={[
@@ -89,6 +111,11 @@ export default function SignIn() {
               {error ? (
                 <Text variant="caption" center style={{ color: colors.danger.DEFAULT }}>
                   {error}
+                </Text>
+              ) : null}
+              {notice ? (
+                <Text variant="caption" center style={{ color: intro.ink }}>
+                  {notice}
                 </Text>
               ) : null}
             </View>

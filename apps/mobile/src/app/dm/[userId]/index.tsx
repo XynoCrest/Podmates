@@ -24,7 +24,7 @@ export default function DirectChat() {
 
   return (
     <ChatScreen
-      composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate('/camera')} />}
+      composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} />}
       header={
       <Header
         title={

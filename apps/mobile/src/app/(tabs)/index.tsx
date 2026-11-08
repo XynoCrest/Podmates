@@ -146,7 +146,8 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
   const [lead, count, sub] =
     streak === 0
       ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
-      : ["You're on a", `${streak}-day streak!`, "You're showing up for a healthier, happier you."]
+      : // profiles.streak is the longest current streak across your pods, so say "top" (each pod's own is on its card).
+        ['Your top streak is', `${streak} ${streak === 1 ? 'day' : 'days'}!`, "You're showing up for a healthier, happier you."]
   return (
     <TabHero
       topInset={topInset}
