@@ -39,12 +39,19 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const p = profile.data
   if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}>{profile.isLoading ? <ActivityIndicator style={{ marginTop: 120 }} /> : null}</View>
 
+  const shareMine = () => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })
+
+  // The ☰ menu holds the profile actions (no button row on my own profile).
   const openMenu = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions({ options: ['Sign out', 'Cancel'], destructiveButtonIndex: 0, cancelButtonIndex: 1, userInterfaceStyle: 'dark' }, (i) => {
-        if (i === 0) void auth.signOut()
-      })
-    } else void auth.signOut()
+    if (Platform.OS !== 'ios') return router.push('/profile/edit')
+    ActionSheetIOS.showActionSheetWithOptions(
+      { options: ['Edit profile', 'Share profile', 'Sign out', 'Cancel'], destructiveButtonIndex: 2, cancelButtonIndex: 3, userInterfaceStyle: 'dark' },
+      (i) => {
+        if (i === 0) router.push('/profile/edit')
+        else if (i === 1) shareMine()
+        else if (i === 2) void auth.signOut()
+      },
+    )
   }
 
   // Pick snaps works per habit (Ben's picker): choose the habit first.
@@ -71,12 +78,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
         <Text style={{ fontSize: 22, fontWeight: '600', flex: 1 }} numberOfLines={1}>
           {p.username}
         </Text>
-        {isMe ? (
-          <>
-            <IconButton icon="plusSquare" label="New pod" onPress={() => router.push('/pod/new')} />
-            <IconButton icon="menu" label="Menu" onPress={openMenu} />
-          </>
-        ) : null}
+        {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} /> : null}
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
@@ -96,30 +98,28 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
             </View>
           </PressableScale>
 
-          <Text style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4, marginTop: 10 }}>{p.display_name}</Text>
-          <Text variant="subhead">@{p.username}</Text>
-
-          <View style={{ flexDirection: 'row', gap: 28, marginTop: 14 }}>
-            <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={13} color={colors.flame.DEFAULT} />} />
-            <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={13} color={colors.energy.DEFAULT} />} />
-            <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={13} color={colors.leaf.DEFAULT} />} />
+          {/* Name on the left, Streak · Best · Snaps beside it. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }} numberOfLines={1}>
+                {p.display_name}
+              </Text>
+              <Text variant="subhead" numberOfLines={1}>
+                @{p.username}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <Stat value={p.streak} label="streak" icon={<Icon name="flame" size={12} color={colors.flame.DEFAULT} />} />
+              <Stat value={p.best_streak} label="best" icon={<Icon name="trophy" size={12} color={colors.energy.DEFAULT} />} />
+              <Stat value={p.snap_count} label="snaps" icon={<Icon name="camera" size={12} color={colors.leaf.DEFAULT} />} />
+            </View>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-            {isMe ? (
-              <>
-                <Button label="Edit profile" variant="secondary" size="sm" flex onPress={() => router.push('/profile/edit')} />
-                <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Grow habits with me on Podmates — I'm @${p.username}` })} />
-                <PressableScale onPress={() => router.push({ pathname: '/pod/new', params: { tab: 'join' } })} accessibilityLabel="Join a pod">
-                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="personAdd" size={16} />
-                  </View>
-                </PressableScale>
-              </>
-            ) : (
+          {!isMe ? (
+            <View style={{ flexDirection: 'row', marginTop: 16 }}>
               <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
-            )}
-          </View>
+            </View>
+          ) : null}
 
           {!isMe && shared.data?.length ? <SharedPods names={shared.data} /> : null}
         </View>
@@ -223,11 +223,11 @@ function Stat({ value, label, icon }: { value: number; label: string; icon: Reac
     <View style={{ alignItems: 'flex-start' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         {icon}
-        <Text numeric style={{ fontSize: 18, fontWeight: '700' }}>
+        <Text numeric style={{ fontSize: 17, fontWeight: '700' }}>
           {compact(value)}
         </Text>
       </View>
-      <Text style={{ fontSize: 14, color: colors.ink.muted }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: colors.ink.muted }}>{label}</Text>
     </View>
   )
 }
