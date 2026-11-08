@@ -12,7 +12,7 @@ export interface Community {
   slug: string
   name: string
   description: string
-  emoji: string
+  symbol: string
   color: string
   memberCount: number
   joined: boolean
@@ -27,11 +27,11 @@ export interface Post {
   commentCount: number
   createdAt: string
   author: Person
-  community: { id: string; slug: string; name: string; emoji: string; color: string }
+  community: { id: string; slug: string; name: string; symbol: string; color: string }
   myVote: -1 | 0 | 1
 }
 
-const POST_FIELDS = `id, title, body, image_url, score, comment_count, created_at, author:profiles!posts_user_id_fkey(${PERSON_FIELDS}), community:communities(id, slug, name, emoji, color), post_votes(value, user_id)`
+const POST_FIELDS = `id, title, body, image_url, score, comment_count, created_at, author:profiles!posts_user_id_fkey(${PERSON_FIELDS}), community:communities(id, slug, name, color, habit:habits(sf_symbol)), post_votes(value, user_id)`
 
 function toPost(p: any, me: string): Post {
   return {
@@ -43,10 +43,13 @@ function toPost(p: any, me: string): Post {
     commentCount: p.comment_count,
     createdAt: p.created_at,
     author: p.author,
-    community: p.community,
+    community: { id: p.community.id, slug: p.community.slug, name: p.community.name, color: p.community.color, symbol: communitySymbol(p.community.habit) },
     myVote: (p.post_votes as { value: number; user_id: string }[]).find((v) => v.user_id === me)?.value as Post['myVote'] ?? 0,
   }
 }
+
+/** Communities borrow their habit's symbol; general ones get a lightbulb. */
+const communitySymbol = (habit: { sf_symbol: string } | null) => habit?.sf_symbol ?? 'lightbulb'
 
 /** Reddit-style "hot": score decays with age. */
 export const hotness = (p: Pick<Post, 'score' | 'createdAt'>, now = Date.now()) =>
@@ -64,14 +67,14 @@ export function useCommunities() {
   return useQuery({
     queryKey: qk.communities,
     queryFn: async (): Promise<Community[]> => {
-      const { data, error } = await supabase.from('communities').select('*, community_members(user_id)').order('member_count', { ascending: false })
+      const { data, error } = await supabase.from('communities').select('*, habit:habits(sf_symbol), community_members(user_id)').order('member_count', { ascending: false })
       if (error) throw error
       return data.map((c) => ({
         id: c.id,
         slug: c.slug,
         name: c.name,
         description: c.description,
-        emoji: c.emoji,
+        symbol: communitySymbol(c.habit),
         color: c.color,
         memberCount: c.member_count,
         // RLS lets everyone read memberships; we only need to know about our own row.

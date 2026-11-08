@@ -26,12 +26,16 @@ export default function CommunityScreen() {
         <FlatList
           data={c.id ? feed.data : []}
           keyExtractor={(p) => p.id}
-          renderItem={({ item }) => <PostCard post={item} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+          renderItem={({ item }) => (
+            <View style={{ paddingHorizontal: 16 }}>
+              <PostCard post={item} />
+            </View>
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           ListHeaderComponent={
-            <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, marginBottom: 10 }}>
+            <View style={{ padding: 16, gap: 12, marginBottom: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CommunityIcon emoji={c.emoji} color={c.color} size={56} />
+                <CommunityIcon symbol={c.symbol} color={c.color} size={56} />
                 <View style={{ flex: 1 }}>
                   <Text variant="title">{c.name}</Text>
                   <Text variant="subhead">{compact(c.memberCount)} members</Text>
@@ -49,7 +53,7 @@ export default function CommunityScreen() {
               <Text style={{ fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>{c.description}</Text>
             </View>
           }
-          ListEmptyComponent={feed.isLoading ? undefined : <EmptyState emoji="📝" title="No posts yet" body={c.joined ? 'Be the first to post.' : 'Join to start the conversation.'} />}
+          ListEmptyComponent={feed.isLoading ? undefined : <EmptyState icon="comment" title="No posts yet" body={c.joined ? 'Start the first conversation' : 'Join to post here'} />}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         />
       ) : null}

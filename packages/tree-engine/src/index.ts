@@ -112,7 +112,7 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
       died: false,
       tree,
       memberUpdates: members.map((m) => ({ userId: m.userId, energyDelta: 0, starsDelta: 0, streak: m.streak })),
-      summary: 'The tree is resting. Replant it to start growing again.',
+      summary: 'The tree is resting. Replant it to start growing again',
     }
   }
 
@@ -146,10 +146,10 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
 }
 
 function summarize(outcome: DayOutcome, contributors: number, members: number, hpDelta: number, died: boolean) {
-  if (died) return `Only ${contributors} of ${members} showed up. The tree ran out of energy and died.`
-  if (outcome === 'thrive') return `Everyone showed up! The tree grew${hpDelta > 0 ? ` +${hpDelta} HP` : ''}.`
-  if (outcome === 'steady') return `${contributors} of ${members} showed up. The tree held steady.`
-  return `Only ${contributors} of ${members} showed up. The tree lost ${-hpDelta} HP.`
+  if (died) return `${contributors} of ${members} snapped. The tree ran out of energy and died`
+  if (outcome === 'thrive') return hpDelta > 0 ? `Everyone snapped. The tree grew ${hpDelta} HP` : 'Everyone snapped. The tree is at full health'
+  if (outcome === 'steady') return `${contributors} of ${members} snapped. The tree held steady`
+  return `${contributors} of ${members} snapped. The tree lost ${-hpDelta} HP`
 }
 
 export const STAGES = [

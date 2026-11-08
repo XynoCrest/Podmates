@@ -3,7 +3,7 @@ import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, EmptyState, IconButton, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, EmptyState, Icon, PressableScale, Text, Tile } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { HabitTabs } from '@/features/pods/components/HabitTabs'
 import { PodRow } from '@/features/pods/components/PodRow'
@@ -34,27 +34,29 @@ export default function PodsScreen() {
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
   const urgent = inHabit.find((p) => needsSnap(p, now))
-  const emoji = (id: string) => habits.data?.find((h) => h.id === id)?.emoji ?? '🌱'
+  const symbol = (id: string) => habits.data?.find((h) => h.id === id)?.sf_symbol ?? 'leaf'
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6, gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
         <PressableScale onPress={() => router.navigate('/profile')} accessibilityLabel="Your profile">
-          {profile.data ? <Avatar person={profile.data} size={34} /> : <View style={{ width: 34, height: 34 }} />}
+          {profile.data ? <Avatar person={profile.data} size={36} /> : <View style={{ width: 36, height: 36 }} />}
         </PressableScale>
         <Text variant="title" style={{ flex: 1 }}>
-          Pods
+          Your pods
         </Text>
-        <IconButton icon="plusSquare" label="New or join a pod" onPress={() => router.push('/pod/new')} />
+        <Tile onPress={() => router.push('/pod/new')} accessibilityLabel="Start or join a pod" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="plus" size={20} weight="semibold" />
+        </Tile>
       </View>
 
       {pods.isLoading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
       ) : !pods.data?.length ? (
         <EmptyState
-          emoji="🌱"
+          icon="tree"
           title="No pods yet"
-          body="A pod is a few friends tracking one habit together. Snap daily, grow a tree."
+          body="A pod is a few friends keeping one habit together. Snap every day and your tree grows."
           action={<Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />}
         />
       ) : (
@@ -63,13 +65,18 @@ export default function PodsScreen() {
           <FlatList
             data={inHabit}
             keyExtractor={(p) => p.id}
-            renderItem={({ item }) => <PodRow pod={item} emoji={emoji(item.habitId)} now={now} />}
+            renderItem={({ item }) => (
+              <View style={{ paddingHorizontal: 16 }}>
+                <PodRow pod={item} symbol={symbol(item.habitId)} now={now} />
+              </View>
+            )}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
             ListHeaderComponent={
               <View>
                 {urgent ? <WindowBanner pod={urgent} now={now} /> : null}
                 {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
-                <Text variant="overline" style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6 }}>
-                  Pods
+                <Text variant="label" style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                  {inHabit.length === 1 ? '1 pod' : `${inHabit.length} pods`}
                 </Text>
               </View>
             }
@@ -84,6 +91,7 @@ export default function PodsScreen() {
               />
             }
             contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+            style={{ marginTop: 4 }}
           />
         </>
       )}

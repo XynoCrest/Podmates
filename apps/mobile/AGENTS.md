@@ -10,7 +10,9 @@ Project rules live in the root [AGENTS.md](../../AGENTS.md). Mobile-specific:
 - API responses are parsed with schemas from `@podmates/shared`.
 - Styling: plain `style` objects with tokens from `@podmates/ui-tokens` (no NativeWind: its `className`
   typings don't work with RN 0.88's strict TypeScript API). Text styles are the variants in `components/ui/Text.tsx`.
-- Motion: press feedback via `PressableScale` (0.97). Tabs never animate. Haptics via
+- Design system: see docs/DESIGN.md. Surfaces are `Tile`s, statuses are `PlantLabel`s, type is Figtree via
+  `Text` (weights 400-600, sentence case). No emoji in the UI, and no colours outside the tokens.
+- Motion: press feedback on touch-down (`Tile`/`Button` sink into their lip, `PressableScale` 0.97). No looping animations. Tabs never animate. Haptics via
   `src/lib/haptics.ts`, one per user action. Respect Reduce Motion.
 - The tab bar is `NativeTabs` from `expo-router/native-tabs`. Render `Trigger.Badge` conditionally:
   on SDK 58 its `hidden` prop no longer hides it. `_layout.web.tsx` is the browser fallback.

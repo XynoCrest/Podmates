@@ -41,7 +41,7 @@ export default function PickSnaps() {
           >
             <View>
               <Image source={{ uri: imageUri(item.image) }} style={{ width: W, height: W * (4 / 3), opacity: item.onProfile ? 1 : 0.55 }} contentFit="cover" recyclingKey={item.id} />
-              <View style={{ position: 'absolute', top: 6, right: 6 }}>
+              <View style={{ position: 'absolute', top: 8, right: 8 }}>
                 <Icon name={item.onProfile ? 'checkCircle' : 'circle'} size={24} color={item.onProfile ? colors.leaf.DEFAULT : '#fff'} />
               </View>
             </View>

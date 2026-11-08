@@ -26,7 +26,8 @@ export function PressableScale({
       {({ pressed }) => (
         <Animated.View
           style={[
-            flex ? { flex: 1 } : null,
+            // flexGrow, not flex: 1. A zero flex-basis would collapse the face to 0 height inside the column Pressable.
+            flex ? { flexGrow: 1 } : null,
             style,
             {
               transform: [{ scale: pressed && !props.disabled ? scaleTo : 1 }],

@@ -1,51 +1,57 @@
+import { formatSnapTime } from '@podmates/shared'
+import { healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Chip, Icon, PressableScale, Text } from '@/components/ui'
+import { HealthBar, Meta, PlantLabel, SymbolIcon, Text, Tile, type LabelTone } from '@/components/ui'
 import { chatTime, firstName } from '@/lib/format'
 import { podWindow, type PodSummary } from '../hooks'
-import { PodAvatar } from './PodAvatar'
 
-/** Messenger-style chat row: tree-health avatar · name · last message · time · today's status. */
-export function PodRow({ pod, emoji, now }: { pod: PodSummary; emoji: string; now: Date }) {
+/** The pod's status for its plant label, shared by every screen that shows one. */
+export function podStatus(pod: PodSummary, now: Date): { tone: LabelTone; label: string } {
+  if (pod.treeStatus === 'dead') return { tone: 'dead', label: 'Replant' }
+  if (pod.meContributedToday) return { tone: 'done', label: 'Done' }
   const w = podWindow(pod, now)
+  if (w.status === 'open') return { tone: 'open', label: `${w.closesInMin} min left` }
+  if (w.status === 'upcoming') return { tone: 'waiting', label: `Opens ${formatSnapTime(pod.snapTime)}` }
+  return { tone: 'waiting', label: 'Closed today' }
+}
+
+/** A pod: its habit, last chat line, today's status, and the tree's health as a bar. */
+export function PodRow({ pod, symbol, now }: { pod: PodSummary; symbol: string; now: Date }) {
+  const status = podStatus(pod, now)
   const preview = pod.lastMessage
     ? pod.lastMessage.kind === 'system'
-      ? `🌳 ${pod.lastMessage.body}`
-      : `${pod.lastMessage.author ? `${firstName(pod.lastMessage.author)}: ` : ''}${pod.lastMessage.kind === 'snap' ? `📸 ${pod.lastMessage.body || 'Sent a snap'}` : pod.lastMessage.body}`
+      ? pod.lastMessage.body
+      : `${pod.lastMessage.author ? `${firstName(pod.lastMessage.author)}: ` : ''}${pod.lastMessage.kind === 'snap' ? pod.lastMessage.body || 'Sent a snap' : pod.lastMessage.body}`
     : pod.goal
-  const urgent = w.status === 'open' && !pod.meContributedToday && pod.treeStatus === 'alive'
+  const ratio = pod.treeStatus === 'dead' ? 0 : healthRatio(pod)
   return (
-    <PressableScale onPress={() => router.push({ pathname: '/pod/[id]', params: { id: pod.id } })} scaleTo={0.98} accessibilityLabel={pod.name}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 14 }}>
-        <PodAvatar emoji={emoji} hp={pod.hp} maxHp={pod.maxHp} dead={pod.treeStatus === 'dead'} />
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+    <Tile onPress={() => router.push({ pathname: '/pod/[id]', params: { id: pod.id } })} accessibilityLabel={pod.name} style={{ padding: 16, gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+          <SymbolIcon name={symbol} size={22} color={colors.ink.muted} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text variant="headline" numberOfLines={1} style={{ flexShrink: 1, fontSize: 17 }}>
+            <Text variant="headline" numberOfLines={1} style={{ flexShrink: 1 }}>
               {pod.name}
             </Text>
-            {pod.myStreak > 0 ? <Chip icon="flame" label={String(pod.myStreak)} color={colors.flame.DEFAULT} bg={colors.flame.soft} /> : null}
+            <Text variant="caption">{chatTime(pod.lastActivityAt, now)}</Text>
           </View>
-          <Text numberOfLines={1} style={{ fontSize: 15, color: urgent ? colors.ink.DEFAULT : colors.ink.muted, fontWeight: urgent ? '600' : '400' }}>
+          <Text variant="subhead" numberOfLines={1}>
             {preview}
           </Text>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          <Text variant="caption">{chatTime(pod.lastActivityAt, now)}</Text>
-          {pod.treeStatus === 'dead' ? (
-            <Chip label="Replant" color={colors.danger.DEFAULT} bg={colors.danger.soft} />
-          ) : pod.meContributedToday ? (
-            <Icon name="checkCircle" size={20} color={colors.leaf.DEFAULT} />
-          ) : urgent ? (
-            <Chip icon="timer" label={`${w.closesInMin}m`} color={colors.ink.inverse} bg={colors.flame.DEFAULT} />
-          ) : (
-            <Text variant="caption" numberOfLines={1}>
-              {pod.contributedToday}/{pod.memberCount}
-            </Text>
-          )}
-        </View>
       </View>
-    </PressableScale>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <PlantLabel tone={status.tone} label={status.label} />
+        <View style={{ flex: 1 }}>
+          <HealthBar ratio={ratio} height={8} />
+        </View>
+        <Meta icon="flame" label={String(pod.myStreak)} />
+        <Meta icon="people" label={`${pod.contributedToday}/${pod.memberCount}`} />
+      </View>
+    </Tile>
   )
 }
-

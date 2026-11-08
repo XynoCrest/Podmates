@@ -6,8 +6,9 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, Icon, PressableScale, Text } from '@/components/ui'
-import { needsSnap, podWindow, useMyPods } from '@/features/pods/hooks'
+import { Button, Icon, PlantLabel, PressableScale, Text } from '@/components/ui'
+import { podStatus } from '@/features/pods/components/PodRow'
+import { needsSnap, useMyPods } from '@/features/pods/hooks'
 import { setPendingCapture } from '@/features/snaps/pendingCapture'
 import { haptics } from '@/lib/haptics'
 import { useNow } from '@/lib/useNow'
@@ -78,7 +79,7 @@ export default function CameraScreen() {
       <View style={{ position: 'absolute', top: insets.top + 8, left: 12, right: 12, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <OpenWindowPill podId={podId} />
         {HAS_CAMERA ? (
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: 8 }}>
             <RoundButton icon={flash === 'on' ? 'flashOn' : 'flashOff'} label="Flash" onPress={() => setFlash(flash === 'on' ? 'off' : 'on')} />
             <RoundButton icon="flip" label="Flip camera" onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} />
           </View>
@@ -101,20 +102,19 @@ export default function CameraScreen() {
   )
 }
 
-/** Which pod's window is open right now — the reason to snap. */
+/** Which pod's window is open right now: the reason to snap. */
 function OpenWindowPill({ podId }: { podId?: string }) {
   const now = useNow()
   const pods = useMyPods()
   const target = pods.data?.find((p) => p.id === podId) ?? pods.data?.find((p) => needsSnap(p, now))
   if (!target) return <View />
-  const w = podWindow(target, now)
-  const label = target.meContributedToday ? `${target.name} · done today ✓` : w.status === 'open' ? `${target.name} · ${w.closesInMin}m left` : `${target.name} · window closed`
+  const status = podStatus(target, now)
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', maxWidth: '75%' }}>
-      <Icon name="timer" size={14} color={w.status === 'open' && !target.meContributedToday ? colors.flame.DEFAULT : '#fff'} weight="semibold" />
-      <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-        {label}
+    <View style={{ gap: 4, maxWidth: '75%' }}>
+      <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '600', fontSize: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>
+        {target.name}
       </Text>
+      <PlantLabel tone={status.tone === 'open' ? 'open' : 'onPhoto'} label={status.label} />
     </View>
   )
 }
@@ -132,7 +132,7 @@ function RoundButton({ icon, label, onPress }: { icon: Parameters<typeof Icon>[0
 function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' | 'permission' | 'loading'; onAllow: () => void; onLibrary: () => void; onDemo: () => void }) {
   if (reason === 'loading') return <View style={{ flex: 1 }} />
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 14, backgroundColor: colors.sunken }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12, backgroundColor: colors.sunken }}>
       <Icon name="camera" size={44} color={colors.ink.subtle} />
       <Text variant="headline" center>
         {reason === 'simulator' ? "The Simulator doesn't have a camera" : 'Podmates needs the camera to snap'}
@@ -140,7 +140,7 @@ function NoCamera({ reason, onAllow, onLibrary, onDemo }: { reason: 'simulator' 
       <Text variant="subhead" center>
         {reason === 'simulator' ? 'Pick a photo or use a demo shot — everything else works exactly like on a phone.' : 'Your snaps are proof for your pod. Nothing is recorded until you press the shutter.'}
       </Text>
-      <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 8 }}>
+      <View style={{ alignSelf: 'stretch', gap: 8, marginTop: 8 }}>
         {reason === 'permission' ? <Button label="Allow camera" icon="camera" onPress={onAllow} /> : null}
         <Button label="Choose from library" icon="photo" variant="secondary" onPress={onLibrary} />
         {reason === 'simulator' ? <Button label="Use a demo photo" icon="sparkles" variant="secondary" onPress={onDemo} /> : null}

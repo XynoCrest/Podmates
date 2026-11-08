@@ -1,3 +1,4 @@
+import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, useFonts } from '@expo-google-fonts/figtree'
 import { colors } from '@podmates/ui-tokens'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router'
@@ -16,6 +17,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {})
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.canvas, card: colors.canvas, primary: colors.leaf.DEFAULT } }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({ Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold })
+  // Keep the native splash up until Figtree is ready (or failed: then the system font is used).
+  if (!fontsLoaded && !fontError) return null
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ThemeProvider value={theme}>

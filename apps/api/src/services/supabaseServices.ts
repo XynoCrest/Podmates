@@ -51,7 +51,7 @@ export function createSupabaseServices(db: DbClient): Services {
         .select('hp, max_hp')
       if (error) throw error
       if (!data?.length) throw new HttpError('conflict', 'The tree is still alive')
-      await db.from('messages').insert({ pod_id: podId, user_id: null, kind: 'system', body: 'A new seed was planted. Fresh start! 🌱' })
+      await db.from('messages').insert({ pod_id: podId, user_id: null, kind: 'system', body: 'A new seed was planted' })
       return { podId, hp: data[0]!.hp, maxHp: data[0]!.max_hp }
     },
 

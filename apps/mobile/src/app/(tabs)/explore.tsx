@@ -8,13 +8,13 @@ import { PostCard } from '@/features/explore/components/PostCard'
 import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
 import { haptics } from '@/lib/haptics'
 
-const SORTS: { key: FeedSort; label: string; icon: 'flame' | 'clock' | 'trophy' }[] = [
-  { key: 'hot', label: 'Hot', icon: 'flame' },
-  { key: 'new', label: 'New', icon: 'clock' },
-  { key: 'top', label: 'Top', icon: 'trophy' },
+const SORTS: { key: FeedSort; label: string }[] = [
+  { key: 'hot', label: 'Popular now' },
+  { key: 'new', label: 'Newest' },
+  { key: 'top', label: 'Most upvoted' },
 ]
 
-/** Apollo-style feed: "Home ⌄" switcher, community strip, cards separated by black gutters. */
+/** Posts from habit communities: the ones you joined, or everyone's. */
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets()
   const [mode, setMode] = useState<FeedMode>('home')
@@ -23,33 +23,34 @@ export default function ExploreScreen() {
   const communities = useCommunities()
   const current = SORTS.find((s) => s.key === sort)!
 
-  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) => {
-    if (Platform.OS !== 'ios') return onPick(options[0]!.value) // the product targets iOS; other platforms get the default
-    ActionSheetIOS.showActionSheetWithOptions({ title, options: [...options.map((o) => o.label), 'Cancel'], cancelButtonIndex: options.length, userInterfaceStyle: 'dark' }, (i) => {
-      if (i < options.length) {
+  const pickSort = () => {
+    if (Platform.OS !== 'ios') return setSort(SORTS[(SORTS.findIndex((s) => s.key === sort) + 1) % SORTS.length]!.key)
+    ActionSheetIOS.showActionSheetWithOptions({ title: 'Sort posts', options: [...SORTS.map((s) => s.label), 'Cancel'], cancelButtonIndex: SORTS.length, userInterfaceStyle: 'dark' }, (i) => {
+      if (i < SORTS.length) {
         haptics.select()
-        onPick(options[i]!.value)
+        setSort(SORTS[i]!.key)
       }
     })
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }}>
-        <PressableScale
-          onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
-          accessibilityLabel={`Feed: ${mode}`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 18, borderRadius: 19, backgroundColor: colors.raised }}>
-            <Text style={{ fontSize: 17, fontWeight: '700' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
-            <Icon name="chevronDown" size={13} color={colors.ink.muted} weight="bold" />
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
+        <Text variant="title">Communities</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flexDirection: 'row', flex: 1, padding: 4, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.line }}>
+            {(['home', 'popular'] as const).map((m) => (
+              <PressableScale key={m} flex onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }}>
+                <View style={{ height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? colors.raised : 'transparent' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: mode === m ? colors.ink.DEFAULT : colors.ink.subtle }}>{m === 'home' ? 'Joined' : 'Everyone'}</Text>
+                </View>
+              </PressableScale>
+            ))}
           </View>
-        </PressableScale>
-        <View style={{ position: 'absolute', right: 12 }}>
-          <PressableScale onPress={() => pick('Sort by', SORTS.map((s) => ({ label: s.label, value: s.key })), setSort)} accessibilityLabel={`Sort: ${current.label}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.raised }}>
-              <Icon name={current.icon} size={16} color={colors.ink.DEFAULT} />
-              <Icon name="more" size={16} color={colors.ink.DEFAULT} weight="bold" />
+          <PressableScale onPress={pickSort} accessibilityLabel={`Sort: ${current.label}`}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, height: 44 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.ink.muted }}>{current.label}</Text>
+              <Icon name="chevronDown" size={12} color={colors.ink.subtle} weight="semibold" />
             </View>
           </PressableScale>
         </View>
@@ -58,14 +59,18 @@ export default function ExploreScreen() {
       <FlatList
         data={feed.data}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => <PostCard post={item} />}
-        ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+        renderItem={({ item }) => (
+          <View style={{ paddingHorizontal: 16 }}>
+            <PostCard post={item} />
+          </View>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={communities.data ? <CommunityChips communities={communities.data} /> : undefined}
         ListEmptyComponent={
           feed.isLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
           ) : (
-            <EmptyState emoji="🧭" title="Your home feed is empty" body="Join a community above, or switch to Popular." />
+            <EmptyState icon="people" title="Nothing here yet" body="Join a community above, or switch to Everyone" />
           )
         }
         refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}

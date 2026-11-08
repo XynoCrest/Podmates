@@ -1,29 +1,18 @@
 import { stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
-import { useEffect } from 'react'
 import { View } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
-import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg'
 
 /**
  * The pod's tree, drawn from its stage (growth) and health (hp / max_hp).
- * Leaves yellow then brown as health drops; a dead tree is bare.
+ * Leaves yellow then brown as health drops; a dead tree is bare. It stands in a
+ * raised garden bed: the plot the pod tends together.
  */
 export function TreeArt({ growth, health, dead = false, size = 220 }: { growth: number; health: number; dead?: boolean; size?: number }) {
   const { level } = stageFor(growth)
   const leaf = dead ? '#5B5148' : leafColor(health)
   const leafLight = dead ? '#6B6158' : mix(leaf, '#FFFFFF', 0.28)
   const leafDark = dead ? '#463E37' : mix(leaf, '#000000', 0.25)
-  const glow = dead ? 0 : 0.18 + 0.3 * health
-
-  // Breathing: a slow 2% swell. Off for Reduce Motion.
-  const reduced = useReducedMotion()
-  const breath = useSharedValue(0)
-  useEffect(() => {
-    if (reduced || dead) return
-    breath.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true)
-  }, [reduced, dead, breath])
-  const sway = useAnimatedStyle(() => ({ transform: [{ scale: 1 + breath.value * 0.02 }, { translateY: -breath.value * 2 }] }))
 
   const groundY = 176
   const trunkW = 6 + level * 2.4
@@ -32,18 +21,16 @@ export function TreeArt({ growth, health, dead = false, size = 220 }: { growth: 
   const r = 16 + level * 5
 
   return (
-    <View style={{ width: size, height: size }}>
-      <Animated.View style={[{ width: size, height: size }, sway]}>
-        <Svg width={size} height={size} viewBox="0 0 200 200">
-          <Defs>
-            <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={colors.leaf.DEFAULT} stopOpacity={glow} />
-              <Stop offset="1" stopColor={colors.leaf.DEFAULT} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={100} cy={110} r={96} fill="url(#glow)" />
-          <Ellipse cx={100} cy={groundY + 4} rx={62} ry={9} fill="#1A2418" />
-          <Ellipse cx={100} cy={groundY + 1} rx={44} ry={6} fill="#24331F" />
+    // The top of the canvas is only used by the tallest stages, so it's trimmed.
+    <View style={{ width: size, height: size * 0.92 }}>
+        <Svg width={size} height={size * 0.92} viewBox="0 16 200 184">
+          {/* Raised bed: wooden sides, dark soil, a few pebbles. */}
+          <Rect x={34} y={groundY - 2} width={132} height={20} rx={6} fill="#5a4330" />
+          <Rect x={34} y={groundY - 2} width={132} height={6} rx={3} fill="#6e5440" />
+          <Ellipse cx={100} cy={groundY - 1} rx={62} ry={6} fill="#2b2119" />
+          <Circle cx={58} cy={groundY - 2} r={2} fill="#4a3c30" />
+          <Circle cx={146} cy={groundY - 3} r={2.5} fill="#4a3c30" />
+          <Path d={`M48 ${groundY + 10} h20 M90 ${groundY + 10} h24 M134 ${groundY + 10} h16`} stroke="#4a3626" strokeWidth={2} strokeLinecap="round" />
 
           {level === 1 ? (
             // Seed: a mound with the first leaf poking out.
@@ -88,14 +75,13 @@ export function TreeArt({ growth, health, dead = false, size = 220 }: { growth: 
                         [0.9, 0.1],
                         [-0.1, -1.4],
                         [-0.9, 0.2],
-                      ].map(([dx, dy], i) => <Circle key={i} cx={100 + r * dx!} cy={topY + r * dy!} r={3.6} fill={colors.energy.DEFAULT} />)
+                      ].map(([dx, dy], i) => <Circle key={i} cx={100 + r * dx!} cy={topY + r * dy!} r={3.6} fill={colors.sun.DEFAULT} />)
                     : null}
                 </G>
               )}
             </G>
           )}
         </Svg>
-      </Animated.View>
     </View>
   )
 }

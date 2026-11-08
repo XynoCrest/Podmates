@@ -3,7 +3,7 @@ import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, TextInput, View } from 'react-native'
-import { Button, Icon, PressableScale, Text } from '@/components/ui'
+import { Button, Icon, inputText, PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
 import { deviceTimeZone } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
@@ -16,11 +16,11 @@ export default function NewPod() {
   const [tab, setTab] = useState<'create' | 'join'>(params.tab === 'join' ? 'join' : 'create')
   return (
     <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
-      <View style={{ flexDirection: 'row', backgroundColor: colors.raised, borderRadius: 12, padding: 3 }}>
+      <View style={{ flexDirection: 'row', backgroundColor: colors.canvas, borderRadius: 14, borderWidth: 2, borderColor: colors.line, padding: 4 }}>
         {(['create', 'join'] as const).map((t) => (
           <PressableScale key={t} flex onPress={() => setTab(t)} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} scaleTo={0.97}>
-            <View style={{ height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tab === t ? colors.line : 'transparent' }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>{t === 'create' ? 'Start a pod' : 'Join with code'}</Text>
+            <View style={{ height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: tab === t ? colors.raised : 'transparent' }}>
+              <Text style={{ fontWeight: '600', fontSize: 14, color: tab === t ? colors.ink.DEFAULT : colors.ink.subtle }}>{t === 'create' ? 'Start a pod' : 'Join with code'}</Text>
             </View>
           </PressableScale>
         ))}
@@ -57,17 +57,17 @@ function CreateForm() {
     )
 
   return (
-    <View style={{ gap: 18 }}>
+    <View style={{ gap: 16 }}>
       <Field label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
       <View style={{ gap: 8 }}>
-        <Text variant="overline">Habit</Text>
+        <Text variant="label">Habit</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {habits.data?.map((h) => {
             const active = h.id === habitId
             return (
               <PressableScale key={h.id} onPress={() => setHabitId(h.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} scaleTo={0.95}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
-                  <Text>{h.emoji}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
+                  <SymbolIcon name={h.sf_symbol} size={16} color={active ? colors.leaf.DEFAULT : colors.ink.subtle} />
                   <Text style={{ fontWeight: '600', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
                 </View>
               </PressableScale>
@@ -77,11 +77,11 @@ function CreateForm() {
       </View>
       <Field label="Daily goal" value={goal} onChangeText={setGoal} placeholder="20 pages a day" maxLength={120} />
       <View style={{ gap: 8 }}>
-        <Text variant="overline">Daily snap time</Text>
+        <Text variant="label">Daily snap time</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.raised, borderRadius: 14, padding: 8 }}>
           <Stepper icon="arrowDown" label="Earlier" onPress={() => step(-15)} />
           <View style={{ alignItems: 'center' }}>
-            <Text numeric style={{ fontSize: 28, fontWeight: '700' }}>
+            <Text numeric style={{ fontSize: 28, fontWeight: '600' }}>
               {formatSnapTime(snapTime)}
             </Text>
             <Text variant="caption">{deviceTimeZone()}</Text>
@@ -91,8 +91,8 @@ function CreateForm() {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {WINDOWS.map((w) => (
             <PressableScale key={w} flex onPress={() => setWindowMinutes(w)} accessibilityRole="radio" accessibilityState={{ selected: w === windowMinutes }}>
-              <View style={{ height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: w === windowMinutes ? colors.flame.soft : colors.raised, borderWidth: 1, borderColor: w === windowMinutes ? colors.flame.DEFAULT : 'transparent' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: w === windowMinutes ? colors.flame.DEFAULT : colors.ink.DEFAULT }}>{w} min window</Text>
+              <View style={{ height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: w === windowMinutes ? colors.sun.soft : colors.raised, borderWidth: 1, borderColor: w === windowMinutes ? colors.sun.DEFAULT : 'transparent' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: w === windowMinutes ? colors.sun.DEFAULT : colors.ink.DEFAULT }}>{w} min window</Text>
               </View>
             </PressableScale>
           ))}
@@ -104,7 +104,7 @@ function CreateForm() {
           {create.error.message}
         </Text>
       ) : null}
-      <Button label="Plant the seed 🌱" size="lg" disabled={!name.trim()} loading={create.isPending} onPress={submit} />
+      <Button label="Plant the seed" size="lg" disabled={!name.trim()} loading={create.isPending} onPress={submit} />
     </View>
   )
 }
@@ -122,8 +122,8 @@ function JoinForm() {
       onError: () => haptics.error(),
     })
   return (
-    <View style={{ gap: 14 }}>
-      <Text variant="subhead">Ask a podmate for their 6-letter invite code. (Demo: try IRONPT as Ben.)</Text>
+    <View style={{ gap: 12 }}>
+      <Text variant="subhead">Ask a podmate for their 6-letter invite code. In the demo, Ben can join with IRONPT.</Text>
       <TextInput
         value={code}
         onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
@@ -131,7 +131,7 @@ function JoinForm() {
         autoCapitalize="characters"
         placeholder="ABC123"
         placeholderTextColor={colors.ink.subtle}
-        style={{ height: 64, borderRadius: 14, backgroundColor: colors.raised, textAlign: 'center', fontSize: 30, fontWeight: '700', letterSpacing: 8, color: colors.ink.DEFAULT }}
+        style={[inputText, { height: 64, borderRadius: 16, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.canvas, textAlign: 'center', fontSize: 30, fontFamily: 'Figtree_600SemiBold', letterSpacing: 8 }]}
       />
       {join.error ? (
         <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
@@ -146,8 +146,8 @@ function JoinForm() {
 function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   return (
     <View style={{ gap: 8 }}>
-      <Text variant="overline">{label}</Text>
-      <TextInput placeholderTextColor={colors.ink.subtle} {...props} style={{ height: 46, borderRadius: 12, backgroundColor: colors.raised, paddingHorizontal: 14, color: colors.ink.DEFAULT, fontSize: 16 }} />
+      <Text variant="label">{label}</Text>
+      <TextInput placeholderTextColor={colors.ink.subtle} {...props} style={[inputText, { height: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.canvas, paddingHorizontal: 16, fontSize: 16 }]} />
     </View>
   )
 }

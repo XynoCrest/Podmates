@@ -11,7 +11,7 @@ import { Text } from './Text'
 export function Header({ title, subtitle, right, onBack }: { title?: ReactNode; subtitle?: string; right?: ReactNode; onBack?: () => void }) {
   const insets = useSafeAreaInsets()
   return (
-    <View style={{ paddingTop: insets.top, backgroundColor: colors.canvas, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
+    <View style={{ paddingTop: insets.top, backgroundColor: colors.canvas, borderBottomWidth: 1, borderBottomColor: colors.line }}>
       <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, gap: 4 }}>
         <IconButton icon="back" label="Back" onPress={onBack ?? goBack} />
         <View style={{ flex: 1, minWidth: 0 }}>

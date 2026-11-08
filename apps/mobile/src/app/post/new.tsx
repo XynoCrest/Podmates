@@ -2,7 +2,7 @@ import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, TextInput } from 'react-native'
-import { Button, Text } from '@/components/ui'
+import { Button, Text, inputText } from '@/components/ui'
 import { useCommunities, useCreatePost } from '@/features/explore/hooks'
 import { haptics } from '@/lib/haptics'
 
@@ -27,12 +27,12 @@ export default function NewPost() {
       },
     )
 
-  const input = { color: colors.ink.DEFAULT, backgroundColor: colors.raised, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }
+  const input = { backgroundColor: colors.canvas, borderWidth: 2, borderColor: colors.line, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 }
   return (
-    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
       <Text variant="title">Post to {c?.name}</Text>
-      <TextInput value={title} onChangeText={setTitle} placeholder="Title" placeholderTextColor={colors.ink.subtle} maxLength={300} style={{ ...input, fontSize: 18, fontWeight: '600' }} />
-      <TextInput value={body} onChangeText={setBody} placeholder="Say more (optional)" placeholderTextColor={colors.ink.subtle} multiline style={{ ...input, fontSize: 16, minHeight: 140, textAlignVertical: 'top' }} />
+      <TextInput value={title} onChangeText={setTitle} placeholder="Title" placeholderTextColor={colors.ink.subtle} maxLength={300} style={[inputText, input, { fontSize: 18, fontFamily: 'Figtree_600SemiBold' }]} />
+      <TextInput value={body} onChangeText={setBody} placeholder="Say more (optional)" placeholderTextColor={colors.ink.subtle} multiline style={[inputText, input, { minHeight: 140, textAlignVertical: 'top' }]} />
       {create.error ? (
         <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
           {create.error.message}

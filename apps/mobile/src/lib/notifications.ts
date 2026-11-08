@@ -36,7 +36,7 @@ export function useSnapReminders() {
           const { hour, minute } = snapTimeIn({ snapTime: p.snapTime, windowMinutes: p.windowMinutes, timeZone: p.timeZone }, tz)
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `📸 Snap time — ${p.name}`,
+              title: `Snap time · ${p.name}`,
               body: `Your window is open for ${p.windowMinutes} minutes. Your tree is counting on you.`,
               data: { podId: p.id },
             },

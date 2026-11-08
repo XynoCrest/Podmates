@@ -1,24 +1,35 @@
 # Design
 
-Dark-first, so snaps pop and the app sits comfortably next to the apps it borrows from. Colour is
-reserved for meaning: **leaf** = tree/health/done, **energy** (yellow) = ⚡, **star** (lilac) = ⭐,
-**flame** (orange) = 🔥 streaks and *open snap window*, **danger** = wilting. Tokens live in
-`packages/ui-tokens`. Type is the system font (SF Pro) with size-specific tracking (`components/ui/Text.tsx`).
+**Direction: a community garden at dusk.** Podmates is a few friends tending one shared tree, so the
+interface borrows from a garden plot: warm dark soil surfaces, one sprout-green accent, and
+wooden plant labels. Character: sunny, encouraging, a little scrappy.
 
-| Screen | Reference | What we kept |
-|---|---|---|
-| Tab bar | iOS 26 Liquid Glass / Instagram | Native `NativeTabs` (`expo-router/native-tabs`, SDK 58). On iOS 26 the system draws the floating glass pill. Icon-only, outline → filled SF Symbols (house, safari, camera, person.crop.circle). Minimizes on scroll. |
-| Pods (home) | Your whiteboard sketch + Messenger | Habit name tabs with underline → story row ("Your story" + podmates, gradient ring = unseen) → chat rows. The pod avatar's ring **is** the tree's health bar. |
-| Chat | Messenger | Grouped bubbles per author, snaps as 3:4 cards with ON TIME / LATE badges, system messages as green pills, camera button left of the composer. |
-| Tree | Duolingo "Flashcard Frenzy" screen | X top-left, muted title, ⚡ counter top-right, big illustration, one bold sentence with a coloured highlight, two-cell stat box (STAGE · HEALTH), week strip, chunky full-width button with a pressed-down "lip". |
-| Camera | Snapchat | Full-bleed preview, big ring shutter in thumb reach, flash/flip top-right, library left. The pill top-left says which pod's window is open. |
-| Send to | Snapchat "Send To" | Native formSheet; pods grouped by habit, each labelled On time / Late / Done. |
-| Profile | Instagram (2025) | Avatar + three stats (Energy · Stars · Streak), bio, Edit / Share / add-person buttons, one **icon tab per habit**, 3:4 portrait grid. |
-| Explore | Apollo | "Home ⌄" pill (Home / Popular), sort pill, community chips, cards: title → full-bleed media → "Community by user", ↑ score · 💬 · 🕒, then ••• ↑ ↓ on the right, black gutters between cards. |
+- **Colour** (`packages/ui-tokens`): a warm dark neutral ramp (`canvas`, `surface`, `raised`, `line`,
+  `lip`), one accent `leaf`, and two colours that only carry meaning. `sun` means a snap window is
+  open right now. `danger` means wilting, dead or destructive.
+- **Type:** Figtree (`@expo-google-fonts/figtree`), weights 400/500/600 only, sentence case,
+  tabular figures for numbers. `components/ui/Text.tsx` maps weights to font files. Inputs use `inputText`.
+- **Material:** every card is a `Tile` with a 2px border and a 4px bottom lip. Buttons are chunky: a
+  face on a darker lip that sinks on touch-down. The material is borrowed from Duolingo; its
+  layouts, mascot and colours are not.
+- **Signature:** `PlantLabel`, a small plant-stake tag with a pointed end and a punched hole. It
+  carries every pod status (`8 min left`, `Done`, `Opens 9:00 PM`, `Replant`) on the home rows,
+  chat, tree, camera, send sheet and snap viewer. It appears nowhere else.
+- **Moments:** the tree in its raised garden bed (`features/tree/TreeArt.tsx`) and the snap photos.
+  Everything around them stays quiet.
+- **Icons:** SF Symbols through `Icon` / `SymbolIcon` at one weight, in the text colours. No emoji in
+  the UI. Habits and communities use `habits.sf_symbol`.
+- **Motion:** touch-down feedback only (the press into the lip, `PressableScale`). No looping or
+  breathing animation.
+- The camera and the snap/story viewer stay photo-dark. The tab bar is the native iOS 26 glass pill,
+  tinted leaf.
 
-Motion and feedback follow Apple's guidance: press feedback on touch-down (`PressableScale`, 0.97),
-one haptic per action (`lib/haptics.ts`), native sheets and modals for spatial consistency, and the
-tree's breathing animation is turned off under Reduce Motion.
+| Screen | What it is now |
+|---|---|
+| Your pods | Habit pill tabs → "time left to snap" tile in sun when a window is open → strip of today's snap photos with the person's face pinned to the corner (a green edge means unseen) → pod tiles with a plant label, health bar, streak and today's count |
+| Chat | Bordered bubbles (yours leaf-tinted), snaps as photo tiles with a plant label, tree news as a quiet line with a leaf |
+| Tree | The garden plot tile with today's gardeners → one sentence about tonight → a Stage / Health / Your streak list → seven day markers → one chunky button |
+| Profile | Name, handle and bio → three stat tiles (Energy, Perfect days, Day streak) → actions → habit pills → rounded 4:5 grid of kept snaps |
+| Communities | Joined / Everyone segmented control, sort menu, community chips, post tiles with a single up · score · down control |
 
-Research sources: Expo native tabs docs (SDK 57/58), Instagram's 2025 profile/grid changes (3:4 grid),
-MacStories' Apollo review, and Snapchat camera UX write-ups.
+Spacing is on a 4px grid: 16 page padding, 12 between tiles, 16 inside tiles, 48 input and 44/52 button heights.

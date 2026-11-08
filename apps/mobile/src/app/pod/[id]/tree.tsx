@@ -2,23 +2,23 @@ import { formatSnapTime } from '@podmates/shared'
 import { forecast, healthRatio, RULES, stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { goBack } from '@/lib/nav'
 import type { ReactNode } from 'react'
 import { ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, ChunkyButton, HealthBar, Icon, IconButton, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, HealthBar, Icon, IconButton, Meta, Text, Tile, type IconName } from '@/components/ui'
 import { useMe } from '@/ctx/session'
-import { podWindow, usePod, usePodMembers } from '@/features/pods/hooks'
+import { podWindow, usePod, usePodMembers, type Member } from '@/features/pods/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
 import { useEndDay, useOpenWindow, useReplant, useTreeHistory, type PodDay } from '@/features/tree/hooks'
 import { isLocal } from '@/lib/env'
 import { firstName } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
+import { goBack } from '@/lib/nav'
 import { useNow } from '@/lib/useNow'
 
 /**
- * The pod's tree — a game screen: one big illustration, one sentence saying
- * what today means for it, two numbers, one big button.
+ * The pod's garden plot: the tree, who has tended it today, what tonight will do
+ * to it, and one button for the thing you can do about it.
  */
 export default function TreeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -40,90 +40,91 @@ export default function TreeScreen() {
   const f = forecast(tree, pod.contributedToday, pod.memberCount)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
-  const ratio = healthRatio(tree)
+  const ratio = dead ? 0 : healthRatio(tree)
 
   const cta = dead
-    ? { label: 'Replant 🌱', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
+    ? { label: 'Replant the tree', variant: 'primary' as const, onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
     : pod.meContributedToday
-      ? { label: "You're done today", disabled: true }
+      ? { label: 'You snapped today', variant: 'primary' as const, disabled: true }
       : w.status === 'open'
-        ? { label: `Snap now  +${RULES.energyPerCheckin} ⚡`, onPress: () => router.navigate({ pathname: '/camera', params: { podId: id } }), color: colors.flame.DEFAULT, lip: colors.flame.deep }
+        ? { label: `Snap now · +${RULES.energyPerCheckin} energy`, variant: 'sun' as const, icon: 'cameraFill' as const, onPress: () => router.navigate({ pathname: '/camera', params: { podId: id } }) }
         : w.status === 'upcoming'
-          ? { label: `Opens at ${formatSnapTime(pod.snapTime)}`, disabled: true }
-          : { label: 'Window closed for today', disabled: true }
+          ? { label: `Window opens at ${formatSnapTime(pod.snapTime)}`, variant: 'primary' as const, disabled: true }
+          : { label: "Today's window has closed", variant: 'primary' as const, disabled: true }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 52 }}>
-        <IconButton icon="close" label="Close" onPress={goBack} color={colors.ink.subtle} />
-        <Text variant="headline" numberOfLines={1} style={{ flex: 1, textAlign: 'center', color: colors.ink.subtle, fontWeight: '800' }}>
-          {pod.name}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, minWidth: 40, justifyContent: 'flex-end' }}>
-          <Icon name="bolt" size={20} color={colors.energy.DEFAULT} />
-          <Text numeric style={{ color: colors.energy.DEFAULT, fontWeight: '800', fontSize: 17 }}>
-            {myStats?.energy ?? 0}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 56, gap: 4 }}>
+        <IconButton icon="back" label="Back" onPress={goBack} />
+        <View style={{ flex: 1 }}>
+          <Text variant="headline" numberOfLines={1}>
+            {pod.name}
           </Text>
+          <Text variant="caption" numberOfLines={1}>
+            {pod.goal}
+          </Text>
+        </View>
+        <View style={{ paddingHorizontal: 12 }}>
+          <Meta icon="bolt" label={`${myStats?.energy ?? 0}`} color={colors.ink.muted} />
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 22, alignItems: 'stretch' }}>
-        <View style={{ alignItems: 'center', marginTop: 8 }}>
-          <TreeArt growth={pod.growth} health={ratio} dead={dead} size={260} />
-          <MemberRing members={members.data ?? []} />
-        </View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 24 }}>
+        {/* The plot: the one rich thing on this screen. */}
+        <Tile style={{ alignItems: 'center', paddingTop: 16, paddingBottom: 20, gap: 16 }}>
+          <TreeArt growth={pod.growth} health={ratio} dead={dead} size={232} />
+          <Gardeners members={members.data ?? []} />
+        </Tile>
 
-        <Headline>
+        <Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '600', color: colors.ink.DEFAULT, paddingHorizontal: 4 }}>
           {dead ? (
             <>
-              The tree <Hl color={colors.danger.DEFAULT}>ran out of energy</Hl>. Plant a new seed together.
+              The tree <Hl color={colors.danger.DEFAULT}>ran out of energy</Hl>. Plant a new one together
+            </>
+          ) : w.status === 'closed' && f.outcome !== 'thrive' ? (
+            <>
+              {pod.contributedToday} of {pod.memberCount} snapped.{' '}
+              {f.outcome === 'steady' ? 'The tree holds steady tonight' : <Hl color={colors.danger.DEFAULT}>It loses {-f.hpDelta} HP tonight</Hl>}
             </>
           ) : f.outcome === 'thrive' ? (
             <>
-              Everyone snapped! Tonight the tree will <Hl color={colors.leaf.DEFAULT}>grow +{f.hpDelta} HP</Hl>.
-            </>
-          ) : w.status === 'closed' ? (
-            // Nobody can snap any more today: state the outcome instead of asking for snaps.
-            <>
-              {pod.contributedToday} of {pod.memberCount} snapped.{' '}
-              {f.outcome === 'steady' ? (
-                <Hl color={colors.leaf.DEFAULT}>The tree holds steady tonight.</Hl>
-              ) : (
-                <Hl color={colors.flame.DEFAULT}>The tree loses {-f.hpDelta} HP tonight.</Hl>
-              )}
+              Everyone snapped. Tonight the tree <Hl color={colors.leaf.DEFAULT}>grows {f.hpDelta} HP</Hl>
             </>
           ) : f.outcome === 'steady' ? (
             <>
-              <Hl color={colors.leaf.DEFAULT}>{f.toThrive} more {f.toThrive === 1 ? 'snap' : 'snaps'}</Hl> and the tree grows tonight.
+              <Hl color={colors.leaf.DEFAULT}>
+                {f.toThrive} more {f.toThrive === 1 ? 'snap' : 'snaps'}
+              </Hl>{' '}
+              and the tree grows tonight
             </>
           ) : (
             <>
-              <Hl color={colors.flame.DEFAULT}>
+              <Hl color={colors.sun.DEFAULT}>
                 {f.toSteady} more {f.toSteady === 1 ? 'snap' : 'snaps'}
               </Hl>{' '}
-              or the tree loses {-f.hpDelta} HP tonight.
+              or the tree loses {-f.hpDelta} HP tonight
             </>
           )}
-        </Headline>
+        </Text>
 
-        <View style={{ flexDirection: 'row', borderRadius: 18, borderWidth: 2, borderColor: colors.line }}>
-          <StatCell label="Stage" value={stage.name} sub={`Level ${stage.level} of ${stage.levels}`} />
-          <View style={{ width: 2, backgroundColor: colors.line }} />
-          <StatCell label="Health" value={`${dead ? 0 : pod.hp}/${pod.maxHp}`} sub={`${pod.contributedToday} of ${pod.memberCount} snapped today`}>
-            <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              <HealthBar ratio={dead ? 0 : ratio} height={10} />
+        <Tile style={{ paddingHorizontal: 16 }}>
+          <Row icon="tree" label="Stage" value={stage.name} sub={stage.toNext === null ? `Level ${stage.level}, fully grown` : `Level ${stage.level} · ${stage.toNext} perfect days to the next`} />
+          <Row icon="leaf" label="Health" value={`${dead ? 0 : pod.hp} / ${pod.maxHp} HP`} divider>
+            <View style={{ marginTop: 8 }}>
+              <HealthBar ratio={ratio} />
             </View>
-          </StatCell>
-        </View>
+          </Row>
+          <Row icon="flame" label="Your streak" value={`${myStats?.streak ?? 0} days`} divider />
+        </Tile>
 
         <WeekStrip days={history.data ?? []} />
 
         {isLocal ? (
-          <View style={{ gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
-            <Text variant="overline">Demo tools · local only</Text>
+          <View style={{ gap: 8 }}>
+            <Text variant="label">Demo tools, local only</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <DevButton label={openWindow.isPending ? 'Opening…' : 'Open window now'} onPress={() => openWindow.mutate()} />
-              <DevButton label={endDay.isPending ? 'Settling…' : 'End the day now'} onPress={() => endDay.mutate(undefined, { onSuccess: () => haptics.success() })} />
+              <Button variant="secondary" size="sm" flex label={openWindow.isPending ? 'Opening' : 'Open window now'} onPress={() => openWindow.mutate()} />
+              <Button variant="secondary" size="sm" flex label={endDay.isPending ? 'Settling' : 'End the day now'} onPress={() => endDay.mutate(undefined, { onSuccess: () => haptics.success() })} />
             </View>
             {openWindow.error || endDay.error || replant.error ? (
               <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
@@ -134,18 +135,19 @@ export default function TreeScreen() {
         ) : null}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 12 }}>
-        <ChunkyButton {...cta} />
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.line }}>
+        <Button size="lg" {...cta} />
       </View>
     </View>
   )
 }
 
-function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean }[] }) {
+/** Who has tended the plot today: full colour with a check, or faded and waiting. */
+function Gardeners({ members }: { members: Member[] }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 4 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
       {members.map((m) => (
-        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday ? 1 : 0.55 }}>
+        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday ? 1 : 0.5 }}>
           <View>
             <Avatar person={m} size={40} />
             <View
@@ -157,7 +159,7 @@ function MemberRing({ members }: { members: { id: string; display_name: string; 
                 height: 20,
                 borderRadius: 10,
                 borderWidth: 2,
-                borderColor: colors.canvas,
+                borderColor: colors.surface,
                 backgroundColor: m.contributedToday ? colors.leaf.DEFAULT : colors.raised,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -173,52 +175,53 @@ function MemberRing({ members }: { members: { id: string; display_name: string; 
   )
 }
 
-function Headline({ children }: { children: ReactNode }) {
-  return <Text style={{ fontSize: 26, lineHeight: 33, fontWeight: '800', textAlign: 'center', color: colors.ink.DEFAULT, letterSpacing: -0.4 }}>{children}</Text>
-}
-
 function Hl({ children, color }: { children: ReactNode; color: string }) {
-  return <Text style={{ color, fontSize: 26, lineHeight: 33, fontWeight: '800' }}>{children}</Text>
+  return <Text style={{ color, fontSize: 22, lineHeight: 28, fontWeight: '600' }}>{children}</Text>
 }
 
-function StatCell({ label, value, sub, children }: { label: string; value: string; sub: string; children?: ReactNode }) {
+function Row({ icon, label, value, sub, divider, children }: { icon: IconName; label: string; value: string; sub?: string; divider?: boolean; children?: ReactNode }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12 }}>
-      <Text style={{ color: colors.ink.subtle, fontWeight: '800', fontSize: 14, letterSpacing: 1.2 }}>{label.toUpperCase()}</Text>
-      <Text numeric style={{ color: colors.leaf.DEFAULT, fontWeight: '800', fontSize: 24, marginTop: 4 }}>
-        {value}
-      </Text>
-      <Text variant="caption" style={{ marginTop: 2 }}>
-        {sub}
-      </Text>
-      {children}
+    <View style={{ paddingVertical: 16, borderTopWidth: divider ? 1 : 0, borderTopColor: colors.line }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Icon name={icon} size={18} color={colors.ink.subtle} />
+        <Text variant="subhead" style={{ flex: 1 }}>
+          {label}
+        </Text>
+        <Text numeric style={{ fontSize: 16, fontWeight: '600' }}>
+          {value}
+        </Text>
+      </View>
+      {sub ? (
+        <Text variant="caption" style={{ marginTop: 4, marginLeft: 30 }}>
+          {sub}
+        </Text>
+      ) : null}
+      {children ? <View style={{ marginLeft: 30 }}>{children}</View> : null}
     </View>
   )
 }
 
-const OUTCOME_STYLE: Record<PodDay['outcome'], { bg: string; fg: string; icon: 'leaf' | 'check' | 'arrowDown' | 'moon' }> = {
-  thrive: { bg: colors.leaf.DEFAULT, fg: colors.ink.inverse, icon: 'leaf' },
-  steady: { bg: colors.raised, fg: colors.ink.muted, icon: 'check' },
-  wilt: { bg: colors.danger.soft, fg: colors.danger.DEFAULT, icon: 'arrowDown' },
-  dormant: { bg: colors.surface, fg: colors.ink.subtle, icon: 'moon' },
+const OUTCOME: Record<PodDay['outcome'], { bg: string; fg: string; icon: IconName; word: string }> = {
+  thrive: { bg: colors.leaf.soft, fg: colors.leaf.DEFAULT, icon: 'leaf', word: 'grew' },
+  steady: { bg: colors.raised, fg: colors.ink.muted, icon: 'check', word: 'held' },
+  wilt: { bg: colors.danger.soft, fg: colors.danger.DEFAULT, icon: 'arrowDown', word: 'wilted' },
+  dormant: { bg: colors.raised, fg: colors.ink.subtle, icon: 'moon', word: 'resting' },
 }
 
-/** Last seven settled days: green = grew, grey = held, red = wilted. */
+/** The last seven settled days as a row of plot markers. */
 function WeekStrip({ days }: { days: PodDay[] }) {
-  if (!days.length) return <Text variant="caption" center>{"The tree's first day ends tonight."}</Text>
+  if (!days.length) return <Text variant="subhead">The first day ends tonight</Text>
   return (
-    <View style={{ gap: 10 }}>
-      <Text variant="overline" center>
-        Last {days.length} days
-      </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+    <View style={{ gap: 12 }}>
+      <Text variant="label">Last {days.length} days</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         {days.map((d) => {
-          const s = OUTCOME_STYLE[d.outcome]
-          const weekday = new Date(`${d.podDate}T12:00:00`).toLocaleDateString([], { weekday: 'narrow' })
+          const s = OUTCOME[d.outcome]
+          const weekday = new Date(`${d.podDate}T12:00:00`).toLocaleDateString([], { weekday: 'short' })
           return (
-            <View key={d.podDate} style={{ alignItems: 'center', gap: 6 }} accessibilityLabel={`${d.podDate}: ${d.outcome}, ${d.contributors} of ${d.members}`}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: s.bg, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={s.icon} size={15} color={s.fg} weight="bold" />
+            <View key={d.podDate} style={{ alignItems: 'center', gap: 8 }} accessibilityLabel={`${weekday}: the tree ${s.word}, ${d.contributors} of ${d.members} snapped`}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: s.bg, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={s.icon} size={16} color={s.fg} weight="semibold" />
               </View>
               <Text variant="caption">{weekday}</Text>
             </View>
@@ -226,15 +229,5 @@ function WeekStrip({ days }: { days: PodDay[] }) {
         })}
       </View>
     </View>
-  )
-}
-
-function DevButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <PressableScale onPress={onPress} flex accessibilityLabel={label}>
-      <View style={{ height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink.muted }}>{label}</Text>
-      </View>
-    </PressableScale>
   )
 }

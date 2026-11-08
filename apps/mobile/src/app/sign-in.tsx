@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, PressableScale, Text, inputText } from '@/components/ui'
 import { auth } from '@/ctx/session'
 import { TreeArt } from '@/features/tree/TreeArt'
 import { isLocal } from '@/lib/env'
@@ -60,7 +60,7 @@ export default function SignIn() {
           </Text>
         </View>
 
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 8 }}>
           {mode === 'signUp' ? (
             <>
               <Field value={name} onChangeText={setName} placeholder="Name" autoCapitalize="words" />
@@ -84,12 +84,12 @@ export default function SignIn() {
 
         {isLocal ? (
           <View style={{ gap: 12 }}>
-            <Text variant="overline">Demo accounts · local only</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+            <Text variant="label">Demo accounts, local only</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               {DEMO.map((d) => (
                 <PressableScale key={d.email} onPress={() => run(d.email, () => auth.signIn(d.email, 'podmates123'))} accessibilityLabel={`Sign in as ${d.name}`}>
-                  <View style={{ alignItems: 'center', gap: 6, width: 64, opacity: busy && busy !== d.email ? 0.4 : 1 }}>
-                    <Avatar person={{ display_name: d.name, avatar_color: d.color }} size={52} ring={busy === d.email ? 'unseen' : undefined} />
+                  <View style={{ alignItems: 'center', gap: 8, width: 64, opacity: busy && busy !== d.email ? 0.4 : 1 }}>
+                    <Avatar person={{ display_name: d.name, avatar_color: d.color }} size={52} outline={busy === d.email ? colors.leaf.DEFAULT : undefined} />
                     <Text variant="caption">{d.name}</Text>
                   </View>
                 </PressableScale>
@@ -107,7 +107,7 @@ function Field(props: React.ComponentProps<typeof TextInput>) {
     <TextInput
       placeholderTextColor={colors.ink.subtle}
       {...props}
-      style={{ height: 50, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 16, color: colors.ink.DEFAULT, fontSize: 16 }}
+      style={[inputText, { height: 48, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.line, paddingHorizontal: 16, fontSize: 16 }]}
     />
   )
 }

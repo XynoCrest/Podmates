@@ -1,38 +1,46 @@
 import { colors } from '@podmates/ui-tokens'
 import { ScrollView, View } from 'react-native'
-import { PressableScale, Text } from '@/components/ui'
+import { PressableScale, SymbolIcon, Text } from '@/components/ui'
 import { haptics } from '@/lib/haptics'
 import type { Habit } from '../hooks'
 
-/** Top tabs: one per habit, underlined when selected. A dot marks habits with a window open for me. */
+/** One tab per habit. A small sun dot marks habits with a snap window open for me. */
 export function HabitTabs({ habits, selected, onSelect, due }: { habits: Habit[]; selected: string | undefined; onSelect: (id: string) => void; due: Set<string> }) {
   return (
-    <View style={{ borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 4 }}>
-        {habits.map((h) => {
-          const active = h.id === selected
-          return (
-            <PressableScale
-              key={h.id}
-              onPress={() => {
-                if (!active) haptics.select()
-                onSelect(h.id)
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 4 }}>
+      {habits.map((h) => {
+        const active = h.id === selected
+        return (
+          <PressableScale
+            key={h.id}
+            onPress={() => {
+              if (!active) haptics.select()
+              onSelect(h.id)
+            }}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={h.name}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                height: 36,
+                paddingHorizontal: 12,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: active ? colors.leaf.deep : colors.line,
+                backgroundColor: active ? colors.leaf.soft : 'transparent',
               }}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              scaleTo={0.94}
             >
-              <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <Text style={{ fontSize: 15, fontWeight: active ? '700' : '500', color: active ? colors.ink.DEFAULT : colors.ink.subtle }}>{h.name}</Text>
-                  {due.has(h.id) ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.flame.DEFAULT }} /> : null}
-                </View>
-                <View style={{ position: 'absolute', bottom: 0, left: 10, right: 10, height: 2.5, borderRadius: 2, backgroundColor: active ? colors.ink.DEFAULT : 'transparent' }} />
-              </View>
-            </PressableScale>
-          )
-        })}
-      </ScrollView>
-    </View>
+              <SymbolIcon name={h.sf_symbol} size={16} color={active ? colors.leaf.DEFAULT : colors.ink.subtle} />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: active ? colors.leaf.DEFAULT : colors.ink.muted }}>{h.name}</Text>
+              {due.has(h.id) ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.sun.DEFAULT }} /> : null}
+            </View>
+          </PressableScale>
+        )
+      })}
+    </ScrollView>
   )
 }

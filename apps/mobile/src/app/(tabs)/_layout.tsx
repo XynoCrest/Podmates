@@ -12,7 +12,7 @@ export default function TabsLayout() {
   const pods = useMyPods()
   const due = pods.data?.filter((p) => needsSnap(p, now)).length ?? 0
   return (
-    <NativeTabs tintColor={colors.ink.DEFAULT} iconColor={{ default: colors.ink.muted, selected: colors.ink.DEFAULT }} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={colors.leaf.DEFAULT} iconColor={{ default: colors.ink.subtle, selected: colors.leaf.DEFAULT }} minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label hidden>Pods</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

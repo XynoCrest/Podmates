@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, TextInput, View } from 'react-native'
-import { Avatar, Button, PressableScale, Text } from '@/components/ui'
+import { Avatar, Button, PressableScale, Text, inputText } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useProfile, useUpdateProfile, type Profile } from '@/features/profile/hooks'
 import { haptics } from '@/lib/haptics'
@@ -36,15 +36,15 @@ function EditForm({ profile }: { profile: Profile }) {
     )
 
   return (
-    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 18 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
       <Text variant="title">Edit profile</Text>
-      <View style={{ alignItems: 'center', gap: 10 }}>
+      <View style={{ alignItems: 'center', gap: 8 }}>
         <Avatar person={{ ...form, avatar_url: photo ?? profile.avatar_url }} size={96} />
         <Button label="Change photo" variant="ghost" size="sm" onPress={pickPhoto} />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
           {Object.entries(avatarColors).map(([key, hex]) => (
             <PressableScale key={key} onPress={() => setForm({ ...form, avatar_color: key })} accessibilityLabel={`Colour ${key}`} scaleTo={0.9}>
-              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: hex, borderWidth: 3, borderColor: form.avatar_color === key ? colors.ink.DEFAULT : 'transparent' }} />
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: hex, borderWidth: 3, borderColor: form.avatar_color === key ? colors.ink.DEFAULT : 'transparent' }} />
             </PressableScale>
           ))}
         </View>
@@ -64,12 +64,12 @@ function EditForm({ profile }: { profile: Profile }) {
 
 function Labeled({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   return (
-    <View style={{ gap: 6 }}>
-      <Text variant="overline">{label}</Text>
+    <View style={{ gap: 8 }}>
+      <Text variant="label">{label}</Text>
       <TextInput
         placeholderTextColor={colors.ink.subtle}
         {...props}
-        style={{ minHeight: 46, borderRadius: 12, backgroundColor: colors.raised, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink.DEFAULT, fontSize: 16 }}
+        style={[inputText, { minHeight: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.canvas, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16 }]}
       />
     </View>
   )

@@ -1,13 +1,14 @@
+import { colors } from '@podmates/ui-tokens'
 import { View } from 'react-native'
 import { Icon, type IconName } from './Icon'
 import { Text } from './Text'
 
-/** Small pill: icon + value, tinted. Used for ⚡ energy, 🔥 streak, ⏱ window. */
-export function Chip({ icon, label, color, bg }: { icon?: IconName; label: string; color: string; bg: string }) {
+/** Quiet meta: an icon and a number in a muted colour. No pill unless asked. */
+export function Meta({ icon, label, color = colors.ink.subtle }: { icon?: IconName; label: string; color?: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, height: 24, borderRadius: 12, backgroundColor: bg }}>
-      {icon ? <Icon name={icon} size={12} color={color} weight="bold" /> : null}
-      <Text numeric style={{ color, fontSize: 12, fontWeight: '700' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      {icon ? <Icon name={icon} size={14} color={color} weight="medium" /> : null}
+      <Text numeric style={{ color, fontSize: 13, lineHeight: 18, fontWeight: '500' }}>
         {label}
       </Text>
     </View>

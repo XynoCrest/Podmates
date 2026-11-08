@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "podmates",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0C0F",
+    "backgroundColor": "#161513",
     "ios": {
       "bundleIdentifier": "dev.podmates.app",
       "supportsTablet": false,
@@ -18,7 +18,7 @@
     "android": {
       "package": "dev.podmates.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0C0F",
+        "backgroundColor": "#161513",
         "foregroundImage": "./assets/images/icon.png"
       },
       "predictiveBackGestureEnabled": false
@@ -32,7 +32,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0C0F",
+          "backgroundColor": "#161513",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }

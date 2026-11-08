@@ -51,6 +51,9 @@ const ICONS = {
   signOut: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   hammer: { ios: 'hammer', android: 'build' },
   moon: { ios: 'moon.stars', android: 'bedtime' },
+  bulb: { ios: 'lightbulb', android: 'lightbulb' },
+  sprout: { ios: 'leaf', android: 'eco' },
+  dot: { ios: 'circle.fill', android: 'circle' },
 } as const
 
 export type IconName = keyof typeof ICONS
