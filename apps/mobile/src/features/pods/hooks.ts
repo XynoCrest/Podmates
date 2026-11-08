@@ -30,6 +30,11 @@ export interface PodSummary {
   contributedToday: number
   meContributedToday: boolean
   myStreak: number
+  /** Members resting today who haven't snapped (left out of the tree's count). */
+  restingToday: number
+  meRestingToday: boolean
+  /** Rest days I've used in this pod this week (Mon–Sun); 2 allowed. */
+  myRestsThisWeek: number
   /** Members in join order — the faces on the pod's group icon. */
   members: Person[]
   /** Messages from others since I last opened the chat. */
@@ -91,6 +96,9 @@ export function useMyPods() {
         contributedToday: p.contributed_today ?? 0,
         meContributedToday: p.me_contributed_today ?? false,
         myStreak: p.my_streak ?? 0,
+        restingToday: p.resting_today ?? 0,
+        meRestingToday: p.me_resting_today ?? false,
+        myRestsThisWeek: p.my_rests_this_week ?? 0,
         members: faces.get(p.id!) ?? [],
         unread: p.unread_count ?? 0,
         lastMessage: p.last_message_kind
@@ -131,6 +139,7 @@ export interface Member extends Person {
   role: string
   streak: number
   contributedToday: boolean
+  restingToday: boolean
 }
 
 export function usePodMembers(pod: PodSummary | undefined) {
@@ -139,18 +148,22 @@ export function usePodMembers(pod: PodSummary | undefined) {
     enabled: !!pod,
     queryFn: async (): Promise<Member[]> => {
       const today = podDate(new Date(), pod!.timeZone)
-      const [members, today_] = await Promise.all([
+      const [members, today_, rests] = await Promise.all([
         supabase.from('pod_members').select(`role, streak, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
         supabase.from('contributions').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
+        supabase.from('rest_days').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
       ])
       if (members.error) throw members.error
       if (today_.error) throw today_.error
+      if (rests.error) throw rests.error
       const done = new Set(today_.data.map((c) => c.user_id))
+      const resting = new Set(rests.data.map((r) => r.user_id))
       return members.data.map((m) => ({
         ...(m.profile as Person),
         role: m.role,
         streak: m.streak,
         contributedToday: done.has((m.profile as Person).id),
+        restingToday: resting.has((m.profile as Person).id) && !done.has((m.profile as Person).id),
       }))
     },
   })

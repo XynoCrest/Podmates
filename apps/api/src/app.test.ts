@@ -17,12 +17,23 @@ function fakeServices(overrides: Partial<Services> = {}): Services {
     replantPair: async (_me, other) => ({ userId: other, hp: 100, maxHp: 100 }),
     replant: async (podId) => ({ podId, hp: 100, maxHp: 100 }),
     openWindowNow: async (podId) => ({ podId, snapTime: '12:00:00' }),
+    deleteAccount: vi.fn(async () => {}),
     ...overrides,
   }
 }
 
 const app = (env = 'local', services = fakeServices()) =>
   createApp({ services, log: silentLogger, env, worker: false, corsOrigins: [] })
+
+describe('account', () => {
+  it('deleting needs a signed-in user and deletes only that user', async () => {
+    const services = fakeServices()
+    expect((await request(app('local', services)).delete('/v1/me')).status).toBe(401)
+    const res = await request(app('local', services)).delete('/v1/me').set('Authorization', 'Bearer good')
+    expect(res.status).toBe(204)
+    expect(services.deleteAccount).toHaveBeenCalledWith('user-1')
+  })
+})
 
 describe('api', () => {
   it('health is public', async () => {

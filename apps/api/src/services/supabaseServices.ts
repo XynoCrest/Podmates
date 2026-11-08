@@ -104,5 +104,22 @@ export function createSupabaseServices(db: DbClient): Services {
       if (error) throw error
       return { podId, snapTime }
     },
+
+    async deleteAccount(userId) {
+      // Photos first (storage isn't covered by the database cascade): everything under "<userId>/".
+      const bucket = db.storage.from('snaps')
+      for (;;) {
+        const { data: files, error } = await bucket.list(userId, { limit: 100 })
+        if (error) throw error
+        if (!files?.length) break
+        const { error: rmErr } = await bucket.remove(files.map((f) => `${userId}/${f.name}`))
+        if (rmErr) throw rmErr
+        if (files.length < 100) break
+      }
+      // Deleting the auth user cascades to the profile, memberships, snaps, messages' authorship,
+      // DMs, blocks and reports. Pods left empty are deleted and ownership is handed on (DB trigger).
+      const { error } = await db.auth.admin.deleteUser(userId)
+      if (error) throw error
+    },
   }
 }

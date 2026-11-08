@@ -33,7 +33,9 @@ export default function TreeScreen() {
   const dead = pod.treeStatus === 'dead'
   const tree = { hp: pod.hp, maxHp: pod.maxHp, growth: pod.growth, status: pod.treeStatus }
   const stage = stageFor(pod.growth)
-  const f = forecast(tree, pod.contributedToday, pod.memberCount)
+  // Members resting today are left out of the count (packages/tree-engine), so the forecast leaves them out too.
+  const counted = pod.memberCount - pod.restingToday
+  const f = forecast(tree, pod.contributedToday, counted)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
   const ratio = healthRatio(tree)
@@ -71,7 +73,7 @@ export default function TreeScreen() {
         ) : w.status === 'closed' ? (
           // Nobody can snap any more today: state the outcome instead of asking for snaps.
           <>
-            {pod.contributedToday} of {pod.memberCount} snapped.{' '}
+            {pod.contributedToday} of {counted} snapped.{' '}
             {f.outcome === 'steady' ? (
               <Hl color={colors.leaf.DEFAULT}>The tree holds steady tonight.</Hl>
             ) : (
@@ -92,7 +94,7 @@ export default function TreeScreen() {
         )}
       </Headline>
 
-      <TreeStats stage={stage} hp={dead ? 0 : pod.hp} maxHp={pod.maxHp} ratio={dead ? 0 : ratio} snapped={`${pod.contributedToday} of ${pod.memberCount} snapped today`} />
+      <TreeStats stage={stage} hp={dead ? 0 : pod.hp} maxHp={pod.maxHp} ratio={dead ? 0 : ratio} snapped={`${pod.contributedToday} of ${counted} snapped today${pod.restingToday ? ` · ${pod.restingToday} resting` : ''}`} />
 
       <WeekStrip days={history.data ?? []} />
 

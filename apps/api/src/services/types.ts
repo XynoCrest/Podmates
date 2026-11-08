@@ -26,4 +26,6 @@ export interface Services {
   replantPair(userId: string, otherId: string, now?: Date): Promise<PairReplantResponse>
   replant(podId: string, now?: Date): Promise<ReplantResponse>
   openWindowNow(podId: string, now?: Date): Promise<OpenWindowResponse>
+  /** Deletes the user's photos and account for good; the database cascades the rest. */
+  deleteAccount(userId: string): Promise<void>
 }

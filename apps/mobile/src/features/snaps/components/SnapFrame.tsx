@@ -5,6 +5,9 @@ import type { ReactNode } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Chip, IconButton, PressableScale, Text } from '@/components/ui'
+import { useMe } from '@/ctx/session'
+import { useReportFlow } from '@/features/safety/hooks'
+import { showActionSheet } from '@/lib/actionSheet'
 import { goBack } from '@/lib/nav'
 import { timeAgo } from '@/lib/format'
 import { imageUri } from '@/lib/images'
@@ -26,6 +29,9 @@ export function ProgressBars({ count, index, current }: { count: number; index: 
 /** Full-screen snap (the media template): photo, author bar on top, caption + on-time badge at the bottom. */
 export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; footer?: ReactNode }) {
   const insets = useSafeAreaInsets()
+  const me = useMe()
+  const reportFlow = useReportFlow()
+  const openMenu = () => showActionSheet({ options: [{ label: 'Report snap', destructive: true, onPress: () => reportFlow('snap', snap.id, 'snap', goBack) }] })
   return (
     <View style={{ flex: 1, backgroundColor: overlay.media }}>
       <Image source={{ uri: imageUri(snap.image) }} style={{ position: 'absolute', top: insets.top, left: 0, right: 0, bottom: insets.bottom + space.sm, borderRadius: radii.card }} contentFit="cover" transition={150} />
@@ -56,6 +62,12 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
         ) : null}
         {footer}
       </View>
+      {/* Someone else's snap: report it (bottom right, clear of the caption and of Expo Go's top-right button). */}
+      {snap.author.id !== me ? (
+        <View style={{ position: 'absolute', right: space.md, bottom: insets.bottom + 24 }}>
+          <IconButton icon="more" label="Snap options" onPress={openMenu} tone="media" />
+        </View>
+      ) : null}
     </View>
   )
 }

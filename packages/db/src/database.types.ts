@@ -23,7 +23,33 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "comments": {
+            "blocks": {
+                  Row: {
+                    "blocked_id": string,"blocker_id": string,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_id": string,"blocker_id"?: string,"created_at"?: string
+                  }
+                  Update: {
+                    "blocked_id"?: string,"blocker_id"?: string,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "blocks_blocked_id_fkey"
+      columns: ["blocked_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "blocks_blocker_id_fkey"
+      columns: ["blocker_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"comments": {
                   Row: {
                     "body": string,"created_at": string,"id": string,"post_id": string,"user_id": string
                   }
@@ -407,6 +433,58 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"reports": {
+                  Row: {
+                    "created_at": string,"details": string | null,"id": string,"reason": string,"reporter_id": string,"target_id": string,"target_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason": string,"reporter_id"?: string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason"?: string,"reporter_id"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_reporter_id_fkey"
+      columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"rest_days": {
+                  Row: {
+                    "created_at": string,"pod_date": string,"pod_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"pod_date": string,"pod_id": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"pod_date"?: string,"pod_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rest_days_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pod_overview"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rest_days_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rest_days_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"snap_views": {
                   Row: {
                     "snap_id": string,"user_id": string,"viewed_at": string
@@ -502,7 +580,7 @@ isOneToOne: true
           Views: {
             "pod_overview": {
                   Row: {
-                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"member_count": number | null,"my_streak": number | null,"name": string | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"unread_count": number | null,"window_minutes": number | null
+                    "contributed_today": number | null,"goal": string | null,"growth": number | null,"habit_id": string | null,"hp": number | null,"id": string | null,"invite_code": string | null,"last_activity_at": string | null,"last_message_author": string | null,"last_message_body": string | null,"last_message_kind": string | null,"max_hp": number | null,"me_contributed_today": boolean | null,"me_resting_today": boolean | null,"member_count": number | null,"my_rests_this_week": number | null,"my_streak": number | null,"name": string | null,"resting_today": number | null,"snap_time": string | null,"timezone": string | null,"tree_status": string | null,"unread_count": number | null,"window_minutes": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -523,14 +601,29 @@ isOneToOne: false
 "apply_pair_settlement":
 { Args: { "p_day": Json,"p_expected_last": string,"p_pair_date": string,"p_tree": Json,"p_user_a": string,"p_user_b": string }; Returns: boolean
                            },
+"block_between":
+{ Args: { "p_user_id": string }; Returns: boolean
+                           },
+"cancel_rest":
+{ Args: { "p_pod_id": string }; Returns: undefined
+                           },
 "create_pod":
 { Args: { "p_goal": string,"p_habit_id": string,"p_name": string,"p_snap_time": string,"p_timezone": string,"p_window_minutes"?: number }; Returns: string
+                           },
+"i_blocked":
+{ Args: { "p_user_id": string }; Returns: boolean
+                           },
+"i_reported":
+{ Args: { "p_id": string,"p_type": string }; Returns: boolean
                            },
 "is_pod_member":
 { Args: { "p_pod_id": string }; Returns: boolean
                            },
 "join_pod":
 { Args: { "p_invite_code": string }; Returns: string
+                           },
+"leave_pod":
+{ Args: { "p_pod_id": string }; Returns: undefined
                            },
 "mark_dm_read":
 { Args: { "p_other": string }; Returns: number
@@ -540,6 +633,12 @@ isOneToOne: false
                            },
 "refresh_profile_stats":
 { Args: { "p_user_ids": (string)[] }; Returns: undefined
+                           },
+"remove_pod_member":
+{ Args: { "p_pod_id": string,"p_user_id": string }; Returns: undefined
+                           },
+"rest_today":
+{ Args: { "p_pod_id": string }; Returns: string
                            },
 "shares_pod_with":
 { Args: { "p_user_id": string }; Returns: boolean

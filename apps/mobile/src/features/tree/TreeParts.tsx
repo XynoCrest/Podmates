@@ -7,11 +7,11 @@ import type { PodDay } from './hooks'
 
 /** Pieces shared by the pod tree screen and the podmate pair tree screen. */
 
-export function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean }[] }) {
+export function MemberRing({ members }: { members: { id: string; display_name: string; avatar_color: string; avatar_url: string | null; contributedToday: boolean; restingToday?: boolean }[] }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 8 }}>
       {members.map((m) => (
-        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday ? 1 : 0.55 }}>
+        <View key={m.id} style={{ alignItems: 'center', gap: 4, opacity: m.contributedToday || m.restingToday ? 1 : 0.55 }}>
           <View>
             <Avatar person={m} size={40} />
             <View
@@ -24,15 +24,15 @@ export function MemberRing({ members }: { members: { id: string; display_name: s
                 borderRadius: 10,
                 borderWidth: 2,
                 borderColor: colors.canvas,
-                backgroundColor: m.contributedToday ? colors.leaf.DEFAULT : colors.raised,
+                backgroundColor: m.contributedToday ? colors.leaf.DEFAULT : m.restingToday ? colors.sky.DEFAULT : colors.raised,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Icon name={m.contributedToday ? 'check' : 'clock'} size={10} color={m.contributedToday ? colors.ink.inverse : colors.ink.subtle} weight="bold" />
+              <Icon name={m.contributedToday ? 'check' : m.restingToday ? 'moon' : 'clock'} size={10} color={m.contributedToday || m.restingToday ? colors.ink.inverse : colors.ink.subtle} weight="bold" />
             </View>
           </View>
-          <Text variant="caption">{firstName(m.display_name)}</Text>
+          <Text variant="caption">{m.restingToday ? 'Resting' : firstName(m.display_name)}</Text>
         </View>
       ))}
     </View>

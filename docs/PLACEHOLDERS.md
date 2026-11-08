@@ -8,4 +8,5 @@
 | Auth | Email + password, no confirmation, demo accounts | Sign in with Apple, email confirmation on |
 | Demo tools | `/v1/dev/pods/:id/open-window`, `/end-day`, `sign-in?demo=` | Mounted only when `APP_ENV=local`; nothing to do |
 | Explore scores | Seed adds a bonus to look busy | Real votes only |
+| Reports | Saved in `reports`, hidden from the reporter only; no review screen | A moderation tool (or Supabase dashboard queries) to review reports, hide content for everyone and act on accounts |
 | Hosting | Everything local (Docker + Simulator) | Supabase project + a container host for `apps/api` (Dockerfile ready) + EAS builds |

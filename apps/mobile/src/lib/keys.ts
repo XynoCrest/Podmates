@@ -27,4 +27,5 @@ export const qk = {
   community: (slug: string) => ['community', slug] as const,
   post: (id: string) => ['post', id] as const,
   comments: (postId: string) => ['comments', postId] as const,
+  blocked: (userId: string) => ['blocked', userId] as const,
 }

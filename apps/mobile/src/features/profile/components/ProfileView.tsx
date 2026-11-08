@@ -3,11 +3,13 @@ import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useState } from 'react'
-import { Dimensions, Share, View } from 'react-native'
+import { Alert, Dimensions, Share, View } from 'react-native'
 import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Button, HERO_OVERLAP, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
+import { REPORT_REASONS, useBlocked, useDeleteAccount, useReport, useSetBlocked } from '../../safety/hooks'
+import { haptics } from '@/lib/haptics'
 import { compact } from '@/lib/format'
 import { showActionSheet } from '@/lib/actionSheet'
 import { imageUri } from '@/lib/images'
@@ -43,6 +45,10 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const board = useProfileBoard(userId)
   const shared = useSharedPods(userId)
   const story = useProfileStory(userId)
+  const blocked = useBlocked(userId)
+  const setBlocked = useSetBlocked(userId)
+  const report = useReport()
+  const deleteAccount = useDeleteAccount()
   // No top bar: once the banner scrolls away, a canvas strip fades in behind the status bar.
   const scrollY = useSharedValue(0)
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -61,7 +67,58 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
       options: [
         { label: 'Edit profile', onPress: () => router.push('/profile/edit') },
         { label: 'Share profile', onPress: shareMine },
-        { label: 'Sign out', destructive: true, onPress: () => void auth.signOut() },
+        { label: 'Sign out', onPress: () => void auth.signOut() },
+        { label: 'Delete account', destructive: true, onPress: confirmDelete },
+      ],
+    })
+
+  // Deleting is for good: photos, snaps, messages' authorship, pods you were alone in. Two steps.
+  const confirmDelete = () =>
+    Alert.alert('Delete your account?', 'Your profile, snaps, photos and messages are deleted for good. Pods you’re alone in are deleted too. This can’t be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete for good',
+        style: 'destructive',
+        onPress: () =>
+          deleteAccount.mutate(undefined, {
+            onError: (e) => {
+              haptics.error()
+              Alert.alert('Couldn’t delete your account', e.message)
+            },
+          }),
+      },
+    ])
+
+  // Someone else's profile: report or block them.
+  const openTheirMenu = () =>
+    showActionSheet({
+      options: [
+        {
+          label: 'Report',
+          onPress: () =>
+            showActionSheet({
+              title: `Why are you reporting @${p.username}?`,
+              options: REPORT_REASONS.map((r) => ({
+                label: r.label,
+                onPress: () =>
+                  report.mutate(
+                    { type: 'profile', id: userId, reason: r.key },
+                    { onSuccess: () => Alert.alert('Thanks for telling us', 'We’ll review it. You can also block them so you don’t see their snaps or messages.') },
+                  ),
+              })),
+            }),
+        },
+        blocked.data
+          ? { label: `Unblock @${p.username}`, onPress: () => setBlocked.mutate(false) }
+          : {
+              label: `Block @${p.username}`,
+              destructive: true,
+              onPress: () =>
+                Alert.alert(`Block @${p.username}?`, 'You won’t see their snaps, posts or messages, and you can’t message each other. They aren’t told.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Block', style: 'destructive', onPress: () => setBlocked.mutate(true, { onSuccess: () => haptics.success() }) },
+                ]),
+            },
       ],
     })
 
@@ -95,7 +152,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           )}
           <View style={{ position: 'absolute', top: insets.top + space.xs, left: PAD - space.xs, right: PAD - space.xs, flexDirection: 'row', justifyContent: 'space-between' }}>
             {asTab ? <View /> : <IconButton icon="back" label="Back" onPress={goBack} tone="media" />}
-            {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} tone="media" /> : null}
+            {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} tone="media" /> : <IconButton icon="more" label="Report or block" onPress={openTheirMenu} tone="media" />}
           </View>
         </View>
 
@@ -124,10 +181,10 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
           <View style={{ flexDirection: 'row', marginTop: space.lg }}>
             <View style={{ flex: 1 }}>
-              <Stat value={p.streak} label="Streak" icon="flame" />
+              <Stat value={p.streak} label="Top streak" icon="flame" />
             </View>
             <View style={{ flex: 1 }}>
-              <Stat value={p.best_streak} label="Best" icon="trophy" />
+              <Stat value={p.best_streak} label="Best ever" icon="trophy" />
             </View>
             <View style={{ flex: 1 }}>
               <Stat value={p.snap_count} label="Snaps" icon="camera" />
@@ -137,6 +194,14 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           {!isMe ? (
             <View style={{ flexDirection: 'row', marginTop: space.lg }}>
               <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
+            </View>
+          ) : null}
+
+          {!isMe && blocked.data ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, padding: space.md, borderRadius: radii.card, backgroundColor: colors.surface }}>
+              <Icon name="warning" size={16} color={colors.ink.muted} />
+              <Text variant="subhead" style={{ flex: 1 }}>You blocked @{p.username}. Their snaps and messages are hidden.</Text>
+              <Button label="Unblock" variant="secondary" size="sm" onPress={() => setBlocked.mutate(false)} />
             </View>
           ) : null}
 
