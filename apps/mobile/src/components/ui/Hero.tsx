@@ -6,6 +6,9 @@ import { Text } from './Text'
 /** How far the sheet rides up over the hero. */
 export const HERO_OVERLAP = 22
 
+/** Height of a tab page's green band below the status bar (Home and Explore match). */
+export const TAB_HERO_H = 196
+
 /** The hero heading: a dark lead-in, then the bright line in white. One size on every tab. */
 export const HERO_TITLE = { fontSize: 30, lineHeight: 34, fontWeight: '700', letterSpacing: -0.8 } as const
 

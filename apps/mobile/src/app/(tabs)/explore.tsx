@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { HeroHeading, HeroSheet, ScreenState, TabHero } from '@/components/ui'
+import { HeroHeading, HeroSheet, ScreenState, TAB_HERO_H, TabHero } from '@/components/ui'
 import { SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
 import { PostCard } from '@/features/explore/components/PostCard'
 import { useFeed, type FeedSort } from '@/features/explore/hooks'
@@ -54,7 +54,7 @@ export default function ExploreScreen() {
         scrollEventThrottle={32}
         ListHeaderComponent={
           <View>
-            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="podmates." oneLine />}>
+            <TabHero topInset={insets.top} minHeight={insets.top + TAB_HERO_H} heading={<HeroHeading lead="Find your" bright="podmates." oneLine />}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <SearchBar value={query} onChange={setQuery} placeholder="Search posts" />
                 <Image

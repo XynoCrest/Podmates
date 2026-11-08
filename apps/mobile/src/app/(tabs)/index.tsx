@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, Text } from '@/components/ui'
+import { Button, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, TAB_HERO_H, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { PodmateRow } from '@/features/dms/components/PodmateRow'
 import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
@@ -18,7 +18,7 @@ import { useStories } from '@/features/snaps/hooks'
 import { LeafTree } from '@/features/tree/LeafTree'
 import { useNow } from '@/lib/useNow'
 
-const HERO_H = 196
+const HERO_H = TAB_HERO_H
 
 /** Home: a green streak hero, then a sheet with habit tabs → podmates' stories → Pods (group chats) or Podmates (one-to-one chats) for that habit, or Unread (every unopened chat, all habits). */
 export default function PodsScreen() {
