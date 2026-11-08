@@ -17,6 +17,8 @@ const BRAND = '#00AB5A'
 
 const colors = {
   canvas: '#0B0C0F',
+  /** Home streak band — story rings use this too. */
+  hero: BRAND,
   surface: '#15171C',
   raised: '#1E2128',
   sunken: '#08090B',
@@ -30,8 +32,8 @@ const colors = {
   sky: { DEFAULT: '#5AB2FF', soft: '#122233', deep: '#2F86D6' },
 }
 
-/** Story ring gradient (unseen snaps). */
-const ring = ['#FFC83D', '#FF8A3D', '#F0457D']
+/** Story ring (unseen snaps): same green as the home streak band. */
+const ring = [BRAND, BRAND, BRAND]
 
 /** Avatar backgrounds, picked by profiles.avatar_color. */
 const avatar = {
