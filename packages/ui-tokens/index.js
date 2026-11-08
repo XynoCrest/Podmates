@@ -1,45 +1,58 @@
 /**
- * Podmates design tokens. Dark-first: every reference surface (chat list, camera,
- * profile, feed, tree) reads best on a near-black canvas, and snaps pop on it.
+ * Podmates design tokens. Light, from the app-screens PDF: an off-white canvas, white sheets,
+ * soft grey controls and one green brand colour, so snaps and the tree carry the colour.
  *
- * Colour is reserved for the game's three currencies and the tree, so each reads at a glance:
- *   leaf   → the tree, health, "done today"       energy → ⚡ energy points
- *   star   → ⭐ stars (perfect pod days)           flame  → 🔥 streaks, open snap window
- *   danger → wilting tree, destructive actions
- * Each has a soft tint for backgrounds and a deep tone for pressed/edge states.
+ * Colour is reserved for meaning, so each reads at a glance:
+ *   leaf   → brand, the tree, health, "done today"   energy → ⚡ energy points
+ *   star   → ⭐ stars (perfect pod days)              flame  → 🔥 streaks, open snap window, "not yet" warnings
+ *   danger → dead tree, destructive actions           sky    → downvotes
+ * Each has a soft tint for backgrounds and a deep tone for text on that tint.
+ * `leaf.bright` is the lighter green for rings, dots and the health bar.
  *
  * CommonJS on purpose: Metro and Node scripts can both require() it. `preset` is a Tailwind preset
  * kept for a future web console; the app uses the raw values.
  */
 const colors = {
-  canvas: '#0B0C0F',
-  surface: '#15171C',
-  raised: '#1E2128',
-  sunken: '#08090B',
-  line: '#2A2E37',
-  ink: { DEFAULT: '#F3F4F6', muted: '#A3A8B4', subtle: '#6C7280', inverse: '#0B0C0F' },
-  leaf: { DEFAULT: '#7BD64B', soft: '#16271A', deep: '#4E9A2C' },
-  energy: { DEFAULT: '#FFC83D', soft: '#2B2412', deep: '#C9951C' },
-  star: { DEFAULT: '#B9A2FF', soft: '#211C33', deep: '#8668E6' },
-  flame: { DEFAULT: '#FF8A3D', soft: '#2E1C12', deep: '#D9651C' },
-  danger: { DEFAULT: '#FF5D63', soft: '#2E1416', deep: '#C93B41' },
-  sky: { DEFAULT: '#5AB2FF', soft: '#122233', deep: '#2F86D6' },
+  canvas: '#F9FAFB',
+  surface: '#FFFFFF',
+  raised: '#F1F3F5',
+  sunken: '#E9EDF0',
+  line: '#E5E7EB',
+  /** Input and outlined-button borders. */
+  lineStrong: '#9AA1A9',
+  ink: { DEFAULT: '#16181B', muted: '#5F6670', subtle: '#8A9099', inverse: '#FFFFFF' },
+  leaf: { DEFAULT: '#15803D', soft: '#EBF6EE', deep: '#0F6B32', bright: '#16A34A' },
+  energy: { DEFAULT: '#C2700F', soft: '#FDF1E3', deep: '#8A5A12' },
+  star: { DEFAULT: '#B7791F', soft: '#FBF3E2', deep: '#7C5410' },
+  flame: { DEFAULT: '#C2570C', soft: '#FDF1E3', deep: '#8A5A12' },
+  danger: { DEFAULT: '#DC2626', soft: '#FDECEC', deep: '#B91C1C' },
+  sky: { DEFAULT: '#2563EB', soft: '#EAF1FE', deep: '#1D4ED8' },
 }
 
-/** Story ring gradient (unseen snaps). */
-const ring = ['#FFC83D', '#FF8A3D', '#F0457D']
+/** Story ring: solid green = new snaps to watch. */
+const ring = [colors.leaf.bright, colors.leaf.bright, colors.leaf.bright]
 
-/** Avatar backgrounds, picked by profiles.avatar_color. */
+/** Avatar initials colour, picked by profiles.avatar_color (also the swatches in Edit profile). */
 const avatar = {
-  leaf: '#3F8F2A',
-  sky: '#2F6FB0',
-  star: '#6A4FC9',
-  flame: '#C2581C',
-  rose: '#B23A63',
-  teal: '#1F8A84',
+  leaf: '#15803D',
+  sky: '#2563EB',
+  star: '#7C5CD6',
+  flame: '#C2570C',
+  rose: '#BE3A6A',
+  teal: '#0F8A84',
 }
 
-const radii = { card: 20, control: 14, chip: 999, snap: 6 }
+/** Avatar background tint for each avatar colour. */
+const avatarSoft = {
+  leaf: '#EBF6EE',
+  sky: '#EAF1FE',
+  star: '#F1EDFC',
+  flame: '#FDF1E3',
+  rose: '#FCEBF1',
+  teal: '#E6F6F5',
+}
+
+const radii = { card: 16, control: 14, chip: 999, snap: 12 }
 
 /** Tailwind preset for a future web console. */
 const preset = {
@@ -52,4 +65,4 @@ const preset = {
   },
 }
 
-module.exports = { colors, ring, avatar, radii, preset }
+module.exports = { colors, ring, avatar, avatarSoft, radii, preset }

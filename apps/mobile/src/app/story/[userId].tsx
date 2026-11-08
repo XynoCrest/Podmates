@@ -61,7 +61,7 @@ function PersonStory({ userId, habit }: { userId: string; habit: string }) {
         top={
           <View style={{ flexDirection: 'row', gap: 4 }}>
             {group.snaps.map((s, i) => (
-              <View key={s.id} style={{ flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' }}>
+              <View key={s.id} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)', overflow: 'hidden' }}>
                 {i < index ? <View style={{ flex: 1, backgroundColor: '#fff' }} /> : i === index ? <Animated.View style={[{ height: '100%', backgroundColor: '#fff' }, bar]} /> : null}
               </View>
             ))}

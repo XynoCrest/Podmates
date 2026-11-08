@@ -1,4 +1,4 @@
-import { podDate, windowState, type WindowState } from '@podmates/shared'
+import { formatSnapTime, parseSnapTime, podDate, windowState, type WindowState } from '@podmates/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { qk } from '@/lib/keys'
@@ -110,6 +110,12 @@ export function useMyHabits() {
 
 export const podWindow = (pod: PodSummary, now: Date): WindowState =>
   windowState(now, { snapTime: pod.snapTime, windowMinutes: pod.windowMinutes, timeZone: pod.timeZone })
+
+/** When the pod's daily window closes, as "7:15 AM". Windows never cross midnight. */
+export function windowCloseLabel(pod: Pick<PodSummary, 'snapTime' | 'windowMinutes'>) {
+  const end = parseSnapTime(pod.snapTime) + pod.windowMinutes
+  return formatSnapTime(`${Math.floor(end / 60)}:${String(end % 60).padStart(2, '0')}`)
+}
 
 /** Snap now? true when the window is open and I haven't contributed today. */
 export const needsSnap = (pod: PodSummary, now: Date) => !pod.meContributedToday && podWindow(pod, now).status === 'open' && pod.treeStatus === 'alive'

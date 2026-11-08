@@ -1,33 +1,18 @@
 import { healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
-import { Text, View } from 'react-native'
-import Svg, { Circle } from 'react-native-svg'
+import { View } from 'react-native'
+import { TreeArt } from '@/features/tree/TreeArt'
 
-/** Pod icon: the habit's emoji inside a ring that IS the tree's health bar. */
-export function PodAvatar({ emoji, hp, maxHp, dead, size = 54 }: { emoji: string; hp: number; maxHp: number; dead?: boolean; size?: number }) {
+/**
+ * Pod icon: the pod's tree on a tinted disc. Green tint = healthy,
+ * amber = wilting (half health or less), grey = dead (resting tree).
+ */
+export function PodAvatar({ growth, hp, maxHp, dead, size = 64 }: { growth: number; hp: number; maxHp: number; dead?: boolean; size?: number }) {
   const ratio = dead ? 0 : healthRatio({ hp, maxHp })
-  const stroke = 3
-  const r = (size - stroke) / 2
-  const circumference = 2 * Math.PI * r
-  const color = ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
+  const bg = dead ? colors.raised : ratio > 0.5 ? colors.leaf.soft : colors.flame.soft
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.raised} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${circumference * ratio} ${circumference}`}
-        />
-      </Svg>
-      <View style={{ width: size - 12, height: size - 12, borderRadius: size, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: size * 0.4, opacity: dead ? 0.4 : 1 }}>{dead ? '🥀' : emoji}</Text>
-      </View>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <TreeArt growth={growth} dead={dead} size={size * 0.8} still />
     </View>
   )
 }

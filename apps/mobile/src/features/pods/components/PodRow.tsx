@@ -1,51 +1,47 @@
+import { healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { View } from 'react-native'
-import { Chip, Icon, PressableScale, Text } from '@/components/ui'
+import { LineIcon, PressableScale, Text } from '@/components/ui'
 import { chatTime, firstName } from '@/lib/format'
 import { podWindow, type PodSummary } from '../hooks'
 import { PodAvatar } from './PodAvatar'
 
-/** Messenger-style chat row: tree-health avatar · name · last message · time · today's status. */
-export function PodRow({ pod, emoji, now }: { pod: PodSummary; emoji: string; now: Date }) {
+/** Chat row: tree disc · name · last message (author in bold) · time, green + dot while my window is open. */
+export function PodRow({ pod, now }: { pod: PodSummary; now: Date }) {
   const w = podWindow(pod, now)
-  const preview = pod.lastMessage
-    ? pod.lastMessage.kind === 'system'
-      ? `🌳 ${pod.lastMessage.body}`
-      : `${pod.lastMessage.author ? `${firstName(pod.lastMessage.author)}: ` : ''}${pod.lastMessage.kind === 'snap' ? `📸 ${pod.lastMessage.body || 'Sent a snap'}` : pod.lastMessage.body}`
-    : pod.goal
-  const urgent = w.status === 'open' && !pod.meContributedToday && pod.treeStatus === 'alive'
+  const dead = pod.treeStatus === 'dead'
+  const urgent = w.status === 'open' && !pod.meContributedToday && !dead
+  const last = pod.lastMessage
+  // Tree news (system messages) reads amber while the tree is struggling.
+  const struggling = dead || healthRatio(pod) <= 0.5
+  const previewColor = last?.kind === 'system' && struggling ? colors.flame.deep : colors.ink.muted
+  const body = !last ? pod.goal : last.kind === 'snap' ? `snapped${last.body ? `: ${last.body}` : ''}. ${pod.contributedToday} of ${pod.memberCount} in` : last.body
+
   return (
     <PressableScale onPress={() => router.push({ pathname: '/pod/[id]', params: { id: pod.id } })} scaleTo={0.98} accessibilityLabel={pod.name}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 14 }}>
-        <PodAvatar emoji={emoji} hp={pod.hp} maxHp={pod.maxHp} dead={pod.treeStatus === 'dead'} />
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text variant="headline" numberOfLines={1} style={{ flexShrink: 1, fontSize: 17 }}>
-              {pod.name}
-            </Text>
-            {pod.myStreak > 0 ? <Chip icon="flame" label={String(pod.myStreak)} color={colors.flame.DEFAULT} bg={colors.flame.soft} /> : null}
-          </View>
-          <Text numberOfLines={1} style={{ fontSize: 15, color: urgent ? colors.ink.DEFAULT : colors.ink.muted, fontWeight: urgent ? '600' : '400' }}>
-            {preview}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 16 }}>
+        <PodAvatar growth={pod.growth} hp={pod.hp} maxHp={pod.maxHp} dead={dead} />
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Text numberOfLines={1} style={{ fontSize: 19, fontWeight: '700' }}>
+            {pod.name}
+          </Text>
+          <Text numberOfLines={1} style={{ fontSize: 16, color: previewColor }}>
+            {last?.author && last.kind !== 'system' ? <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink.DEFAULT }}>{firstName(last.author).toLowerCase()} </Text> : null}
+            {body}
           </Text>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          <Text variant="caption">{chatTime(pod.lastActivityAt, now)}</Text>
-          {pod.treeStatus === 'dead' ? (
-            <Chip label="Replant" color={colors.danger.DEFAULT} bg={colors.danger.soft} />
-          ) : pod.meContributedToday ? (
-            <Icon name="checkCircle" size={20} color={colors.leaf.DEFAULT} />
+        <View style={{ alignItems: 'flex-end', gap: 8, alignSelf: 'stretch', paddingVertical: 6 }}>
+          <Text style={{ fontSize: 15, fontWeight: urgent ? '700' : '400', color: urgent ? colors.leaf.DEFAULT : colors.ink.muted }}>{urgent ? `${w.closesInMin} min` : chatTime(pod.lastActivityAt, now)}</Text>
+          {dead ? (
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.danger.DEFAULT }}>Replant</Text>
           ) : urgent ? (
-            <Chip icon="timer" label={`${w.closesInMin}m`} color={colors.ink.inverse} bg={colors.flame.DEFAULT} />
-          ) : (
-            <Text variant="caption" numberOfLines={1}>
-              {pod.contributedToday}/{pod.memberCount}
-            </Text>
-          )}
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: colors.leaf.bright }} accessibilityLabel="Snap window open" />
+          ) : pod.meContributedToday ? (
+            <LineIcon name="checkedBadge" size={16} color={colors.leaf.bright} />
+          ) : null}
         </View>
       </View>
     </PressableScale>
   )
 }
-

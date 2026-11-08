@@ -67,7 +67,7 @@ the same engine, run on the client, so the prediction and the outcome can't disa
 
 ```
 src/app/                    routes (expo-router)
-  (tabs)/_layout.tsx        NativeTabs → iOS 26 Liquid Glass pill, icon-only
+  (tabs)/_layout.tsx        flat white tab bar, icon + green dot; Camera hides it
   (tabs)/index|explore|camera|profile.tsx
   pod/[id]/index.tsx        chat thread         pod/[id]/tree.tsx   tree (fullScreenModal)
   story/[userId].tsx        stories viewer      snap/[id].tsx       single snap

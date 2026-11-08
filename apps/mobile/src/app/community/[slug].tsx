@@ -1,52 +1,68 @@
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useState } from 'react'
 import { FlatList, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, EmptyState, Header, IconButton, Text } from '@/components/ui'
-import { CommunityIcon, PostCard } from '@/features/explore/components/PostCard'
-import { useCommunities, useFeed, useToggleJoin } from '@/features/explore/hooks'
-import { compact } from '@/lib/format'
+import { Button, EmptyState, Header, HeaderAction, Pill, Text } from '@/components/ui'
+import { communityLabel, CommunityIcon, PostRow } from '@/features/explore/components/PostCard'
+import { useCommunities, useFeed, useToggleJoin, type FeedSort } from '@/features/explore/hooks'
 import { haptics } from '@/lib/haptics'
+
+const SORTS: { key: FeedSort; label: string }[] = [
+  { key: 'hot', label: 'Hot' },
+  { key: 'new', label: 'New' },
+  { key: 'top', label: 'Top' },
+]
 
 export default function CommunityScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const insets = useSafeAreaInsets()
   const communities = useCommunities()
   const c = communities.data?.find((x) => x.slug === slug)
-  const feed = useFeed('popular', 'hot', c?.id)
+  const [sort, setSort] = useState<FeedSort>('hot')
+  const feed = useFeed('popular', sort, c?.id)
   const toggle = useToggleJoin()
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
       <Header
-        title={c?.name ?? ''}
-        right={c?.joined ? <IconButton icon="plusSquare" label="New post" onPress={() => router.push({ pathname: '/post/new', params: { community: c.id } })} /> : null}
+        title={c ? communityLabel(c) : ''}
+        border={false}
+        right={c?.joined ? <HeaderAction label="Post" onPress={() => router.push({ pathname: '/post/new', params: { community: c.id } })} /> : null}
       />
       {c ? (
         <FlatList
           data={c.id ? feed.data : []}
           keyExtractor={(p) => p.id}
-          renderItem={({ item }) => <PostCard post={item} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+          renderItem={({ item }) => <PostRow post={item} showCommunity={false} />}
           ListHeaderComponent={
-            <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CommunityIcon emoji={c.emoji} color={c.color} size={56} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="title">{c.name}</Text>
-                  <Text variant="subhead">{compact(c.memberCount)} members</Text>
+            <View style={{ paddingHorizontal: 20, paddingTop: 8, gap: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <CommunityIcon community={c} size={84} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 26, fontWeight: '800', letterSpacing: -0.4 }}>
+                    {communityLabel(c)}
+                  </Text>
+                  <Text style={{ fontSize: 17, color: colors.ink.muted }}>
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: colors.ink.DEFAULT }}>{c.memberCount.toLocaleString()}</Text> members
+                  </Text>
                 </View>
                 <Button
                   label={c.joined ? 'Joined' : 'Join'}
                   variant={c.joined ? 'secondary' : 'primary'}
-                  size="sm"
+                  pill
                   onPress={() => {
                     haptics.tap()
                     toggle.mutate(c)
                   }}
                 />
               </View>
-              <Text style={{ fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>{c.description}</Text>
+              {c.description ? <Text style={{ fontSize: 17, lineHeight: 25, color: colors.ink.muted }}>{c.description}</Text> : null}
+              <View style={{ flexDirection: 'row', gap: 10, paddingBottom: 4 }}>
+                {SORTS.map((s) => (
+                  <Pill key={s.key} label={s.label} selected={s.key === sort} onPress={() => setSort(s.key)} />
+                ))}
+              </View>
             </View>
           }
           ListEmptyComponent={feed.isLoading ? undefined : <EmptyState emoji="📝" title="No posts yet" body={c.joined ? 'Be the first to post.' : 'Join to start the conversation.'} />}

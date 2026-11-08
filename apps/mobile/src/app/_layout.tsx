@@ -1,6 +1,6 @@
 import { colors } from '@podmates/ui-tokens'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router'
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
@@ -13,13 +13,13 @@ import { queryClient } from '@/lib/queryClient'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
-const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.canvas, card: colors.canvas, primary: colors.leaf.DEFAULT } }
+const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.canvas, card: colors.surface, border: colors.line, text: colors.ink.DEFAULT, primary: colors.leaf.DEFAULT } }
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ThemeProvider value={theme}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         {env ? (
           <QueryClientProvider client={queryClient}>
             <SessionProvider>
@@ -54,15 +54,14 @@ function SessionGate() {
         <Stack.Protected guard={signedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="pod/[id]/index" />
-          {/* The tree is its own little world: full screen, closes with an X like a game screen. */}
-          <Stack.Screen name="pod/[id]/tree" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="pod/[id]/tree" />
           <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
           <Stack.Screen name="snap/[id]" options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
           <Stack.Screen name="send" options={{ ...sheet, sheetAllowedDetents: [0.75, 1] }} />
           <Stack.Screen name="pod/new" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/edit" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="profile/pick" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
-          <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
+          <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="user/[id]" />
           <Stack.Screen name="community/[slug]" />
           <Stack.Screen name="post/[id]" />

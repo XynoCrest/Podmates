@@ -6,45 +6,46 @@ import { firstName } from '@/lib/format'
 import type { Profile } from '../../profile/hooks'
 import type { StoryGroup } from '../../snaps/hooks'
 
-/** Messenger/Instagram story row: "Your story" first, then each podmate's last-24h snaps. */
+const SIZE = 76
+
+/** Story row: "Your snap" first, then each podmate's last-24h snaps (green ring = not watched yet). */
 export function StoriesRow({ me, groups, habitId }: { me: Profile | undefined; groups: StoryGroup[]; habitId: string }) {
   const mine = groups.find((g) => g.person.id === me?.id)
   const others = groups.filter((g) => g.person.id !== me?.id)
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12, gap: 14 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 20, gap: 18 }}>
       {me ? (
         <PressableScale
           onPress={() => (mine ? router.push({ pathname: '/story/[userId]', params: { userId: me.id, habit: habitId } }) : router.navigate('/camera'))}
-          accessibilityLabel={mine ? 'Your story' : 'Add to your story'}
+          accessibilityLabel={mine ? 'Your snap' : 'Add your snap'}
         >
-          <View style={{ alignItems: 'center', width: 72, gap: 6 }}>
-            <View>
-              <Avatar person={me} size={62} ring={mine ? 'seen' : undefined} />
-              {!mine ? (
-                <View style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.ink.DEFAULT, borderWidth: 3, borderColor: colors.canvas, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="plus" size={12} color={colors.ink.inverse} weight="bold" />
-                </View>
-              ) : null}
-            </View>
-            <Text variant="caption" numberOfLines={1}>
-              {mine ? 'Your story' : 'Add snap'}
+          <View style={{ alignItems: 'center', width: SIZE + 8, gap: 8 }}>
+            {mine ? (
+              <Avatar person={me} size={SIZE} ring="seen" />
+            ) : (
+              <View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.ink.subtle, backgroundColor: colors.raised, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="plus" size={26} color={colors.ink.muted} />
+              </View>
+            )}
+            <Text numberOfLines={1} style={{ fontSize: 15, color: colors.ink.muted }}>
+              Your snap
             </Text>
           </View>
         </PressableScale>
       ) : null}
       {others.map((g) => (
-        <PressableScale key={g.person.id} onPress={() => router.push({ pathname: '/story/[userId]', params: { userId: g.person.id, habit: habitId } })} accessibilityLabel={`${g.person.display_name}'s story`}>
-          <View style={{ alignItems: 'center', width: 72, gap: 6 }}>
-            <Avatar person={g.person} size={62} ring={g.unseen ? 'unseen' : 'seen'} />
-            <Text variant="caption" numberOfLines={1} style={{ color: g.unseen ? colors.ink.DEFAULT : colors.ink.muted }}>
-              {firstName(g.person.display_name)}
+        <PressableScale key={g.person.id} onPress={() => router.push({ pathname: '/story/[userId]', params: { userId: g.person.id, habit: habitId } })} accessibilityLabel={`${g.person.display_name}'s snaps`}>
+          <View style={{ alignItems: 'center', width: SIZE + 8, gap: 8 }}>
+            <Avatar person={g.person} size={SIZE} ring={g.unseen ? 'unseen' : 'seen'} />
+            <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: g.unseen ? '700' : '400', color: g.unseen ? colors.ink.DEFAULT : colors.ink.muted }}>
+              {firstName(g.person.display_name).toLowerCase()}
             </Text>
           </View>
         </PressableScale>
       ))}
       {others.length === 0 ? (
-        <View style={{ justifyContent: 'center', paddingRight: 24, height: 62 }}>
-          <Text variant="caption">No snaps from your podmates in the last 24h.</Text>
+        <View style={{ justifyContent: 'center', paddingRight: 24, height: SIZE }}>
+          <Text variant="subhead">No snaps from your podmates in the last 24h.</Text>
         </View>
       ) : null}
     </ScrollView>

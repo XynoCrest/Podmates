@@ -12,12 +12,14 @@ Project rules live in the root [AGENTS.md](../../AGENTS.md). Mobile-specific:
   typings don't work with RN 0.88's strict TypeScript API). Text styles are the variants in `components/ui/Text.tsx`.
 - Motion: press feedback via `PressableScale` (0.97). Tabs never animate. Haptics via
   `src/lib/haptics.ts`, one per user action. Respect Reduce Motion.
-- The tab bar is `NativeTabs` from `expo-router/native-tabs`. Render `Trigger.Badge` conditionally:
-  on SDK 58 its `hidden` prop no longer hides it. `_layout.web.tsx` is the browser fallback.
+- The tab bar is the JS `Tabs` from `expo-router` with a custom icon + dot (`src/app/(tabs)/_layout.tsx`),
+  the same on every platform. The Camera tab hides the bar and closes back to the previous tab (`backBehavior="history"`).
 - `Stack.Protected` takes `redirectTo` (SDK 58: a failed guard renders a redirect).
 - formSheet routes use a `ScrollView` as their root (see docs/INVARIANTS.md #7).
 - Back/close buttons use `goBack()` from `src/lib/nav.ts`, because screens opened from a notification have no history.
-- Dark only for now (`userInterfaceStyle: dark`).
+- Light only for now (`userInterfaceStyle: light`). Full-screen photo screens (story, snap) set a light status bar.
+- Icons: `Icon` uses the Podmates line icons in `components/ui/svgIcons.ts` where one exists, else SF Symbols.
+  Habit icons go through `HabitIcon` (line icon for walking / water / sleep, else `habits.sf_symbol`).
 
 ---
 

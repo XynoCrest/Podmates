@@ -1,35 +1,47 @@
 import { colors } from '@podmates/ui-tokens'
-import { NativeTabs } from 'expo-router/native-tabs'
-import { useMyPods, needsSnap } from '@/features/pods/hooks'
+import { Tabs } from 'expo-router'
+import { View } from 'react-native'
+import { Icon, type IconName } from '@/components/ui'
+import { needsSnap, useMyPods } from '@/features/pods/hooks'
 import { useNow } from '@/lib/useNow'
 
 /**
- * The platform's real tab bar. On iOS 26 the system draws it as the floating
- * Liquid Glass pill; icons only, outline → filled on select, like Instagram.
+ * Flat white tab bar from the app-screens PDF: icon only, green when active with a dot under it.
+ * Camera is a tab, but it hides the bar and runs full screen with its own close button.
+ * `backBehavior="history"` so that close button returns to the tab you came from.
  */
 export default function TabsLayout() {
   const now = useNow()
   const pods = useMyPods()
   const due = pods.data?.filter((p) => needsSnap(p, now)).length ?? 0
   return (
-    <NativeTabs tintColor={colors.ink.DEFAULT} iconColor={{ default: colors.ink.muted, selected: colors.ink.DEFAULT }} minimizeBehavior="onScrollDown">
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label hidden>Pods</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
-        {due > 0 ? <NativeTabs.Trigger.Badge>{String(due)}</NativeTabs.Trigger.Badge> : null}
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label hidden>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'safari', selected: 'safari.fill' }} md="explore" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="camera">
-        <NativeTabs.Trigger.Label hidden>Snap</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'camera', selected: 'camera.fill' }} md="photo_camera" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label hidden>Profile</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} md="account_circle" />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      backBehavior="history"
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: colors.leaf.DEFAULT,
+        tabBarInactiveTintColor: colors.ink.muted,
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, height: 88, paddingTop: 10 },
+        sceneStyle: { backgroundColor: colors.canvas },
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Pods', tabBarBadge: due > 0 ? due : undefined, tabBarBadgeStyle: { backgroundColor: colors.flame.DEFAULT }, tabBarIcon: tab('chat', 'chatFill') }} />
+      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarIcon: tab('explore', 'explore') }} />
+      <Tabs.Screen name="camera" options={{ title: 'Snap', tabBarIcon: tab('camera', 'cameraFill'), tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tab('profile', 'profileFill') }} />
+    </Tabs>
   )
+}
+
+function tab(icon: IconName, active: IconName) {
+  function TabIcon({ focused }: { focused: boolean }) {
+    return (
+      <View style={{ alignItems: 'center', gap: 5 }}>
+        <Icon name={focused ? active : icon} size={28} color={focused ? colors.leaf.DEFAULT : colors.ink.muted} />
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: focused ? colors.leaf.bright : 'transparent' }} />
+      </View>
+    )
+  }
+  return TabIcon
 }

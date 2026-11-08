@@ -10,17 +10,12 @@ export function WindowBanner({ pod, now }: { pod: PodSummary; now: Date }) {
   if (w.status !== 'open') return null
   return (
     <PressableScale onPress={() => router.navigate({ pathname: '/camera', params: { podId: pod.id } })} accessibilityLabel={`Snap now for ${pod.name}`}>
-      <View style={{ marginHorizontal: 16, marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: colors.flame.soft, borderWidth: 1, borderColor: colors.flame.deep, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.flame.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="cameraFill" size={20} color={colors.ink.inverse} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.flame.DEFAULT, fontWeight: '700', fontSize: 15 }}>Snap window open · {w.closesInMin} min left</Text>
-          <Text variant="subhead" numberOfLines={1}>
-            {pod.name} — {pod.goal}
-          </Text>
-        </View>
-        <Icon name="chevronRight" size={16} color={colors.flame.DEFAULT} weight="semibold" />
+      <View style={{ marginHorizontal: 20, marginTop: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.flame.soft, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: colors.flame.DEFAULT }} />
+        <Text numberOfLines={1} style={{ flex: 1, color: colors.flame.deep, fontWeight: '700', fontSize: 16 }}>
+          {pod.name}: {w.closesInMin} min left in the window
+        </Text>
+        <Icon name="camera" size={20} color={colors.flame.deep} />
       </View>
     </PressableScale>
   )

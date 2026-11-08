@@ -1,57 +1,68 @@
 import { colors } from '@podmates/ui-tokens'
 import { SymbolView, type SymbolWeight } from 'expo-symbols'
 import type { ColorValue } from 'react-native'
+import { SvgXml } from 'react-native-svg'
+import { HABIT_SVGS, SVG_ICONS, type SvgIconName } from './svgIcons'
+
+type Source = { svg: SvgIconName } | { ios: string; android: string }
 
 /**
- * Semantic icon names → SF Symbols on iOS, Material Symbols on Android/web.
- * Outline-by-default like Instagram; `…Fill` variants for selected states.
- * Add a row here instead of using raw symbol names in screens.
+ * Semantic icon names → the Podmates line icons (svgIcons.ts) where one exists,
+ * else SF Symbols on iOS / Material Symbols on Android and web.
+ * Add a row here instead of using raw icon names in screens.
  */
 const ICONS = {
   home: { ios: 'house', android: 'home' },
-  explore: { ios: 'magnifyingglass', android: 'search' },
-  camera: { ios: 'camera', android: 'photo_camera' },
-  cameraFill: { ios: 'camera.fill', android: 'photo_camera' },
-  profile: { ios: 'person.crop.circle', android: 'account_circle' },
-  plus: { ios: 'plus', android: 'add' },
-  plusSquare: { ios: 'plus.app', android: 'add_box' },
-  close: { ios: 'xmark', android: 'close' },
-  back: { ios: 'chevron.left', android: 'arrow_back' },
-  chevronRight: { ios: 'chevron.right', android: 'chevron_right' },
-  chevronDown: { ios: 'chevron.down', android: 'expand_more' },
+  chat: { ios: 'bubble.left', android: 'chat_bubble_outline' },
+  chatFill: { ios: 'bubble.left.fill', android: 'chat_bubble' },
+  explore: { svg: 'search' },
+  camera: { svg: 'camera' },
+  cameraFill: { svg: 'camera' },
+  profile: { svg: 'you' },
+  profileFill: { svg: 'youActive' },
+  plus: { svg: 'plus' },
+  plusSquare: { svg: 'plus' },
+  close: { svg: 'close' },
+  back: { svg: 'back' },
+  chevronRight: { svg: 'chevronRight' },
+  chevronDown: { svg: 'chevronDown' },
   send: { ios: 'arrow.up', android: 'arrow_upward' },
-  paperplane: { ios: 'paperplane.fill', android: 'send' },
-  flip: { ios: 'arrow.triangle.2.circlepath.camera', android: 'flip_camera_ios' },
+  paperplane: { svg: 'send' },
+  flip: { svg: 'retake' },
   flashOn: { ios: 'bolt.fill', android: 'flash_on' },
-  flashOff: { ios: 'bolt.slash', android: 'flash_off' },
+  flashOff: { ios: 'bolt', android: 'flash_off' },
   photo: { ios: 'photo.on.rectangle', android: 'photo_library' },
   bolt: { ios: 'bolt.fill', android: 'bolt' },
   star: { ios: 'star.fill', android: 'star' },
-  flame: { ios: 'flame.fill', android: 'local_fire_department' },
-  leaf: { ios: 'leaf.fill', android: 'eco' },
-  tree: { ios: 'tree.fill', android: 'park' },
-  check: { ios: 'checkmark', android: 'check' },
-  checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+  flame: { svg: 'streak' },
+  leaf: { svg: 'pod' },
+  tree: { svg: 'tree' },
+  check: { svg: 'check' },
+  checkCircle: { svg: 'checkedBadge' },
   circle: { ios: 'circle', android: 'radio_button_unchecked' },
-  clock: { ios: 'clock', android: 'schedule' },
-  timer: { ios: 'timer', android: 'timer' },
+  pending: { svg: 'pending' },
+  clock: { svg: 'time' },
+  timer: { svg: 'time' },
   arrowUp: { ios: 'arrow.up', android: 'arrow_upward' },
   arrowDown: { ios: 'arrow.down', android: 'arrow_downward' },
+  arrowRight: { ios: 'arrow.right', android: 'arrow_forward' },
   comment: { ios: 'bubble.left', android: 'chat_bubble_outline' },
-  more: { ios: 'ellipsis', android: 'more_horiz' },
+  more: { svg: 'more' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },
+  settings: { svg: 'settings' },
+  edit: { svg: 'edit' },
   share: { ios: 'square.and.arrow.up', android: 'share' },
-  personAdd: { ios: 'person.badge.plus', android: 'person_add' },
-  people: { ios: 'person.2', android: 'group' },
+  personAdd: { svg: 'invite' },
+  people: { svg: 'community' },
   grid: { ios: 'square.grid.3x3', android: 'grid_on' },
-  trophy: { ios: 'trophy', android: 'emoji_events' },
+  trophy: { svg: 'league' },
   sparkles: { ios: 'sparkles', android: 'auto_awesome' },
   warning: { ios: 'exclamationmark.triangle.fill', android: 'warning' },
-  refresh: { ios: 'arrow.clockwise', android: 'refresh' },
+  refresh: { svg: 'retake' },
   signOut: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   hammer: { ios: 'hammer', android: 'build' },
-  moon: { ios: 'moon.stars', android: 'bedtime' },
-} as const
+  moon: { svg: 'resting' },
+} as const satisfies Record<string, Source>
 
 export type IconName = keyof typeof ICONS
 
@@ -64,12 +75,14 @@ export function Icon({
   name: IconName
   size?: number
   color?: ColorValue
+  /** SF Symbols only; the line icons have a fixed 2px stroke. */
   weight?: SymbolWeight
 }) {
-  const symbol = ICONS[name]
+  const source: Source = ICONS[name]
+  if ('svg' in source) return <LineIcon name={source.svg} size={size} color={color} />
   return (
     <SymbolView
-      name={{ ios: symbol.ios, android: symbol.android, web: symbol.android } as never}
+      name={{ ios: source.ios, android: source.android, web: source.android } as never}
       size={size}
       tintColor={color}
       weight={weight}
@@ -78,7 +91,14 @@ export function Icon({
   )
 }
 
-/** For habit SF symbols that come from the database (habits.sf_symbol). */
-export function SymbolIcon({ name, size = 22, color = colors.ink.DEFAULT }: { name: string; size?: number; color?: ColorValue }) {
-  return <SymbolView name={name as never} size={size} tintColor={color} style={{ width: size, height: size }} />
+/** One of the Podmates line icons, tinted. */
+export function LineIcon({ name, size = 22, color = colors.ink.DEFAULT }: { name: SvgIconName; size?: number; color?: ColorValue }) {
+  return <SvgXml xml={SVG_ICONS[name].replaceAll('currentColor', String(color))} width={size} height={size} />
+}
+
+/** A habit's icon: its Podmates line icon when there is one, else the SF Symbol stored on the habit. */
+export function HabitIcon({ habit, size = 22, color = colors.ink.DEFAULT }: { habit: { id: string; sf_symbol: string }; size?: number; color?: ColorValue }) {
+  const svg = HABIT_SVGS[habit.id]
+  if (svg) return <LineIcon name={svg} size={size} color={color} />
+  return <SymbolView name={habit.sf_symbol as never} size={size} tintColor={color} style={{ width: size, height: size }} />
 }

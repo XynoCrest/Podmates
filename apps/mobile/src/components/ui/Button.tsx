@@ -5,12 +5,13 @@ import { Icon, type IconName } from './Icon'
 import { PressableScale } from './PressableScale'
 import { Text } from './Text'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
 
-const STYLE: Record<Variant, { bg: string; fg: string }> = {
-  primary: { bg: colors.ink.DEFAULT, fg: colors.ink.inverse },
+const STYLE: Record<Variant, { bg: string; fg: string; border?: string }> = {
+  primary: { bg: colors.leaf.DEFAULT, fg: colors.ink.inverse },
   secondary: { bg: colors.raised, fg: colors.ink.DEFAULT },
-  ghost: { bg: 'transparent', fg: colors.ink.DEFAULT },
+  outline: { bg: 'transparent', fg: colors.ink.DEFAULT, border: colors.lineStrong },
+  ghost: { bg: 'transparent', fg: colors.leaf.DEFAULT },
   danger: { bg: colors.danger.soft, fg: colors.danger.DEFAULT },
 }
 
@@ -19,30 +20,38 @@ export function Button({
   onPress,
   variant = 'primary',
   icon,
+  trailingIcon,
   loading,
   disabled,
   flex,
+  pill,
   size = 'md',
 }: {
   label: string
   onPress?: () => void
   variant?: Variant
   icon?: IconName
+  trailingIcon?: IconName
   loading?: boolean
   disabled?: boolean
   flex?: boolean
+  /** Fully rounded ends (the PDF's "Pick snaps", "Joined", "Done"). */
+  pill?: boolean
   size?: 'sm' | 'md' | 'lg'
 }) {
   const s = STYLE[variant]
-  const height = size === 'sm' ? 34 : size === 'lg' ? 54 : 44
+  const height = size === 'sm' ? 38 : size === 'lg' ? 56 : 46
+  const iconSize = size === 'sm' ? 15 : 18
   return (
     <PressableScale onPress={onPress} disabled={disabled || loading} flex={flex} accessibilityRole="button" accessibilityLabel={label}>
       <View
         style={{
           height,
-          borderRadius: size === 'sm' ? 10 : 14,
+          borderRadius: pill ? height / 2 : size === 'lg' ? 14 : 12,
           backgroundColor: s.bg,
-          paddingHorizontal: 16,
+          borderWidth: s.border ? 1 : 0,
+          borderColor: s.border,
+          paddingHorizontal: size === 'sm' ? 18 : 20,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -50,8 +59,9 @@ export function Button({
           opacity: disabled ? 0.45 : 1,
         }}
       >
-        {loading ? <ActivityIndicator color={s.fg} /> : icon ? <Icon name={icon} size={size === 'sm' ? 15 : 18} color={s.fg} weight="semibold" /> : null}
-        <Text style={{ color: s.fg, fontSize: size === 'sm' ? 14 : 16, fontWeight: '600' }}>{label}</Text>
+        {loading ? <ActivityIndicator color={s.fg} /> : icon ? <Icon name={icon} size={iconSize} color={s.fg} weight="semibold" /> : null}
+        <Text style={{ color: s.fg, fontSize: size === 'sm' ? 15 : size === 'lg' ? 19 : 16, fontWeight: '700' }}>{label}</Text>
+        {trailingIcon && !loading ? <Icon name={trailingIcon} size={iconSize + 2} color={s.fg} weight="semibold" /> : null}
       </View>
     </PressableScale>
   )
@@ -78,17 +88,17 @@ export function ChunkyButton({
   disabled?: boolean
   loading?: boolean
 }) {
-  const LIP = 5
+  const LIP = 4
   const face = disabled ? colors.raised : color
-  const edge = disabled ? colors.line : lip
+  const edge = disabled ? colors.sunken : lip
   return (
     <Pressable onPress={onPress} disabled={disabled || loading} accessibilityRole="button" accessibilityLabel={label}>
       {({ pressed }) => (
-        <View style={{ borderRadius: 18, backgroundColor: edge, paddingBottom: LIP }}>
+        <View style={{ borderRadius: 14, backgroundColor: edge, paddingBottom: LIP }}>
           <Animated.View
             style={{
-              height: 58,
-              borderRadius: 18,
+              height: 56,
+              borderRadius: 14,
               backgroundColor: face,
               alignItems: 'center',
               justifyContent: 'center',
@@ -100,9 +110,7 @@ export function ChunkyButton({
             {loading ? (
               <ActivityIndicator color={textColor} />
             ) : (
-              <Text style={{ color: disabled ? colors.ink.subtle : textColor, fontSize: 17, fontWeight: '800', letterSpacing: 1 }}>
-                {label.toUpperCase()}
-              </Text>
+              <Text style={{ color: disabled ? colors.ink.subtle : textColor, fontSize: 18, fontWeight: '700' }}>{label}</Text>
             )}
           </Animated.View>
         </View>

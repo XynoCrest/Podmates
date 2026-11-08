@@ -48,19 +48,19 @@ the QR code from `npx expo start` with the Camera app. The real camera works the
 
 ### Demo script (≈2 minutes)
 
-1. **Pods tab** → the *Reading* tab has a dot, and the orange banner says *Atomic Habits Club* has
+1. **Pods tab** → the *Reading* pill has a dot, and the amber banner says *Atomic Habits Club* has
    its snap window open. The seed always opens it 5 minutes before your reset.
 2. Tap a story bubble (Maya, Theo) to watch their snaps from the last 24h.
-3. Tap **Atomic Habits Club** → the chat. Tap the 🌳 HP chip → the **tree screen**. It shows the
-   stage, HP and the last 7 days, and the headline says what tonight will do to the tree.
+3. Tap **Atomic Habits Club** → the chat. Tap the tree at the top right → the **tree screen**. It shows the
+   stage, health, what last night did, how today scores, and who has snapped; the pill on top says what tonight will do.
 4. Tap **Snap now** → the camera. In the Simulator, choose **Use a demo photo** → the **Send to**
-   sheet preselects pods with open windows → Send. The chat shows your snap with ⚡ ON TIME.
+   sheet preselects pods with open windows → Send. The chat shows your snap with ✓ On time.
 5. Back on the tree, scroll to **Demo tools** → **End the day now**. The tree engine settles today:
    everyone snapped, so the tree grows and you earn ⭐.
 6. Open **Night Owl Readers**' tree: 41 HP and wilting. **Open window now** lets you snap for it.
 7. **Profile tab**: ⚡ energy / ⭐ stars / 🔥 streak, one icon tab per habit, and a 3:4 grid of the
    snaps you chose. Use **Pick snaps** to choose more.
-8. **Explore tab**: communities feed (Home ⌄ / Popular, Hot / New / Top), voting, comments, join.
+8. **Explore tab**: search communities, your communities, posts from every community (Hot / New / Top), voting, comments, join.
 
 To try two people at once, open a second Simulator and use
 `xcrun simctl openurl <device> "exp://127.0.0.1:8081/--/sign-in?demo=maya"`. Chat and tree updates
@@ -72,13 +72,13 @@ arrive live over Supabase Realtime.
 
 ```
 apps/
-  mobile/        Expo SDK 58 app (expo-router, NativeTabs, TanStack Query)  → Expo Go / EAS
+  mobile/        Expo SDK 58 app (expo-router, TanStack Query)          → Expo Go / EAS
   api/           Express 5 API + in-process settlement worker                          → Docker
 packages/
   tree-engine/   the ONLY place tree HP, growth, energy, stars and streaks are computed (pure, tested)
   shared/        contracts: zod API schemas, error codes, snap-window + pod-date maths
   db/            generated Supabase types + server-only client factory
-  ui-tokens/     design tokens (Tailwind preset + raw values), dark-first
+  ui-tokens/     design tokens (Tailwind preset + raw values), light
 supabase/
   migrations/    schema, triggers, RLS, storage, settlement RPC (SQL, committed)
   seed.sql       6 demo people, 6 pods, 12 days of snaps, chat, communities, posts

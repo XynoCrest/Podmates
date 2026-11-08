@@ -1,24 +1,41 @@
 # Design
 
-Dark-first, so snaps pop and the app sits comfortably next to the apps it borrows from. Colour is
-reserved for meaning: **leaf** = tree/health/done, **energy** (yellow) = ⚡, **star** (lilac) = ⭐,
-**flame** (orange) = 🔥 streaks and *open snap window*, **danger** = wilting. Tokens live in
-`packages/ui-tokens`. Type is the system font (SF Pro) with size-specific tracking (`components/ui/Text.tsx`).
+Light, following the **Podmates app-screens PDF**: an off-white canvas, white sheets, soft grey
+controls and one green brand colour, so snaps and the tree carry the colour. Colour is reserved for
+meaning: **leaf** (green) = brand, tree, health, done; **energy** = ⚡; **star** = ⭐;
+**flame** (amber) = 🔥 streaks, open snap window and "not yet" warnings; **danger** = dead tree.
+Tokens live in `packages/ui-tokens`. Type is the system font (SF Pro) with size-specific tracking
+(`components/ui/Text.tsx`).
 
-| Screen | Reference | What we kept |
-|---|---|---|
-| Tab bar | iOS 26 Liquid Glass / Instagram | Native `NativeTabs` (`expo-router/native-tabs`, SDK 58). On iOS 26 the system draws the floating glass pill. Icon-only, outline → filled SF Symbols (house, safari, camera, person.crop.circle). Minimizes on scroll. |
-| Pods (home) | Your whiteboard sketch + Messenger | Habit name tabs with underline → story row ("Your story" + podmates, gradient ring = unseen) → chat rows. The pod avatar's ring **is** the tree's health bar. |
-| Chat | Messenger | Grouped bubbles per author, snaps as 3:4 cards with ON TIME / LATE badges, system messages as green pills, camera button left of the composer. |
-| Tree | Duolingo "Flashcard Frenzy" screen | X top-left, muted title, ⚡ counter top-right, big illustration, one bold sentence with a coloured highlight, two-cell stat box (STAGE · HEALTH), week strip, chunky full-width button with a pressed-down "lip". |
-| Camera | Snapchat | Full-bleed preview, big ring shutter in thumb reach, flash/flip top-right, library left. The pill top-left says which pod's window is open. |
-| Send to | Snapchat "Send To" | Native formSheet; pods grouped by habit, each labelled On time / Late / Done. |
-| Profile | Instagram (2025) | Avatar + three stats (Energy · Stars · Streak), bio, Edit / Share / add-person buttons, one **icon tab per habit**, 3:4 portrait grid. |
-| Explore | Apollo | "Home ⌄" pill (Home / Popular), sort pill, community chips, cards: title → full-bleed media → "Community by user", ↑ score · 💬 · 🕒, then ••• ↑ ↓ on the right, black gutters between cards. |
+**Icons** are the Podmates line icons (24×24, 2px round strokes) in `components/ui/svgIcons.ts`,
+with SF Symbols only where no line icon exists (bolt, star, arrows, photo library). Habits use a line
+icon for walking, hydration and sleep, else their SF Symbol from the database (`HabitIcon`).
+
+**Tree art** comes from the design files `tree-<n>-<stage>[-resting].svg`, rebuilt from their geometry in
+`features/tree/treeSvgs.ts`. The five drawings map to the engine's six stages: Seed, Sprout, Sapling,
+Young tree, then Grown tree and Ancient tree both use the full tree. A dead tree shows the grey
+"resting" drawing. The drawing no longer tints with health; health shows in the bar, the pod disc
+tint (green / amber / grey) and the text.
+
+| Screen | What we kept from the PDF |
+|---|---|
+| Sign in | Small tree, "Podmates", the one-line promise, labelled outlined fields, green Sign in, demo-account name pills under a divider. |
+| Tab bar | Flat white bar with a top border; icon only, green when active with a dot under it. Four tabs (Pods, Explore, Camera, Profile); Camera hides the bar. |
+| Pods (home) | Big "Pods" title, habit pills (solid green when selected), "Your snap" + podmates' story circles (green ring = unwatched), chat rows with a tree disc, bold author, and a green time + dot while your window is open. |
+| Chat | Back · name · green "Snap by 7:15 AM · 20 min window", tree at the right. Snap cards with "✓ On time · N min before close", grey bubbles for others, green for you, avatars with a check when that person snapped today, and an amber pill naming who hasn't snapped. Green camera button left of an outlined field. |
+| Tree | Result pill, the tree, stage name, health with last night's change, "How today scores" (the live row highlighted), and who snapped today. Kept: the Snap now / Replant button and local Demo tools. |
+| Camera | Close · pod name · amber per-second countdown; framed preview with corner brackets and "Live camera only"; green shutter between flip and flash. Real phones shoot live only; the Simulator keeps library + demo photo. |
+| Send to | Snap preview with "On time · N min before close" and what it earns, optional caption, "Your pods" with tree discs and square checkboxes, "Send to N →". No Friends section (snaps go to pods only). |
+| Profile | Avatar with green ring, name, @username, settings icon (Edit, Share, Join, New pod, Sign out); Energy / Stars / Streak; one icon tab per habit; "N snaps you picked" + Pick snaps; 3:4 grid. |
+| Pick snaps | Sheet with Cancel · "Pick snaps / N of M chosen" · Done. Choices save only on Done. |
+| Explore | "Explore" + new post, community search, Hot / New / Top pills, your communities, then posts from every community with a vote column. |
+| Community · Post · New post | Community header with Join/Joined pill and description; post with votes and a flat comment list; New post sheet with community picker, title and optional body. |
+| Story | Progress bars, author and "pod · time", close on the right, "✓ On time · earned ⚡10". |
+
+Left out on purpose because the backend doesn't support them (they would look like they work but
+wouldn't): sending snaps to friends, threaded replies and comment votes, "online" and "new today"
+counts, story replies, and adding a snap to a post.
 
 Motion and feedback follow Apple's guidance: press feedback on touch-down (`PressableScale`, 0.97),
-one haptic per action (`lib/haptics.ts`), native sheets and modals for spatial consistency, and the
-tree's breathing animation is turned off under Reduce Motion.
-
-Research sources: Expo native tabs docs (SDK 57/58), Instagram's 2025 profile/grid changes (3:4 grid),
-MacStories' Apollo review, and Snapchat camera UX write-ups.
+one haptic per action (`lib/haptics.ts`), native sheets, and the tree's breathing animation is turned
+off under Reduce Motion.

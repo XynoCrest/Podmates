@@ -1,75 +1,113 @@
 import { colors } from '@podmates/ui-tokens'
+import { router } from 'expo-router'
 import { useState } from 'react'
-import { ActionSheetIOS, ActivityIndicator, FlatList, Platform, RefreshControl, View } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, RefreshControl, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { EmptyState, Icon, PressableScale, Text } from '@/components/ui'
-import { CommunityChips } from '@/features/explore/components/CommunityChips'
-import { PostCard } from '@/features/explore/components/PostCard'
-import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
+import { EmptyState, Icon, IconButton, Pill, SectionLabel, Text } from '@/components/ui'
+import { CommunityRow, PostRow } from '@/features/explore/components/PostCard'
+import { useCommunities, useFeed, type FeedSort } from '@/features/explore/hooks'
 import { haptics } from '@/lib/haptics'
 
-const SORTS: { key: FeedSort; label: string; icon: 'flame' | 'clock' | 'trophy' }[] = [
-  { key: 'hot', label: 'Hot', icon: 'flame' },
-  { key: 'new', label: 'New', icon: 'clock' },
-  { key: 'top', label: 'Top', icon: 'trophy' },
+const SORTS: { key: FeedSort; label: string; heading: string }[] = [
+  { key: 'hot', label: 'Hot', heading: 'Hot right now' },
+  { key: 'new', label: 'New', heading: 'Newest' },
+  { key: 'top', label: 'Top', heading: 'Top posts' },
 ]
 
-/** Apollo-style feed: "Home ⌄" switcher, community strip, cards separated by black gutters. */
+/** Explore: search communities, your communities, then posts from every community. */
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets()
-  const [mode, setMode] = useState<FeedMode>('home')
   const [sort, setSort] = useState<FeedSort>('hot')
-  const feed = useFeed(mode, sort)
+  const [query, setQuery] = useState('')
+  const feed = useFeed('popular', sort)
   const communities = useCommunities()
-  const current = SORTS.find((s) => s.key === sort)!
 
-  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) => {
-    if (Platform.OS !== 'ios') return onPick(options[0]!.value) // the product targets iOS; other platforms get the default
-    ActionSheetIOS.showActionSheetWithOptions({ title, options: [...options.map((o) => o.label), 'Cancel'], cancelButtonIndex: options.length, userInterfaceStyle: 'dark' }, (i) => {
-      if (i < options.length) {
-        haptics.select()
-        onPick(options[i]!.value)
-      }
-    })
+  const q = query.trim().toLowerCase()
+  const all = communities.data ?? []
+  const joined = all.filter((c) => c.joined)
+  // Searching looks through every community; otherwise show yours (or all, until you join one).
+  const shown = q ? all.filter((c) => c.slug.includes(q) || c.name.toLowerCase().includes(q)) : joined.length ? joined : all
+  const listLabel = q ? 'Communities' : joined.length ? 'Your communities' : 'Communities to join'
+
+  const newPost = () => {
+    const first = joined[0]
+    if (!first) return Alert.alert('Join a community first', 'Open a community and tap Join, then you can post there.')
+    router.push({ pathname: '/post/new', params: { community: first.id } })
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }}>
-        <PressableScale
-          onPress={() => pick('Feed', [{ label: 'Home', value: 'home' as FeedMode }, { label: 'Popular', value: 'popular' as FeedMode }], setMode)}
-          accessibilityLabel={`Feed: ${mode}`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 18, borderRadius: 19, backgroundColor: colors.raised }}>
-            <Text style={{ fontSize: 17, fontWeight: '700' }}>{mode === 'home' ? 'Home' : 'Popular'}</Text>
-            <Icon name="chevronDown" size={13} color={colors.ink.muted} weight="bold" />
-          </View>
-        </PressableScale>
-        <View style={{ position: 'absolute', right: 12 }}>
-          <PressableScale onPress={() => pick('Sort by', SORTS.map((s) => ({ label: s.label, value: s.key })), setSort)} accessibilityLabel={`Sort: ${current.label}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.raised }}>
-              <Icon name={current.icon} size={16} color={colors.ink.DEFAULT} />
-              <Icon name="more" size={16} color={colors.ink.DEFAULT} weight="bold" />
-            </View>
-          </PressableScale>
-        </View>
-      </View>
-
       <FlatList
-        data={feed.data}
+        data={q ? [] : feed.data}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => <PostCard post={item} />}
-        ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
-        ListHeaderComponent={communities.data ? <CommunityChips communities={communities.data} /> : undefined}
+        renderItem={({ item }) => <PostRow post={item} />}
+        ListHeaderComponent={
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 10, paddingTop: 12 }}>
+              <Text style={{ flex: 1, fontSize: 36, lineHeight: 42, fontWeight: '800', letterSpacing: -1 }}>Explore</Text>
+              <IconButton icon="plus" label="New post" size={28} onPress={newPost} />
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 20, marginTop: 16, height: 56, paddingHorizontal: 18, borderRadius: 14, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }}>
+              <Icon name="explore" size={22} color={colors.ink.muted} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search communities"
+                placeholderTextColor={colors.ink.subtle}
+                autoCapitalize="none"
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+                returnKeyType="search"
+                style={{ flex: 1, fontSize: 18, color: colors.ink.DEFAULT }}
+              />
+            </View>
+
+            {!q ? (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 16 }}>
+                {SORTS.map((s) => (
+                  <Pill
+                    key={s.key}
+                    label={s.label}
+                    selected={s.key === sort}
+                    onPress={() => {
+                      if (s.key !== sort) haptics.select()
+                      setSort(s.key)
+                    }}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            <SectionLabel style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 8 }}>{listLabel}</SectionLabel>
+            {shown.map((c) => (
+              <CommunityRow key={c.id} community={c} />
+            ))}
+            {q && !shown.length ? <Text style={{ paddingHorizontal: 20, paddingVertical: 12, fontSize: 16, color: colors.ink.muted }}>No communities match “{query.trim()}”.</Text> : null}
+
+            {!q ? <SectionLabel style={{ paddingHorizontal: 20, paddingTop: 28 }}>{SORTS.find((s) => s.key === sort)!.heading}</SectionLabel> : null}
+          </View>
+        }
         ListEmptyComponent={
-          feed.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} color={colors.ink.muted} />
+          q ? undefined : feed.isLoading ? (
+            <ActivityIndicator style={{ marginTop: 32 }} color={colors.ink.muted} />
           ) : (
-            <EmptyState emoji="🧭" title="Your home feed is empty" body="Join a community above, or switch to Popular." />
+            <EmptyState emoji="🧭" title="No posts yet" body="Join a community and start the conversation." />
           )
         }
-        refreshControl={<RefreshControl tintColor={colors.ink.muted} refreshing={feed.isRefetching} onRefresh={() => void feed.refetch()} />}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+        refreshControl={
+          <RefreshControl
+            tintColor={colors.ink.muted}
+            refreshing={feed.isRefetching}
+            onRefresh={() => {
+              void feed.refetch()
+              void communities.refetch()
+            }}
+          />
+        }
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: 24 }}
       />
     </View>
   )
