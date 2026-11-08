@@ -1,4 +1,5 @@
 import { alpha, avatar as avatarColors, colors, overlay, radii, space } from '@podmates/ui-tokens'
+import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -55,6 +56,10 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
     scrollY.value = e.contentOffset.y
   })
   const statusStrip = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [BANNER_H * 0.5, BANNER_H], [0, 1], 'clamp') }))
+  // Pulling down past the top (overscroll): a blur fades in over the stretched cover, full by 120pt.
+  // The cover grows upward by the overscroll, so it always fills from the screen's top to its own bottom.
+  const coverStretch = useAnimatedStyle(() => ({ height: insets.top + BANNER_H + OVERLAP + Math.max(0, -scrollY.value) }))
+  const overscrollBlur = useAnimatedStyle(() => ({ opacity: interpolate(-scrollY.value, [0, 120], [0, 1], 'clamp') }))
 
   const p = profile.data
   if (!p) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading={profile.isLoading} error={profile.error} onRetry={() => void profile.refetch()} /></View>
@@ -148,16 +153,23 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
       <StatusBar style="light" />
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
-        {/* Rides above the cover inside the scroll content, so pulling down reveals more of its colour, not the canvas. */}
-        <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }} />
-        {/* Cover from the top of the screen (no top bar: the name is right below): their cover photo, or a wash of
-            their avatar colour. Back and menu float on it. */}
-        <View style={{ height: insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }}>
-          {p.banner_url ? (
-            <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: insets.top + BANNER_H + OVERLAP }} contentFit="cover" transition={150} accessibilityLabel="Profile cover photo" />
-          ) : (
-            <View style={{ flex: 1, backgroundColor: alpha(colors.canvas, 0.35) }} />
-          )}
+        {/*
+          Cover from the top of the screen (no top bar: the name is right below): their cover photo, or a wash of
+          their avatar colour. Pulling down stretches the cover itself up to the screen's top edge (anchored at its
+          bottom), so the overscroll area is the photo, not a separate colour. Back and menu float on it.
+        */}
+        <View style={{ height: insets.top + BANNER_H + OVERLAP }}>
+          <Animated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, overflow: 'hidden', backgroundColor: bannerColor }, coverStretch]}>
+            {p.banner_url ? (
+              <Image source={{ uri: imageUri(p.banner_url) }} style={{ flex: 1 }} contentFit="cover" transition={150} accessibilityLabel="Profile cover photo" />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: alpha(colors.canvas, 0.35) }} />
+            )}
+            {/* Inside the cover, so it blurs only the cover: the sheet and avatar are drawn on top of it. */}
+            <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, overscrollBlur]}>
+              <BlurView intensity={40} tint="dark" style={{ flex: 1 }} />
+            </Animated.View>
+          </Animated.View>
           <View style={{ position: 'absolute', top: insets.top + space.xs, left: PAD - space.xs, right: PAD - space.xs, flexDirection: 'row', justifyContent: 'space-between' }}>
             {asTab ? <View /> : <IconButton icon="back" label="Back" onPress={goBack} tone="media" />}
             {isMe ? <IconButton icon="menu" label="Menu" onPress={openMenu} tone="media" /> : <IconButton icon="more" label="Report or block" onPress={openTheirMenu} tone="media" />}
