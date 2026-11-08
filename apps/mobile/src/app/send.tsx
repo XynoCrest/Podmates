@@ -106,7 +106,7 @@ export default function SendSheet() {
             icon: 'tree',
             title: pods.data?.length ? 'No pod can take a snap' : 'No pods yet',
             body: pods.data?.length ? 'Your pods’ trees need replanting first. Open a pod to replant it.' : 'Snaps go to a pod. Start one or join a friend’s, then snap again.',
-            action: pods.data?.length ? undefined : <Button label="Start or join a pod" icon="plus" onPress={() => { router.dismissAll(); router.push('/pod/new') }} />,
+            action: pods.data?.length ? undefined : <Button label="Start or join a pod" icon="plus" onPress={() => { router.dismissAll(); router.push({ pathname: '/connect', params: { tab: 'create' } }) }} />,
           }}
         />
       ) : null}

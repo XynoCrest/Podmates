@@ -18,6 +18,9 @@ export function LiveSync() {
   useRealtimeInvalidate('messages', undefined, [qk.pods])
   useRealtimeInvalidate('direct_messages', undefined, [qk.dmThreads])
   useRealtimeInvalidate('pair_trees', undefined, [qk.pairTrees])
+  // Friend requests sent to me (or answered) update the + badge and the Friends tab.
+  useRealtimeInvalidate('friend_requests', undefined, [qk.friendRequests, qk.friends])
+  useRealtimeInvalidate('friendships', undefined, [qk.friends, qk.pods])
   useDayRollover()
   return null
 }

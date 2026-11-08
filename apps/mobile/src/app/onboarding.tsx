@@ -97,7 +97,7 @@ export default function Onboarding() {
       void queryClient.invalidateQueries({ queryKey: ['feed'] })
       haptics.success()
       router.replace('/')
-      if (next) router.push({ pathname: '/pod/new', params: { tab: next, ...(picked[0] ? { habit: picked[0] } : {}) } })
+      if (next) router.push({ pathname: '/connect', params: { tab: next, ...(picked[0] ? { habit: picked[0] } : {}) } })
     } catch (e) {
       haptics.error()
       setError(e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e && typeof e.message === 'string' ? e.message : 'Something went wrong')

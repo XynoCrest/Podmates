@@ -185,6 +185,70 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"friend_requests": {
+                  Row: {
+                    "created_at": string,"from_id": string,"id": string,"pod_id": string | null,"responded_at": string | null,"status": string,"to_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"from_id"?: string,"id"?: string,"pod_id"?: string | null,"responded_at"?: string | null,"status"?: string,"to_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"from_id"?: string,"id"?: string,"pod_id"?: string | null,"responded_at"?: string | null,"status"?: string,"to_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "friend_requests_from_id_fkey"
+      columns: ["from_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "friend_requests_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pod_overview"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "friend_requests_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "friend_requests_to_id_fkey"
+      columns: ["to_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"friendships": {
+                  Row: {
+                    "created_at": string,"user_a": string,"user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"user_a": string,"user_b": string
+                  }
+                  Update: {
+                    "created_at"?: string,"user_a"?: string,"user_b"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "friendships_user_a_fkey"
+      columns: ["user_a"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "friendships_user_b_fkey"
+      columns: ["user_b"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"habits": {
                   Row: {
                     "emoji": string,"id": string,"name": string,"sf_symbol": string,"sort": number
@@ -665,8 +729,14 @@ isOneToOne: false
 "apply_pair_settlement":
 { Args: { "p_day": Json,"p_expected_last": string,"p_pair_date": string,"p_tree": Json,"p_user_a": string,"p_user_b": string }; Returns: boolean
                            },
+"are_friends":
+{ Args: { "p_user_id": string }; Returns: boolean
+                           },
 "block_between":
 { Args: { "p_user_id": string }; Returns: boolean
+                           },
+"cancel_friend_request":
+{ Args: { "p_id": string }; Returns: undefined
                            },
 "cancel_rest":
 { Args: { "p_pod_id": string }; Returns: undefined
@@ -695,14 +765,25 @@ isOneToOne: false
 "mark_pod_read":
 { Args: { "p_pod": string }; Returns: undefined
                            },
+"my_friend_requests":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "created_at": string,"habit_id": string,"id": string,"incoming": boolean,"other_id": string,"pod_id": string,"pod_name": string
+            }[]
+                           },
 "refresh_profile_stats":
 { Args: { "p_user_ids": (string)[] }; Returns: undefined
                            },
 "remove_pod_member":
 { Args: { "p_pod_id": string,"p_user_id": string }; Returns: undefined
                            },
+"respond_friend_request":
+{ Args: { "p_accept": boolean,"p_id": string }; Returns: string
+                           },
 "rest_today":
 { Args: { "p_pod_id": string }; Returns: string
+                           },
+"send_friend_request":
+{ Args: { "p_pod_id"?: string,"p_to": string }; Returns: string
                            },
 "share_post":
 { Args: { "p_post": string }; Returns: number

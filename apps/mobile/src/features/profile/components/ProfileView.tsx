@@ -9,6 +9,7 @@ import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useS
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Avatar, Button, HERO_OVERLAP, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
+import { FriendButton } from '../../friends/FriendButton'
 import { REPORT_REASONS, useBlocked, useDeleteAccount, useReport, useSetBlocked } from '../../safety/hooks'
 import { haptics } from '@/lib/haptics'
 import { compact } from '@/lib/format'
@@ -212,7 +213,8 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
 
           {!isMe ? (
-            <View style={{ flexDirection: 'row', marginTop: space.lg }}>
+            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.lg }}>
+              <FriendButton person={p} flex />
               <Button label="Share profile" variant="secondary" size="sm" flex onPress={() => void Share.share({ message: `Check out @${p.username} on Podmates` })} />
             </View>
           ) : null}

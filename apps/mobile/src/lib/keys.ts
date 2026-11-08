@@ -28,4 +28,8 @@ export const qk = {
   post: (id: string) => ['post', id] as const,
   comments: (postId: string) => ['comments', postId] as const,
   blocked: (userId: string) => ['blocked', userId] as const,
+  friendRequests: ['friendRequests'] as const,
+  friends: ['friends'] as const,
+  peopleSearch: (q: string) => ['peopleSearch', q] as const,
+  theirPods: (userId: string) => ['theirPods', userId] as const,
 }

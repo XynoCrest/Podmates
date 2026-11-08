@@ -6,6 +6,7 @@ import { FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button, HeroSheet, HERO_OVERLAP, ScreenState, Segmented, TAB_HERO_H, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
+import { useIncomingRequestCount } from '@/features/friends/hooks'
 import { PodmateRow } from '@/features/dms/components/PodmateRow'
 import { usePodmates, type PodmateThread } from '@/features/dms/hooks'
 import { HabitTabs } from '@/features/pods/components/HabitTabs'
@@ -47,6 +48,7 @@ export default function PodsScreen() {
   const stories = useStories(habitId)
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const hasPods = !!pods.data?.length
+  const incomingRequests = useIncomingRequestCount()
   const inHabit = useMemo(() => pods.data?.filter((p) => p.habitId === habitId) ?? [], [pods.data, habitId])
   // The hero speaks for the selected habit tab: my best current streak among that habit's pods.
   const habitStreak = inHabit.length ? Math.max(...inHabit.map((p) => p.myStreak)) : (profile.data?.streak ?? 0)
@@ -85,7 +87,7 @@ export default function PodsScreen() {
             <HeroSheet clip>
               {hasPods ? (
                 <>
-                  <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
+                  <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/connect')} addBadge={incomingRequests} />
                   {habitId ? <StoriesRow me={profile.data} groups={stories.groups} habitId={habitId} /> : null}
                   <View style={{ paddingHorizontal: space.gutter, paddingVertical: space.sm }}>
                     <Segmented
@@ -113,7 +115,12 @@ export default function PodsScreen() {
                 icon: 'tree',
                 title: 'No pods yet',
                 body: 'A pod is a few friends tracking one habit together. Snap daily, grow a tree.',
-                action: <Button label="Start or join a pod" icon="plus" onPress={() => router.push('/pod/new')} />,
+                // A friend's request is how a new user joins their first pod, so surface it here (there's no + without pods).
+                action: incomingRequests ? (
+                  <Button label={`Friend requests · ${incomingRequests}`} icon="personAdd" onPress={() => router.push('/connect')} />
+                ) : (
+                  <Button label="Start or join a pod" icon="plus" onPress={() => router.push({ pathname: '/connect', params: { tab: 'create' } })} />
+                ),
               }}
             />
           ) : list === 'unread' && !everyone.isLoading ? (

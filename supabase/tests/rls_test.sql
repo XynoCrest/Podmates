@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(51);
+select plan(65);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -165,6 +165,36 @@ select throws_ok(
   $$ select public.join_pod((select invite_code from p1_code)) $$,
   '42501', null, 'Someone removed from a pod can''t rejoin with its code'
 );
+
+-- ─── Friend requests ──────────────────────────────────────────────────────────
+-- Maya and Aisha share no pod; Maya and Jonas share Dawn Patrol.
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+select throws_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000006') $$, 'P0001', null, 'A request to someone you share no pod with must name a pod');
+select throws_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000004') $$, '42501', null, 'You can only invite people to your own pods');
+select lives_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000005') $$, 'Maya can ask Aisha to be friends in Zen Den');
+select throws_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000005') $$, 'P0001', null, 'Only one open request per pair');
+select throws_ok($$ insert into public.friendships (user_a, user_b) values ('a0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000006') $$, '42501', null, 'Clients can''t make friendships directly');
+
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000006","role":"authenticated"}', true);
+select is((select pod_name from public.my_friend_requests() where incoming), 'Zen Den', 'Aisha sees the request and the pod it would add her to');
+select is(public.respond_friend_request((select id from public.my_friend_requests() where incoming), true), 'b0000000-0000-4000-8000-000000000005'::uuid, 'Accepting returns the pod joined');
+select ok(exists (select 1 from public.pod_members where pod_id = 'b0000000-0000-4000-8000-000000000005' and user_id = 'a0000000-0000-4000-8000-000000000006'), 'Accepting joins the pod');
+select is((select count(*)::int from public.friendships), 1, 'and makes them friends');
+
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+select lives_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000005') $$, 'Podmates can become friends without picking a pod');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000005","role":"authenticated"}', true);
+select ok((select pod_id is null from public.my_friend_requests() where incoming), 'A request between podmates carries no pod');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+select lives_ok($$ select public.cancel_friend_request((select id from public.my_friend_requests() where not incoming)) $$, 'The sender can cancel a request');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000005","role":"authenticated"}', true);
+select is((select count(*)::int from public.my_friend_requests()), 0, 'A cancelled request disappears');
+
+-- Blocks: after Aisha blocks Theo, he can't send her a request.
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000006","role":"authenticated"}', true);
+insert into public.blocks (blocked_id) values ('a0000000-0000-4000-8000-000000000003');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
+select throws_ok($$ select public.send_friend_request('a0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000003') $$, '42501', null, 'No requests across a block');
 
 select * from finish();
 rollback;
