@@ -1,6 +1,7 @@
 type Tone = { DEFAULT: string; soft: string; deep: string }
 export declare const colors: {
   canvas: string
+  hero: string
   surface: string
   raised: string
   sunken: string
