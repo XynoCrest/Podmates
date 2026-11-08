@@ -12,13 +12,16 @@ export interface Segment<K extends string> {
   badge?: number
 }
 
-/** A pill of options: the selected one sits in a darker inset pill that slides between them. */
-export function Segmented<K extends string>({ segments, value, onChange }: { segments: Segment<K>[]; value: K; onChange: (key: K) => void }) {
+/**
+ * A pill of options: the selected one sits in a darker inset pill that slides between them.
+ * `fill` stretches it to the full width, the options sharing it equally.
+ */
+export function Segmented<K extends string>({ segments, value, onChange, fill }: { segments: Segment<K>[]; value: K; onChange: (key: K) => void; fill?: boolean }) {
   const { layouts, onLayoutFor } = useOptionLayouts<K>()
   return (
     <View
       accessibilityRole="tablist"
-      style={{ flexDirection: 'row', alignSelf: 'flex-start', padding: 4, gap: 2, borderRadius: 999, backgroundColor: colors.raised, borderWidth: 0.5, borderColor: colors.line }}
+      style={{ flexDirection: 'row', alignSelf: fill ? 'stretch' : 'flex-start', padding: 4, gap: 2, borderRadius: 999, backgroundColor: colors.raised, borderWidth: 0.5, borderColor: colors.line }}
     >
       <SlideIndicator at={layouts[value]} style={{ top: 4, bottom: 4, borderRadius: 999, backgroundColor: colors.sunken }} />
       {segments.map((s) => {
@@ -35,8 +38,9 @@ export function Segmented<K extends string>({ segments, value, onChange }: { seg
             accessibilityState={{ selected: active }}
             accessibilityLabel={s.badge ? `${s.label}, ${s.badge}` : s.label}
             scaleTo={1}
+            flex={fill}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 36, borderRadius: 999 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, height: 36, borderRadius: 999 }}>
               <Text style={{ fontSize: 15, fontWeight: active ? '600' : '500', color: active ? colors.ink.DEFAULT : colors.ink.muted }}>{s.label}</Text>
               {s.badge ? (
                 <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: colors.ink.subtle, alignItems: 'center', justifyContent: 'center' }}>

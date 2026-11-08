@@ -1,15 +1,14 @@
-import { formatSnapTime } from '@podmates/shared'
-import { colors, radii, space } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { View } from 'react-native'
-import { Button, Icon, PressableScale, Section, Segmented, SheetScreen, Text, TextField } from '@/components/ui'
+import { Button, Section, Segmented, SheetScreen, Text, TextField, TimeScrubber } from '@/components/ui'
 import { HabitCarousel } from '@/features/pods/components/HabitCarousel'
 import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
 import { deviceTimeZone } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 
-const WINDOWS = [15, 20, 30]
+const WINDOWS = [15, 20, 30, 45]
 
 /** Start a pod (habit · goal · daily snap time) or join one with an invite code. */
 export default function NewPod() {
@@ -21,6 +20,7 @@ export default function NewPod() {
       subtitle={tab === 'create' ? 'Pick a habit and a daily snap time, then invite friends.' : 'Ask a podmate for their 6-letter invite code.'}
     >
       <Segmented
+        fill
         value={tab}
         onChange={setTab}
         segments={[
@@ -38,12 +38,13 @@ function CreateForm({ initialHabit }: { initialHabit?: string }) {
   const create = useCreatePod()
   const [name, setName] = useState('')
   const [goal, setGoal] = useState('')
-  const [habitId, setHabitId] = useState<string>(initialHabit ?? 'reading')
+  // Until one is picked (or passed in), the middle habit of the carousel is chosen.
+  const [pickedHabit, setHabitId] = useState<string | undefined>(initialHabit)
+  const middle = habits.data?.[Math.floor(habits.data.length / 2)]?.id
+  const habitId = pickedHabit ?? middle ?? 'reading'
   const [minutes, setMinutes] = useState(21 * 60)
   const [windowMinutes, setWindowMinutes] = useState(20)
 
-  // Windows can't cross midnight.
-  const step = (delta: number) => setMinutes((m) => Math.min(24 * 60 - windowMinutes - 15, Math.max(0, m + delta)))
   const snapTime = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 
   const submit = () =>
@@ -68,19 +69,12 @@ function CreateForm({ initialHabit }: { initialHabit?: string }) {
           <HabitCarousel habits={habits.data ?? []} value={habitId} onChange={setHabitId} />
         </View>
       </Section>
-      <TextField label="Daily goal" value={goal} onChangeText={setGoal} placeholder="20 pages a day" maxLength={120} />
+      <TextField label="Daily goal" value={goal} onChangeText={setGoal} placeholder="Example: 20 pages a day" maxLength={120} />
       <Section label="Daily snap time">
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.raised, borderRadius: radii.card, padding: space.sm }}>
-          <Stepper icon="arrowDown" label="Earlier" onPress={() => step(-15)} />
-          <View style={{ alignItems: 'center' }}>
-            <Text variant="title" numeric>
-              {formatSnapTime(snapTime)}
-            </Text>
-            <Text variant="caption">{deviceTimeZone()}</Text>
-          </View>
-          <Stepper icon="arrowUp" label="Later" onPress={() => step(15)} />
-        </View>
+        {/* Windows can't cross midnight, so the latest start leaves room for the window. */}
+        <TimeScrubber value={minutes} onChange={setMinutes} max={24 * 60 - windowMinutes - 15} step={15} caption={deviceTimeZone()} />
         <Segmented
+          fill
           value={String(windowMinutes)}
           onChange={(v) => setWindowMinutes(Number(v))}
           segments={WINDOWS.map((w) => ({ key: String(w), label: `${w} min` }))}
@@ -136,15 +130,5 @@ function FormAction({ error, children }: { error?: string; children: React.React
         </Text>
       ) : null}
     </View>
-  )
-}
-
-function Stepper({ icon, label, onPress }: { icon: 'arrowUp' | 'arrowDown'; label: string; onPress: () => void }) {
-  return (
-    <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.9}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={18} weight="semibold" />
-      </View>
-    </PressableScale>
   )
 }

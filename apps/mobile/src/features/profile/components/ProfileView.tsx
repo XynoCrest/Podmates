@@ -285,7 +285,9 @@ function Column({ items, userId }: { items: { snap: Snap; h: number }[]; userId:
 /** One card per habit: icon, name, streak. On my own profile a card opens that habit's calendar. */
 /** One carousel card per habit: its figure, the habit, and the streak. Mine open that habit's calendar. */
 function HabitCards({ cards, tappable }: { cards: HabitCard[]; tappable: boolean }) {
-  const [index, setIndex] = useState(0)
+  // Until a card is chosen, the middle one is centred.
+  const [picked, setIndex] = useState<number | null>(null)
+  const index = picked ?? Math.floor(cards.length / 2)
   const items: CarouselItem[] = cards.map((c) => {
     const streak = c.streak === null ? null : `${c.streak}-day streak`
     const best = c.best ? `Best ${c.best} ${c.best === 1 ? 'day' : 'days'}` : null

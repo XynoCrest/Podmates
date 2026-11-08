@@ -21,7 +21,7 @@
  * `pos` is a Reanimated shared value: cards restyle on the UI thread with no React renders; React
  * renders only when the centre card changes.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { usePanGesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -161,6 +161,7 @@ export function CardCarousel({
   const dragStart = useSharedValue(0)
   const press = useSharedValue(1)
   const [centre, setCentre] = useState(index)
+  const wasLoaded = useRef(items.length > 0)
 
   // The centre card: React renders when it changes, not per frame.
   useAnimatedReaction(
@@ -186,10 +187,12 @@ export function CardCarousel({
     commit(to)
   }
 
-  // A card chosen elsewhere (or the list loading) slides there.
+  // A card chosen elsewhere slides there; when the list first loads it starts there, without a slide.
+  const loaded = items.length > 0
   useEffect(() => {
-    if (Math.round(pos.get()) !== index) pos.set(reduced ? index : withTiming(index, { duration: SLIDE_MS, easing: SLIDE_EASE }))
-  }, [index, pos, reduced])
+    if (Math.round(pos.get()) !== index) pos.set(reduced || !wasLoaded.current ? index : withTiming(index, { duration: SLIDE_MS, easing: SLIDE_EASE }))
+    wasLoaded.current = loaded
+  }, [index, pos, reduced, loaded])
 
   const pan = usePanGesture({
     activeOffsetX: [-8, 8],
