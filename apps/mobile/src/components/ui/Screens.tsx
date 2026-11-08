@@ -1,6 +1,6 @@
 import { colors, overlay, space } from '@podmates/ui-tokens'
 import type { ReactNode } from 'react'
-import { ScrollView, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Header } from './Header'
 import { Text } from './Text'
@@ -11,6 +11,7 @@ import { Text } from './Text'
  *
  *   TabHero + HeroSheet  tab pages (Home, Explore)                 → Hero.tsx
  *   PushedScreen         pages pushed on the stack, with a back bar
+ *   ChatScreen           a pushed chat: back bar, strip, messages, composer
  *   SheetScreen          form sheets: title, fields, button at the end
  *   StageScreen          full-screen modals: close bar, a big figure, a pinned button
  *   MediaScreen          photos and the camera: black, floating bar
@@ -23,6 +24,21 @@ export function PushedScreen({ title, subtitle, right, children }: { title?: Rea
       <Header title={title} subtitle={subtitle} right={right} />
       {children}
     </View>
+  )
+}
+
+/**
+ * A chat: the back bar, an optional strip under it (the pod's window), the inverted
+ * message list (or a state), and the composer, all lifted by the keyboard.
+ */
+export function ChatScreen({ header, strip, composer, children }: { header: ReactNode; strip?: ReactNode; composer: ReactNode; children: ReactNode }) {
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {header}
+      {strip}
+      <View style={{ flex: 1 }}>{children}</View>
+      {composer}
+    </KeyboardAvoidingView>
   )
 }
 

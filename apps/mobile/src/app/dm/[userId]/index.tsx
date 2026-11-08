@@ -1,7 +1,7 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native'
-import { Avatar, Header, PressableScale, StreakCount, Text } from '@/components/ui'
+import { FlatList, View } from 'react-native'
+import { Avatar, ChatScreen, Chip, Header, PressableScale, ScreenState, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useDirectMessages, useMarkThreadRead, useSendDirect } from '@/features/dms/hooks'
 import { usePairTree } from '@/features/pairs/hooks'
@@ -23,7 +23,9 @@ export default function DirectChat() {
   const openTree = () => router.push({ pathname: '/dm/[userId]/tree', params: { userId } })
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ChatScreen
+      composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate('/camera')} />}
+      header={
       <Header
         title={
           <PressableScale onPress={openProfile} scaleTo={0.98} accessibilityLabel="Open profile">
@@ -39,24 +41,18 @@ export default function DirectChat() {
         right={
           pair.data ? (
             // Our streak; tap for the pair tree (the same game as a pod's, for two).
-            <PressableScale onPress={openTree} accessibilityLabel="Open your tree together" scaleTo={0.92}>
-              <View style={{ height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
-                <StreakCount count={pair.data.streak} size={18} />
-              </View>
-            </PressableScale>
+            <View style={{ marginRight: space.sm }}>
+              <Chip size="md" icon="flame" label={String(pair.data.streak)} color={colors.flame.DEFAULT} bg={colors.raised} onPress={openTree} accessibilityLabel="Open your tree together" />
+            </View>
           ) : null
         }
       />
+      }
+    >
       {thread.isLoading || !p ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ink.muted} />
+        <ScreenState fill loading />
       ) : thread.messages.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 }}>
-          <Avatar person={p} size={72} />
-          <Text variant="headline">{p.display_name}</Text>
-          <Text variant="subhead" center>
-            Say hi to your podmate.
-          </Text>
-        </View>
+        <ScreenState fill empty={{ icon: 'comment', title: `Say hi to ${p.display_name}`, body: 'Your podmate will see it here.' }} />
       ) : (
         <FlatList
           inverted
@@ -66,11 +62,10 @@ export default function DirectChat() {
             const above = thread.messages[index + 1]
             return <MessageBubble message={item} mine={item.author?.id === me} grouped={!!above && above.author?.id === item.author?.id} />
           }}
-          contentContainerStyle={{ paddingVertical: 12 }}
+          contentContainerStyle={{ paddingVertical: space.md }}
           keyboardDismissMode="interactive"
         />
       )}
-      <Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate('/camera')} />
-    </KeyboardAvoidingView>
+    </ChatScreen>
   )
 }

@@ -1,8 +1,8 @@
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { FlatList, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Button, EmptyState, Header, IconButton, Text } from '@/components/ui'
+import { Button, IconButton, PushedScreen, ScreenState, Text } from '@/components/ui'
 import { CommunityIcon, PostCard } from '@/features/explore/components/PostCard'
 import { useCommunities, useFeed, useToggleJoin } from '@/features/explore/hooks'
 import { compact } from '@/lib/format'
@@ -17,20 +17,21 @@ export default function CommunityScreen() {
   const toggle = useToggleJoin()
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
-      <Header
-        title={c?.name ?? ''}
-        right={c?.joined ? <IconButton icon="plusSquare" label="New post" onPress={() => router.push({ pathname: '/post/new', params: { community: c.id } })} /> : null}
-      />
-      {c ? (
+    <PushedScreen
+      title={c?.name ?? ''}
+      right={c?.joined ? <IconButton icon="plusSquare" label="New post" onPress={() => router.push({ pathname: '/post/new', params: { community: c.id } })} /> : null}
+    >
+      {!c ? (
+        <ScreenState fill loading={communities.isLoading} error={communities.error} onRetry={() => void communities.refetch()} empty={{ icon: 'explore', title: 'Community not found' }} />
+      ) : (
         <FlatList
           data={c.id ? feed.data : []}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => <PostCard post={item} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10, backgroundColor: colors.sunken }} />}
+          ItemSeparatorComponent={() => <View style={{ height: space.sm, backgroundColor: colors.sunken }} />}
           ListHeaderComponent={
-            <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ padding: space.gutter, gap: space.md, backgroundColor: colors.surface, marginBottom: space.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
                 <CommunityIcon name={c.name} color={c.color} size={56} />
                 <View style={{ flex: 1 }}>
                   <Text variant="title">{c.name}</Text>
@@ -46,13 +47,13 @@ export default function CommunityScreen() {
                   }}
                 />
               </View>
-              <Text style={{ fontSize: 15, lineHeight: 21, color: colors.ink.muted }}>{c.description}</Text>
+              <Text variant="callout" style={{ color: colors.ink.muted }}>{c.description}</Text>
             </View>
           }
-          ListEmptyComponent={feed.isLoading ? undefined : <EmptyState icon="comment" title="No posts yet" body={c.joined ? 'Be the first to post' : 'Join to start the conversation'} />}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          ListEmptyComponent={<ScreenState loading={feed.isLoading} error={feed.error} onRetry={() => void feed.refetch()} empty={{ icon: 'comment', title: 'No posts yet', body: c.joined ? 'Be the first to post' : 'Join to start the conversation' }} />}
+          contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         />
-      ) : null}
-    </View>
+      )}
+    </PushedScreen>
   )
 }

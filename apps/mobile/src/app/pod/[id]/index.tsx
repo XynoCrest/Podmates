@@ -1,9 +1,9 @@
 import { formatSnapTime } from '@podmates/shared'
 import { healthRatio } from '@podmates/tree-engine'
-import { colors } from '@podmates/ui-tokens'
+import { colors, space } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native'
-import { Header, Icon, PressableScale, Text } from '@/components/ui'
+import { FlatList, View } from 'react-native'
+import { ChatScreen, Chip, Header, PressableScale, ScreenState, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { Composer } from '@/features/pods/components/Composer'
 import { MessageBubble } from '@/features/pods/components/MessageBubble'
@@ -22,7 +22,10 @@ export default function PodChat() {
   const p = pod.data
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ChatScreen
+      strip={p ? <WindowStrip pod={p} /> : null}
+      composer={<Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />}
+      header={
       <Header
         title={
           <PressableScale onPress={openTree} scaleTo={0.98} accessibilityLabel="Open pod tree">
@@ -34,9 +37,10 @@ export default function PodChat() {
         subtitle={p ? `${p.memberCount} members · snaps at ${formatSnapTime(p.snapTime)}` : undefined}
         right={p ? <TreeButton pod={p} onPress={openTree} /> : null}
       />
-      {p ? <WindowStrip pod={p} /> : null}
-      {messages.isLoading ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ink.muted} />
+      }
+    >
+      {messages.isLoading || messages.error ? (
+        <ScreenState fill loading={messages.isLoading} error={messages.error} onRetry={() => void messages.refetch()} />
       ) : (
         <FlatList
           inverted
@@ -48,12 +52,11 @@ export default function PodChat() {
             const grouped = !!above && above.kind !== 'system' && item.kind !== 'system' && above.author?.id === item.author?.id
             return <MessageBubble message={item} mine={item.author?.id === me} grouped={grouped} />
           }}
-          contentContainerStyle={{ paddingVertical: 12 }}
+          contentContainerStyle={{ paddingVertical: space.md }}
           keyboardDismissMode="interactive"
         />
       )}
-      <Composer onSend={(t) => send.mutate(t)} sending={send.isPending} onCamera={() => router.navigate({ pathname: '/camera', params: { podId: id } })} />
-    </KeyboardAvoidingView>
+    </ChatScreen>
   )
 }
 
@@ -62,14 +65,9 @@ function TreeButton({ pod, onPress }: { pod: PodSummary; onPress: () => void }) 
   const ratio = healthRatio(pod)
   const color = pod.treeStatus === 'dead' ? colors.danger.DEFAULT : ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
   return (
-    <PressableScale onPress={onPress} accessibilityLabel="Tree" scaleTo={0.92}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
-        <Icon name="tree" size={16} color={color} />
-        <Text numeric style={{ color, fontWeight: '600', fontSize: 14 }}>
-          {pod.treeStatus === 'dead' ? '0' : pod.hp}
-        </Text>
-      </View>
-    </PressableScale>
+    <View style={{ marginRight: space.sm }}>
+      <Chip size="md" icon="tree" label={pod.treeStatus === 'dead' ? '0' : String(pod.hp)} color={color} bg={colors.raised} onPress={onPress} accessibilityLabel="Open pod tree" />
+    </View>
   )
 }
 
@@ -86,8 +84,8 @@ function WindowStrip({ pod }: { pod: PodSummary }) {
           ? [colors.surface, colors.ink.muted, `Window opens at ${formatSnapTime(pod.snapTime)} · ${pod.contributedToday}/${pod.memberCount} done`]
           : [colors.surface, colors.ink.muted, `Today's window has closed · ${pod.contributedToday}/${pod.memberCount} snapped`]
   return (
-    <View style={{ backgroundColor: bg, paddingVertical: 8, paddingHorizontal: 16 }}>
-      <Text style={{ color: fg, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>{text}</Text>
+    <View style={{ backgroundColor: bg, paddingVertical: space.sm, paddingHorizontal: space.gutter }}>
+      <Text variant="subhead" center style={{ color: fg, fontWeight: '600' }}>{text}</Text>
     </View>
   )
 }
