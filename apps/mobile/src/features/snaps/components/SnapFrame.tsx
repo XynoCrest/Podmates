@@ -39,7 +39,7 @@ export function SnapFrame({ snap, top, footer }: { snap: Snap; top?: ReactNode; 
         </View>
       </View>
       <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 28, gap: 10, alignItems: 'flex-start' }}>
-        {snap.onTime ? <Chip icon="bolt" label="ON TIME · +10 ENERGY" color={colors.ink.inverse} bg={colors.energy.DEFAULT} /> : <Chip icon="clock" label="LATE" color="#fff" bg="rgba(0,0,0,0.55)" />}
+        {snap.onTime ? <Chip icon="bolt" label="ON TIME" color={colors.ink.inverse} bg={colors.energy.DEFAULT} /> : <Chip icon="clock" label="LATE" color="#fff" bg="rgba(0,0,0,0.55)" />}
         {snap.caption ? (
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
             <Text style={{ color: '#fff', fontSize: 16 }}>{snap.caption}</Text>

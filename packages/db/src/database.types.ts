@@ -285,14 +285,14 @@ isOneToOne: false
                   ]
                 },"pod_members": {
                   Row: {
-                    "best_streak": number,"energy": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"stars": number,"streak": number,"user_id": string
+                    "best_streak": number,"joined_at": string,"last_read_at": string,"pod_id": string,"role": string,"streak": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "best_streak"?: number,"energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"stars"?: number,"streak"?: number,"user_id": string
+                    "best_streak"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id": string,"role"?: string,"streak"?: number,"user_id": string
                   }
                   Update: {
-                    "best_streak"?: number,"energy"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"stars"?: number,"streak"?: number,"user_id"?: string
+                    "best_streak"?: number,"joined_at"?: string,"last_read_at"?: string,"pod_id"?: string,"role"?: string,"streak"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -395,14 +395,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_color": string,"avatar_url": string | null,"banner_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"energy": number,"id": string,"snap_count": number,"stars": number,"streak": number,"username": string
+                    "avatar_color": string,"avatar_url": string | null,"banner_url": string | null,"best_streak": number,"bio": string,"created_at": string,"display_name": string,"id": string,"onboarded_at": string | null,"snap_count": number,"streak": number,"username": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"energy"?: number,"id": string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username": string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name": string,"id": string,"onboarded_at"?: string | null,"snap_count"?: number,"streak"?: number,"username": string
                   }
                   Update: {
-                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"energy"?: number,"id"?: string,"snap_count"?: number,"stars"?: number,"streak"?: number,"username"?: string
+                    "avatar_color"?: string,"avatar_url"?: string | null,"banner_url"?: string | null,"best_streak"?: number,"bio"?: string,"created_at"?: string,"display_name"?: string,"id"?: string,"onboarded_at"?: string | null,"snap_count"?: number,"streak"?: number,"username"?: string
                   }
                   Relationships: [
                     

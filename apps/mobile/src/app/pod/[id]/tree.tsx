@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast, healthRatio, RULES, stageFor } from '@podmates/tree-engine'
+import { forecast, healthRatio, stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { goBack } from '@/lib/nav'
@@ -46,7 +46,7 @@ export default function TreeScreen() {
     : pod.meContributedToday
       ? { label: "You're done today", disabled: true }
       : w.status === 'open'
-        ? { label: `Snap now · +${RULES.energyPerCheckin} energy`, onPress: () => router.navigate({ pathname: '/camera', params: { podId: id } }), color: colors.flame.DEFAULT, lip: colors.flame.deep }
+        ? { label: 'Snap now', onPress: () => router.navigate({ pathname: '/camera', params: { podId: id } }), color: colors.flame.DEFAULT, lip: colors.flame.deep }
         : w.status === 'upcoming'
           ? { label: `Opens at ${formatSnapTime(pod.snapTime)}`, disabled: true }
           : { label: 'Window closed for today', disabled: true }
@@ -59,9 +59,9 @@ export default function TreeScreen() {
           {pod.name}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, minWidth: 40, justifyContent: 'flex-end' }}>
-          <Icon name="bolt" size={20} color={colors.energy.DEFAULT} />
-          <Text numeric style={{ color: colors.energy.DEFAULT, fontWeight: '600', fontSize: 17 }}>
-            {myStats?.energy ?? 0}
+          <Icon name="flame" size={20} color={colors.flame.DEFAULT} />
+          <Text numeric style={{ color: colors.flame.DEFAULT, fontWeight: '600', fontSize: 17 }} accessibilityLabel={`Your streak: ${myStats?.streak ?? 0} days`}>
+            {myStats?.streak ?? 0}
           </Text>
         </View>
       </View>
@@ -75,7 +75,7 @@ export default function TreeScreen() {
         <Headline>
           {dead ? (
             <>
-              The tree <Hl color={colors.danger.DEFAULT}>ran out of energy</Hl>. Plant a new seed together.
+              The tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
             </>
           ) : f.outcome === 'thrive' ? (
             <>

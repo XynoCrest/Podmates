@@ -65,8 +65,8 @@ check((settledDays.data?.length ?? 0) >= 12, 'Seed history settled by the tree e
 
 const sneaky = await ben.sb.from('messages').insert({ pod_id: IRON_PACT, body: 'hi' })
 check(!!sneaky.error, "RLS: ben can't post into a pod he isn't in")
-const cheat = await ben.sb.from('profiles').update({ energy: 99999 }).eq('id', ben.userId)
-check(!!cheat.error, "Column grants: ben can't set his own energy")
+const cheat = await ben.sb.from('profiles').update({ streak: 99999 }).eq('id', ben.userId)
+check(!!cheat.error, "Column grants: ben can't set his own streak")
 
 const open = await api(`/v1/dev/pods/${POD}/open-window`, ben.token)
 check(open.status === 200, 'API: opened the snap window now', open.body.snapTime ?? JSON.stringify(open.body))

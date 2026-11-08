@@ -12,7 +12,7 @@ const WINDOWS = [15, 20, 30]
 
 /** Start a pod (habit · goal · daily snap time) or join one with an invite code. */
 export default function NewPod() {
-  const params = useLocalSearchParams<{ tab?: string }>()
+  const params = useLocalSearchParams<{ tab?: string; habit?: string }>()
   const [tab, setTab] = useState<'create' | 'join'>(params.tab === 'join' ? 'join' : 'create')
   return (
     <ScrollView style={{ backgroundColor: colors.surface }} contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
@@ -25,17 +25,17 @@ export default function NewPod() {
           </PressableScale>
         ))}
       </View>
-      {tab === 'create' ? <CreateForm /> : <JoinForm />}
+      {tab === 'create' ? <CreateForm initialHabit={params.habit} /> : <JoinForm />}
     </ScrollView>
   )
 }
 
-function CreateForm() {
+function CreateForm({ initialHabit }: { initialHabit?: string }) {
   const habits = useHabits()
   const create = useCreatePod()
   const [name, setName] = useState('')
   const [goal, setGoal] = useState('')
-  const [habitId, setHabitId] = useState<string>('reading')
+  const [habitId, setHabitId] = useState<string>(initialHabit ?? 'reading')
   const [minutes, setMinutes] = useState(21 * 60)
   const [windowMinutes, setWindowMinutes] = useState(20)
 

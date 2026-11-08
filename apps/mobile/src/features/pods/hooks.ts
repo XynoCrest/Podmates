@@ -130,8 +130,6 @@ export const needsSnap = (pod: PodSummary, now: Date) => !pod.meContributedToday
 export interface Member extends Person {
   role: string
   streak: number
-  energy: number
-  stars: number
   contributedToday: boolean
 }
 
@@ -142,7 +140,7 @@ export function usePodMembers(pod: PodSummary | undefined) {
     queryFn: async (): Promise<Member[]> => {
       const today = podDate(new Date(), pod!.timeZone)
       const [members, today_] = await Promise.all([
-        supabase.from('pod_members').select(`role, streak, energy, stars, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
+        supabase.from('pod_members').select(`role, streak, joined_at, profile:profiles(${PERSON_FIELDS})`).eq('pod_id', pod!.id).order('joined_at'),
         supabase.from('contributions').select('user_id').eq('pod_id', pod!.id).eq('pod_date', today),
       ])
       if (members.error) throw members.error
@@ -152,8 +150,6 @@ export function usePodMembers(pod: PodSummary | undefined) {
         ...(m.profile as Person),
         role: m.role,
         streak: m.streak,
-        energy: m.energy,
-        stars: m.stars,
         contributedToday: done.has((m.profile as Person).id),
       }))
     },

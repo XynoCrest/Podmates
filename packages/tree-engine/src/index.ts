@@ -1,14 +1,14 @@
 /**
- * Podmates tree engine — the ONLY place tree health, growth, energy, stars and
- * streaks are computed. Pure functions, no I/O, no clock: callers pass state in
+ * Podmates tree engine — the ONLY place tree health, growth and streaks are
+ * computed. Pure functions, no I/O, no clock: callers pass state in
  * and persist what comes out (apps/api settlement), or show it (mobile forecast).
  *
  * The game, per pod and per pod-day:
- *   everyone snapped on time   → THRIVE: tree gains HP, its max HP grows, growth +1, ⭐ for everyone
+ *   everyone snapped on time   → THRIVE: tree gains HP, its max HP grows, growth +1
  *   ≥ 70% snapped on time      → STEADY: tree holds
  *   < 70% snapped on time      → WILT:   tree loses HP, more the fewer showed up
  *   HP reaches 0               → the tree dies; the pod can replant
- * Every on-time snap earns its author ⚡ energy and extends their 🔥 streak.
+ * Every on-time snap extends its author's 🔥 streak.
  */
 
 export const RULES = {
@@ -18,12 +18,10 @@ export const RULES = {
   steadyThreshold: 0.7,
   /** HP gained on a perfect day (capped at the new max). */
   thriveHp: 15,
-  /** Max HP added on a perfect day — the tree "gets higher energy". */
+  /** Max HP added on a perfect day — the tree gets stronger. */
   thriveMaxHp: 5,
   /** HP lost when nobody snaps; scales linearly with the share that missed. */
   wiltMaxLoss: 40,
-  energyPerCheckin: 10,
-  starsPerPerfectDay: 1,
 } as const
 
 export type TreeStatus = 'alive' | 'dead'
@@ -48,8 +46,6 @@ export interface MemberDay {
 
 export interface MemberUpdate {
   userId: string
-  energyDelta: number
-  starsDelta: number
   /** Streak after this day. */
   streak: number
   /** Longest streak ever, after this day. Never goes down. */
@@ -115,7 +111,7 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
       growthDelta: 0,
       died: false,
       tree,
-      memberUpdates: members.map((m) => ({ userId: m.userId, energyDelta: 0, starsDelta: 0, streak: m.streak, bestStreak: Math.max(m.bestStreak ?? 0, m.streak) })),
+      memberUpdates: members.map((m) => ({ userId: m.userId, streak: m.streak, bestStreak: Math.max(m.bestStreak ?? 0, m.streak) })),
       summary: 'The tree is resting. Replant it to start growing again.',
     }
   }
@@ -132,8 +128,6 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
     const streak = m.contributed ? m.streak + 1 : 0
     return {
       userId: m.userId,
-      energyDelta: m.contributed ? RULES.energyPerCheckin : 0,
-      starsDelta: m.contributed && outcome === 'thrive' ? RULES.starsPerPerfectDay : 0,
       streak,
       bestStreak: Math.max(m.bestStreak ?? 0, m.streak, streak),
     }
@@ -154,7 +148,7 @@ export function settleDay(tree: TreeState, members: MemberDay[]): SettleResult {
 }
 
 function summarize(outcome: DayOutcome, contributors: number, members: number, hpDelta: number, died: boolean) {
-  if (died) return `Only ${contributors} of ${members} showed up. The tree ran out of energy and died.`
+  if (died) return `Only ${contributors} of ${members} showed up. The tree didn't make it.`
   if (outcome === 'thrive') return `Everyone showed up! The tree grew${hpDelta > 0 ? ` +${hpDelta} HP` : ''}.`
   if (outcome === 'steady') return `${contributors} of ${members} showed up. The tree held steady.`
   return `Only ${contributors} of ${members} showed up. The tree lost ${-hpDelta} HP.`

@@ -41,11 +41,11 @@ describe('best streak', () => {
 })
 
 describe('settleDay', () => {
-  it('a perfect day grows HP, max HP and growth, and awards stars', () => {
+  it('a perfect day grows HP, max HP and growth, and extends streaks', () => {
     const r = settleDay({ hp: 90, maxHp: 100, growth: 3, status: 'alive' }, members([true, true, true]))
     expect(r.outcome).toBe('thrive')
     expect(r.tree).toEqual({ hp: 105, maxHp: 105, growth: 4, status: 'alive' })
-    expect(r.memberUpdates.every((m) => m.starsDelta === 1 && m.energyDelta === RULES.energyPerCheckin && m.streak === 3)).toBe(true)
+    expect(r.memberUpdates.every((m) => m.streak === 3)).toBe(true)
   })
 
   it('caps HP at the new max', () => {
@@ -54,16 +54,11 @@ describe('settleDay', () => {
     expect(r.hpDelta).toBe(5)
   })
 
-  it('a steady day keeps HP, pays energy only to contributors and resets missers', () => {
+  it('a steady day keeps HP, extends contributor streaks and resets missers', () => {
     const r = settleDay(newTree(), members([true, true, true, false]))
     expect(r.outcome).toBe('steady')
     expect(r.tree.hp).toBe(100)
-    expect(r.memberUpdates.map((m) => [m.energyDelta, m.starsDelta, m.streak])).toEqual([
-      [10, 0, 3],
-      [10, 0, 3],
-      [10, 0, 3],
-      [0, 0, 0],
-    ])
+    expect(r.memberUpdates.map((m) => m.streak)).toEqual([3, 3, 3, 0])
   })
 
   it('wilt loss scales with the share that missed', () => {
