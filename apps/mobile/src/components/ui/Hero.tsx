@@ -38,12 +38,14 @@ export function HeroHeading({ lead, bright, sub, fit, oneLine }: { lead: string;
  * The top of a tab page: brand-green band with the hero heading, optional art on the
  * right, optional controls under the heading (a search bar). Leaves room at the bottom
  * for the sheet to ride up over it. `backfill` paints green above it so pulling down a
- * list shows more green, not the canvas.
+ * list shows more green, not the canvas. `backdrop` is drawn behind the heading, positioned by
+ * the caller (art that bleeds to the screen edge).
  */
-export function TabHero({ topInset, heading, art, children, minHeight }: { topInset: number; heading: ReactNode; art?: ReactNode; children?: ReactNode; minHeight?: number }) {
+export function TabHero({ topInset, heading, art, backdrop, children, minHeight }: { topInset: number; heading: ReactNode; art?: ReactNode; backdrop?: ReactNode; children?: ReactNode; minHeight?: number }) {
   return (
     <View style={{ backgroundColor: hero.bg }}>
       <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000, backgroundColor: hero.bg }} />
+      {backdrop}
       <View style={{ minHeight, paddingTop: topInset + space.lg, paddingHorizontal: space.gutter, paddingBottom: HERO_OVERLAP + space.lg, gap: space.lg, justifyContent: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1 }}>{heading}</View>
@@ -55,9 +57,9 @@ export function TabHero({ topInset, heading, art, children, minHeight }: { topIn
   )
 }
 
-/** The sheet under a hero: canvas, rounded top, riding up over the band. */
-export function HeroSheet({ children }: { children?: ReactNode }) {
-  return <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, marginTop: -HERO_OVERLAP, paddingTop: 10 }}>{children}</View>
+/** The sheet under a hero: canvas, rounded top, riding up over the band. `clip` trims children to the corners. */
+export function HeroSheet({ children, clip }: { children?: ReactNode; clip?: boolean }) {
+  return <View style={{ backgroundColor: colors.canvas, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, marginTop: -HERO_OVERLAP, paddingTop: 10, overflow: clip ? 'hidden' : undefined }}>{children}</View>
 }
 
 /** The intro heading (sign-in, onboarding): larger, green lead-in and the bright line in white. */

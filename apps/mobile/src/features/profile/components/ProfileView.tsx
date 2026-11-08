@@ -1,11 +1,12 @@
 import { alpha, avatar as avatarColors, colors, radii, space } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
 import { useState } from 'react'
 import { Dimensions, Share, View } from 'react-native'
 import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Avatar, Button, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
+import { Avatar, Button, HERO_OVERLAP, Icon, IconButton, PressableScale, ScreenState, Text } from '@/components/ui'
 import { auth, useMe } from '@/ctx/session'
 import { compact } from '@/lib/format'
 import { showActionSheet } from '@/lib/actionSheet'
@@ -14,10 +15,12 @@ import { goBack } from '@/lib/nav'
 import type { Snap } from '../../snaps/hooks'
 import { useProfileBoard } from '../../snaps/hooks'
 import { CardCarousel, type CarouselItem } from '../../pods/components/CardCarousel'
-import { useHabitCards, useProfile, useSharedPods, type HabitCard } from '../hooks'
+import { useHabitCards, useProfile, useProfileStory, useSharedPods, type HabitCard } from '../hooks'
 
 const SCREEN_W = Dimensions.get('window').width
 const BANNER_H = 128
+/** How far the rounded sheet below rides up over the banner (as on Home). */
+const OVERLAP = HERO_OVERLAP
 const AVATAR = 96
 const PAD = space.gutter
 const GAP = 8
@@ -26,9 +29,10 @@ const COL_W = (SCREEN_W - PAD * 2 - GAP) / 2
 const RHYTHM = [1.35, 1.05, 1.5, 1.2, 1.0, 1.4]
 
 /**
- * Profile, LinkedIn/Pinterest-inspired: a banner with the avatar overlapping it, name and
- * @username, Streak · Best · Snaps, actions, one card per habit (mine open that habit's
- * calendar), then a masonry board of the snaps this person chose to show.
+ * Profile: the cover photo running to the top of the screen (like Home's hero), a rounded sheet
+ * riding over it with the avatar on its edge inside their story ring (my ☰ menu floats top right
+ * on the cover), name and @username, Streak · Best · Snaps, the habit carousel, then a masonry
+ * board of the snaps this person chose to show.
  */
 export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean }) {
   const insets = useSafeAreaInsets()
@@ -38,6 +42,7 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
   const cards = useHabitCards(userId)
   const board = useProfileBoard(userId)
   const shared = useSharedPods(userId)
+  const story = useProfileStory(userId)
   // No top bar: once the banner scrolls away, a canvas strip fades in behind the status bar.
   const scrollY = useSharedValue(0)
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -76,12 +81,15 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <StatusBar style="light" />
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
-        {/* Banner up to the top of the screen (no top bar: the name is right below). Their cover
-            photo, or a wash of their avatar colour until they set one. Back and menu float on it. */}
-        <View style={{ height: BANNER_H + insets.top, backgroundColor: bannerColor }}>
+        {/* Rides above the cover inside the scroll content, so pulling down reveals more of its colour, not the canvas. */}
+        <View style={{ position: 'absolute', top: -2000, left: 0, right: 0, height: 2000 + insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }} />
+        {/* Cover from the top of the screen (no top bar: the name is right below): their cover photo, or a wash of
+            their avatar colour. Back and menu float on it. */}
+        <View style={{ height: insets.top + BANNER_H + OVERLAP, backgroundColor: bannerColor }}>
           {p.banner_url ? (
-            <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: BANNER_H + insets.top }} contentFit="cover" transition={150} accessibilityLabel="Profile banner" />
+            <Image source={{ uri: imageUri(p.banner_url) }} style={{ width: '100%', height: insets.top + BANNER_H + OVERLAP }} contentFit="cover" transition={150} accessibilityLabel="Profile cover photo" />
           ) : (
             <View style={{ flex: 1, backgroundColor: alpha(colors.canvas, 0.35) }} />
           )}
@@ -91,14 +99,22 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: PAD }}>
+        {/* A sheet with rounded top corners riding up over the banner, like Home's; the avatar sits on its edge. */}
+        <View style={{ paddingHorizontal: PAD, marginTop: -OVERLAP, backgroundColor: colors.canvas, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet }}>
           {/* Centred stack: avatar overlapping the banner, name, @username, then Streak · Best · Snaps evenly spaced. */}
           <View style={{ alignItems: 'center' }}>
-            <PressableScale onPress={isMe ? () => router.push('/profile/edit') : undefined} disabled={!isMe} accessibilityLabel="Profile photo" style={{ marginTop: -AVATAR / 2 }}>
-              <View style={{ borderRadius: AVATAR, borderWidth: 4, borderColor: colors.canvas }}>
-                <Avatar person={p} size={AVATAR} />
-              </View>
-            </PressableScale>
+            {/* Avatar in its story ring (flame = something new, grey = seen or none); tap opens their story. */}
+            <View style={{ marginTop: -AVATAR / 2 }}>
+              <PressableScale
+                onPress={story.data ? () => router.push({ pathname: '/story/[userId]', params: { userId, habit: story.data!.habitId } }) : isMe ? () => router.push('/profile/edit') : undefined}
+                disabled={!story.data && !isMe}
+                accessibilityLabel={story.data ? `${p.display_name}'s story` : 'Profile photo'}
+              >
+                <View style={{ borderRadius: AVATAR, borderWidth: 3, borderColor: colors.canvas }}>
+                  <Avatar person={p} size={AVATAR} ring={story.data?.unseen ? 'unseen' : 'seen'} />
+                </View>
+              </PressableScale>
+            </View>
             <Text variant="title" center style={{ marginTop: space.sm }} numberOfLines={1}>
               {p.display_name}
             </Text>

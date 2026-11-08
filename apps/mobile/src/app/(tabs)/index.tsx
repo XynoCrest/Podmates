@@ -79,7 +79,8 @@ export default function PodsScreen() {
         ListHeaderComponent={
           <View>
             <StreakHero streak={profile.data?.streak ?? 0} topInset={insets.top} />
-            <HeroSheet>
+            {/* Clips its children to the rounded corners: the habit tabs' edge fades would otherwise square them off. */}
+            <HeroSheet clip>
               {hasPods ? (
                 <>
                   <HabitTabs habits={myHabits.data} selected={habitId} onSelect={setHabitId} due={due} onAdd={() => router.push('/pod/new')} />
@@ -150,8 +151,14 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
     <TabHero
       topInset={topInset}
       minHeight={topInset + HERO_H}
-      heading={<View style={{ maxWidth: 200 }}><HeroHeading lead={lead} bright={count} sub={sub} fit /></View>}
-      art={<View style={{ paddingRight: 40 }}><LeafTree height={HERO_H - HERO_OVERLAP - 40} /></View>}
+      heading={<View style={{ maxWidth: 196 }}><HeroHeading lead={lead} bright={count} sub={sub} fit /></View>}
+      backdrop={
+        // The tree grows in from the screen's right edge, just above where the sheet overlaps the band.
+        // Drawn first, so leaves reaching left sit behind the text.
+        <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: HERO_OVERLAP - 4 }}>
+          <LeafTree height={HERO_H - HERO_OVERLAP - 8} />
+        </View>
+      }
     />
   )
 }
