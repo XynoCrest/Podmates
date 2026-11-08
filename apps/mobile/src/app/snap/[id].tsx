@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { FlatList, useWindowDimensions, View } from 'react-native'
 import { overlay } from '@podmates/ui-tokens'
-import { Button, ScreenState } from '@/components/ui'
+import { Button, ScreenState, SwipeBack } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { SnapFrame } from '@/features/snaps/components/SnapFrame'
 import { useProfileBoard, useSnap, useToggleOnProfile, type Snap } from '@/features/snaps/hooks'
@@ -17,7 +17,8 @@ import { haptics } from '@/lib/haptics'
  */
 export default function SnapScreen() {
   const { id, board } = useLocalSearchParams<{ id: string; board?: string }>()
-  return board ? <BoardFeed userId={board} startId={id} /> : <SingleSnap id={id} />
+  // Swipe right anywhere to go back (a fullScreenModal has no edge swipe of its own).
+  return <SwipeBack>{board ? <BoardFeed userId={board} startId={id} /> : <SingleSnap id={id} />}</SwipeBack>
 }
 
 function SingleSnap({ id }: { id: string }) {
