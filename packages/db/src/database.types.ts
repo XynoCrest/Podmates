@@ -341,6 +341,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pod_removals": {
+                  Row: {
+                    "pod_id": string,"removed_at": string,"removed_by": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "pod_id": string,"removed_at"?: string,"removed_by"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "pod_id"?: string,"removed_at"?: string,"removed_by"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pod_removals_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pod_overview"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_pod_id_fkey"
+      columns: ["pod_id"]
+isOneToOne: false
+      referencedRelation: "pods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_removed_by_fkey"
+      columns: ["removed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pod_removals_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"pods": {
                   Row: {
                     "created_at": string,"created_by": string | null,"goal": string,"habit_id": string,"id": string,"invite_code": string,"name": string,"snap_time": string,"timezone": string,"window_minutes": number
