@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast, healthRatio, stageFor } from '@podmates/tree-engine'
+import { forecast, stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
@@ -9,7 +9,8 @@ import { useEndPairDay, usePairHistory, usePairToday, usePairTree, useReplantPai
 import { podWindow } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
-import { DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
+import { healthTotal, shareHealth } from '@/features/tree/healthShare'
+import { ContributionBoard, DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
 import { isLocal } from '@/lib/env'
 import { firstName } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
@@ -35,7 +36,6 @@ export default function PairTreeScreen() {
 
   const name = firstName(other.data.display_name)
   const dead = pair.status === 'dead'
-  const ratio = healthRatio(pair)
   const stage = stageFor(pair.growth)
   const snapped = (today.data?.me ? 1 : 0) + (today.data?.other ? 1 : 0)
   const f = forecast(pair, snapped, 2)
@@ -56,9 +56,12 @@ export default function PairTreeScreen() {
           : { label: 'Windows closed for today', disabled: true }
 
   const members = [
-    { ...mine.data, contributedToday: !!today.data?.me },
-    { ...other.data, contributedToday: !!today.data?.other },
+    { ...mine.data, contributedToday: !!today.data?.me, streak: pair.streak },
+    { ...other.data, contributedToday: !!today.data?.other, streak: pair.streak },
   ]
+  const shares = shareHealth(members)
+  const shown = dead ? 0 : healthTotal(shares)
+  const ratio = shown / 100
 
   return (
     <StageScreen
@@ -96,6 +99,15 @@ export default function PairTreeScreen() {
       </Headline>
 
       <TreeStats stage={stage} hp={dead ? 0 : pair.hp} maxHp={pair.maxHp} ratio={dead ? 0 : ratio} snapped={`${snapped} of 2 snapped today`} />
+
+      <ContributionBoard
+        dead={dead}
+        total={shown}
+        people={members.map((m) => {
+          const s = shares.find((x) => x.id === m.id)
+          return { ...m, share: s?.share ?? 0, fair: s?.fair ?? 0, dragging: s?.dragging ?? false }
+        })}
+      />
 
       <WeekStrip days={history.data ?? []} />
 
