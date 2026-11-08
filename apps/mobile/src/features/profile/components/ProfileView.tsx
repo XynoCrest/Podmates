@@ -225,8 +225,8 @@ export function ProfileView({ userId, asTab }: { userId: string; asTab?: boolean
 
         {board.data?.length ? (
           <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: PAD }}>
-            <Column items={left} />
-            <Column items={right} />
+            <Column items={left} userId={userId} />
+            <Column items={right} userId={userId} />
           </View>
         ) : (
           <ScreenState loading={board.isLoading} empty={{ icon: 'photo', title: isMe ? 'Your board is empty' : 'Nothing shared yet', body: isMe ? 'Pick your best snaps to show here.' : undefined }} />
@@ -257,11 +257,12 @@ function masonry(snaps: Snap[]): [{ snap: Snap; h: number }[], { snap: Snap; h: 
   return cols
 }
 
-function Column({ items }: { items: { snap: Snap; h: number }[] }) {
+/** Tapping a tile opens the board as a vertical feed (swipe up/down), starting at that snap. */
+function Column({ items, userId }: { items: { snap: Snap; h: number }[]; userId: string }) {
   return (
     <View style={{ flex: 1, gap: GAP }}>
       {items.map(({ snap, h }) => (
-        <PressableScale key={snap.id} onPress={() => router.push({ pathname: '/snap/[id]', params: { id: snap.id } })} scaleTo={0.97} accessibilityLabel="Open snap">
+        <PressableScale key={snap.id} onPress={() => router.push({ pathname: '/snap/[id]', params: { id: snap.id, board: userId } })} scaleTo={0.97} accessibilityLabel="Open snap">
           <Image source={{ uri: imageUri(snap.image) }} style={{ width: '100%', height: h, borderRadius: radii.card, backgroundColor: colors.surface }} contentFit="cover" transition={150} recyclingKey={snap.id} />
         </PressableScale>
       ))}

@@ -9,6 +9,7 @@ import { Button, HERO_OVERLAP, IntroSheet, Segmented, Text, TextField } from '@/
 import { auth } from '@/ctx/session'
 import { isLocal } from '@/lib/env'
 import { supabase } from '@/lib/supabase'
+import { friendlyAuthError, NAME_MAX, normalizeEmail, normalizeUsername, PASSWORD_MAX, PASSWORD_MIN, USERNAME_MAX, USERNAME_MIN, validateAuth, type AuthFields } from '@/lib/authValidation'
 import { haptics } from '@/lib/haptics'
 
 /** The big light title: thin system font in brand green, like a product intro. */
@@ -29,21 +30,30 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // A field's error shows once you've left it, or after you press the button; then it updates as you type.
+  const [touched, setTouched] = useState<Partial<Record<keyof AuthFields, boolean>>>({})
+  const [tried, setTried] = useState(false)
+  const errors = validateAuth(mode, { email, password, username, name })
+  const shown = (f: keyof AuthFields) => (tried || touched[f] ? errors[f] : undefined)
+  const touch = (f: keyof AuthFields) => () => setTouched((t) => ({ ...t, [f]: true }))
 
   async function submit() {
-    setBusy(true)
+    if (busy) return
+    setTried(true)
     setError(null)
     setNotice(null)
+    if (Object.keys(errors).length) return haptics.error()
+    setBusy(true)
     if (mode === 'signIn') {
-      const { error } = await auth.signIn(email.trim(), password)
+      const { error } = await auth.signIn(normalizeEmail(email), password)
       setBusy(false)
-      if (error) return fail(error.message)
+      if (error) return fail(friendlyAuthError(error.message))
       return haptics.success()
     }
-    const wanted = username.trim().toLowerCase()
-    const { data, error } = await auth.signUp(email.trim(), password, wanted, name.trim() || username.trim())
+    const wanted = normalizeUsername(username)
+    const { data, error } = await auth.signUp(normalizeEmail(email), password, wanted, name.trim() || wanted)
     setBusy(false)
-    if (error) return fail(error.message)
+    if (error) return fail(friendlyAuthError(error.message))
     haptics.success()
     // With email confirmation on, there's no session yet: say so instead of doing nothing.
     if (!data.session) return setNotice('Check your email to confirm your account, then sign in.')
@@ -88,6 +98,8 @@ export default function SignIn() {
               onChange={(m) => {
                 setError(null)
                 setNotice(null)
+                setTried(false)
+                setTouched({})
                 setMode(m)
               }}
               segments={[
@@ -98,12 +110,37 @@ export default function SignIn() {
             <View style={{ gap: space.lg }}>
               {signUp ? (
                 <>
-                  <TextField label="Name" value={name} onChangeText={setName} placeholder="Maya Lopez" autoCapitalize="words" textContentType="name" />
-                  <TextField label="Username" value={username} onChangeText={setUsername} placeholder="maya.reads" autoCapitalize="none" autoCorrect={false} textContentType="username" />
+                  <TextField label="Name" hint="Optional: shown on your profile." value={name} onChangeText={setName} onBlur={touch('name')} error={shown('name')} maxLength={NAME_MAX} placeholder="Maya Lopez" autoCapitalize="words" textContentType="name" />
+                  <TextField
+                    label="Username"
+                    hint={`${USERNAME_MIN}–${USERNAME_MAX} letters, numbers, dots or underscores.`}
+                    value={username}
+                    onChangeText={(v) => setUsername(v.toLowerCase())}
+                    onBlur={touch('username')}
+                    error={shown('username')}
+                    maxLength={USERNAME_MAX}
+                    placeholder="maya.reads"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="username"
+                  />
                 </>
               ) : null}
-              <TextField label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-              <TextField label="Password" value={password} onChangeText={setPassword} placeholder={signUp ? 'At least 6 characters' : 'Your password'} secureTextEntry autoComplete={signUp ? 'new-password' : 'password'} />
+              <TextField label="Email" value={email} onChangeText={setEmail} onBlur={touch('email')} error={shown('email')} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress" />
+              <TextField
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                onBlur={touch('password')}
+                error={shown('password')}
+                maxLength={signUp ? PASSWORD_MAX : undefined}
+                placeholder={signUp ? `At least ${PASSWORD_MIN} characters` : 'Your password'}
+                secureTextEntry
+                autoComplete={signUp ? 'new-password' : 'password'}
+                textContentType={signUp ? 'newPassword' : 'password'}
+                onSubmitEditing={submit}
+                returnKeyType="go"
+              />
             </View>
             <View style={{ gap: space.sm }}>
               <Button label={signUp ? 'Create account' : 'Get started'} onPress={submit} loading={busy} size="lg" />
