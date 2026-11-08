@@ -2,19 +2,17 @@ import { formatSnapTime } from '@podmates/shared'
 import { forecast, healthRatio, stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { ScrollView, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChunkyButton, HealthBar, IconButton, StreakCount, Text } from '@/components/ui'
+import { View } from 'react-native'
+import { Chip, ChunkyButton, ScreenState, StageScreen, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { useEndPairDay, usePairHistory, usePairToday, usePairTree, useReplantPair } from '@/features/pairs/hooks'
 import { podWindow } from '@/features/pods/hooks'
 import { useProfile } from '@/features/profile/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
-import { DevButton, Headline, Hl, MemberRing, StatCell, WeekStrip } from '@/features/tree/TreeParts'
+import { DemoTools, Headline, Hl, MemberRing, TreeStats, WeekStrip } from '@/features/tree/TreeParts'
 import { isLocal } from '@/lib/env'
 import { firstName } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
-import { goBack } from '@/lib/nav'
 import { useNow } from '@/lib/useNow'
 
 /**
@@ -23,7 +21,6 @@ import { useNow } from '@/lib/useNow'
  */
 export default function PairTreeScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
-  const insets = useSafeAreaInsets()
   const me = useMe()
   const now = useNow(15_000)
   const mine = useProfile(me)
@@ -34,7 +31,7 @@ export default function PairTreeScreen() {
   const replant = useReplantPair(userId)
   const endDay = useEndPairDay(userId)
 
-  if (!pair || !other.data || !mine.data) return <View style={{ flex: 1, backgroundColor: colors.canvas }} />
+  if (!pair || !other.data || !mine.data) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading /></View>
 
   const name = firstName(other.data.display_name)
   const dead = pair.status === 'dead'
@@ -64,81 +61,54 @@ export default function PairTreeScreen() {
   ]
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 52 }}>
-        <IconButton icon="close" label="Close" onPress={goBack} color={colors.ink.subtle} />
-        <Text variant="headline" numberOfLines={1} style={{ flex: 1, textAlign: 'center', color: colors.ink.muted }}>
-          You and {name}
-        </Text>
-        <View style={{ paddingHorizontal: 10, minWidth: 40, alignItems: 'flex-end' }}>
-          <StreakCount count={pair.streak} size={20} />
-        </View>
+    <StageScreen
+      title={`You and ${name}`}
+      right={<Chip size="md" icon="flame" label={String(pair.streak)} color={colors.flame.DEFAULT} bg={colors.raised} accessibilityLabel={`Your streak together: ${pair.streak} days`} />}
+      footer={<ChunkyButton {...cta} />}
+    >
+      <View style={{ alignItems: 'center', marginTop: 8 }}>
+        <TreeArt growth={pair.growth} health={ratio} dead={dead} size={260} />
+        <MemberRing members={members} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 24, alignItems: 'stretch' }} showsVerticalScrollIndicator={false}>
-        <View style={{ alignItems: 'center', marginTop: 8 }}>
-          <TreeArt growth={pair.growth} health={ratio} dead={dead} size={260} />
-          <MemberRing members={members} />
-        </View>
+      <Headline>
+        {dead ? (
+          <>
+            Your tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
+          </>
+        ) : f.outcome === 'thrive' ? (
+          <>
+            You both snapped. Tonight the tree will <Hl color={colors.leaf.DEFAULT}>grow +{f.hpDelta} HP</Hl>.
+          </>
+        ) : allClosed ? (
+          <>
+            {snapped} of 2 snapped. <Hl color={colors.flame.DEFAULT}>The tree loses {-f.hpDelta} HP tonight.</Hl>
+          </>
+        ) : today.data?.me ? (
+          <>
+            Waiting on <Hl color={colors.flame.DEFAULT}>{name}</Hl> to keep the streak going.
+          </>
+        ) : (
+          <>
+            <Hl color={colors.flame.DEFAULT}>{snapped === 1 ? 'Your snap' : 'Both snaps'}</Hl> keep{snapped === 1 ? 's' : ''} the streak going tonight.
+          </>
+        )}
+      </Headline>
 
-        <Headline>
-          {dead ? (
-            <>
-              Your tree <Hl color={colors.danger.DEFAULT}>{"didn't make it"}</Hl>. Plant a new seed together.
-            </>
-          ) : f.outcome === 'thrive' ? (
-            <>
-              You both snapped. Tonight the tree will <Hl color={colors.leaf.DEFAULT}>grow +{f.hpDelta} HP</Hl>.
-            </>
-          ) : allClosed ? (
-            <>
-              {snapped} of 2 snapped. <Hl color={colors.flame.DEFAULT}>The tree loses {-f.hpDelta} HP tonight.</Hl>
-            </>
-          ) : today.data?.me ? (
-            <>
-              Waiting on <Hl color={colors.flame.DEFAULT}>{name}</Hl> to keep the streak going.
-            </>
-          ) : (
-            <>
-              <Hl color={colors.flame.DEFAULT}>{snapped === 1 ? 'Your snap' : 'Both snaps'}</Hl> keep{snapped === 1 ? 's' : ''} the streak going tonight.
-            </>
-          )}
-        </Headline>
+      <TreeStats stage={stage} hp={dead ? 0 : pair.hp} maxHp={pair.maxHp} ratio={dead ? 0 : ratio} snapped={`${snapped} of 2 snapped today`} />
 
-        <View style={{ flexDirection: 'row', borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>
-          <StatCell label="Stage" value={stage.name} sub={`Level ${stage.level} of ${stage.levels}`} />
-          <View style={{ width: 1, backgroundColor: colors.line }} />
-          <StatCell label="Health" value={`${dead ? 0 : pair.hp}/${pair.maxHp}`} sub={`${snapped} of 2 snapped today`}>
-            <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              <HealthBar ratio={dead ? 0 : ratio} height={10} />
-            </View>
-          </StatCell>
-        </View>
+      <WeekStrip days={history.data ?? []} />
 
-        <WeekStrip days={history.data ?? []} />
+      <Text variant="caption" center>
+        Snaps in any pod you share count{today.shared.length ? ` · ${today.shared.map((p) => p.name).join(', ')}` : ''}
+      </Text>
 
-        <Text variant="caption" center>
-          Snaps in any pod you share count{today.shared.length ? ` · ${today.shared.map((p) => p.name).join(', ')}` : ''}
-        </Text>
-
-        {isLocal ? (
-          <View style={{ gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface }}>
-            <Text variant="overline">Demo tools · local only</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <DevButton label={endDay.isPending ? 'Settling…' : 'End the day now'} onPress={() => endDay.mutate(undefined, { onSuccess: () => haptics.success() })} />
-            </View>
-            {endDay.error || replant.error ? (
-              <Text variant="caption" style={{ color: colors.danger.DEFAULT }}>
-                {(endDay.error ?? replant.error)!.message}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 12 }}>
-        <ChunkyButton {...cta} />
-      </View>
-    </View>
+      {isLocal ? (
+        <DemoTools
+          error={endDay.error ?? replant.error}
+          actions={[{ label: endDay.isPending ? 'Settling…' : 'End the day now', onPress: () => endDay.mutate(undefined, { onSuccess: () => haptics.success() }) }]}
+        />
+      ) : null}
+    </StageScreen>
   )
 }
