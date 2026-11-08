@@ -3,7 +3,8 @@ import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { ScrollView, TextInput, View } from 'react-native'
-import { Button, Icon, PressableScale, SymbolIcon, Text } from '@/components/ui'
+import { Button, Icon, PressableScale, Text } from '@/components/ui'
+import { HabitCarousel } from '@/features/pods/components/HabitCarousel'
 import { useCreatePod, useHabits, useJoinPod } from '@/features/pods/hooks'
 import { deviceTimeZone } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
@@ -61,18 +62,9 @@ function CreateForm({ initialHabit }: { initialHabit?: string }) {
       <Field label="Pod name" value={name} onChangeText={setName} placeholder="Atomic Habits Club" maxLength={40} />
       <View style={{ gap: 8 }}>
         <Text variant="overline">Habit</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {habits.data?.map((h) => {
-            const active = h.id === habitId
-            return (
-              <PressableScale key={h.id} onPress={() => setHabitId(h.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} scaleTo={0.95}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: active ? colors.leaf.soft : colors.raised, borderWidth: 1, borderColor: active ? colors.leaf.DEFAULT : 'transparent' }}>
-                  <SymbolIcon name={h.sf_symbol} size={16} color={active ? colors.leaf.DEFAULT : colors.ink.muted} />
-                  <Text style={{ fontWeight: '500', fontSize: 14, color: active ? colors.leaf.DEFAULT : colors.ink.DEFAULT }}>{h.name}</Text>
-                </View>
-              </PressableScale>
-            )
-          })}
+        {/* Full-bleed: the carousel band runs edge to edge of the sheet. */}
+        <View style={{ marginHorizontal: -20 }}>
+          <HabitCarousel habits={habits.data ?? []} value={habitId} onChange={setHabitId} />
         </View>
       </View>
       <Field label="Daily goal" value={goal} onChangeText={setGoal} placeholder="20 pages a day" maxLength={120} />

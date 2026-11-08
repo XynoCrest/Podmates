@@ -1,11 +1,12 @@
 import { colors } from '@podmates/ui-tokens'
 import { useMemo, useState } from 'react'
-import { ActionSheetIOS, ActivityIndicator, FlatList, Platform, RefreshControl, View } from 'react-native'
+import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { EmptyState, Icon, PressableScale, Text } from '@/components/ui'
 import { CommunityCircles, SearchBar, UnderlineTabs } from '@/features/explore/components/ExploreTop'
 import { PostCard } from '@/features/explore/components/PostCard'
 import { useCommunities, useFeed, type FeedMode, type FeedSort } from '@/features/explore/hooks'
+import { showActionSheet } from '@/lib/actionSheet'
 import { haptics } from '@/lib/haptics'
 
 const SORTS: { key: FeedSort; label: string }[] = [
@@ -30,15 +31,17 @@ export default function ExploreScreen() {
     [feed.data, q],
   )
 
-  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) => {
-    if (Platform.OS !== 'ios') return onPick(options[0]!.value) // the product targets iOS; other platforms get the default
-    ActionSheetIOS.showActionSheetWithOptions({ title, options: [...options.map((o) => o.label), 'Cancel'], cancelButtonIndex: options.length, userInterfaceStyle: 'dark' }, (i) => {
-      if (i < options.length) {
-        haptics.select()
-        onPick(options[i]!.value)
-      }
+  const pick = <T,>(title: string, options: { label: string; value: T }[], onPick: (v: T) => void) =>
+    showActionSheet({
+      title,
+      options: options.map((o) => ({
+        label: o.label,
+        onPress: () => {
+          haptics.select()
+          onPick(o.value)
+        },
+      })),
     })
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: insets.top }}>

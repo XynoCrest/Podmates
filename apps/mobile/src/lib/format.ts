@@ -12,7 +12,9 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 /** 8.5K / 1.2M style counts. */
-export function compact(n: number): string {
+export function compact(n: number | null | undefined): string {
+  // Missing or broken numbers (a column not there yet, a null) read as 0, never "NaN".
+  if (n == null || !Number.isFinite(n)) return '0'
   const abs = Math.abs(n)
   if (abs < 1000) return String(n)
   if (abs < 1_000_000) return `${trim(n / 1000)}K`
