@@ -15,7 +15,7 @@ button are decided once. Pick the template, then fill it with shared parts. All 
 | A full-screen modal around one figure | `StageScreen` (`footer` = the big button) | Pod tree, pair tree |
 | A photo or the camera | `MediaScreen` / `SnapFrame`, `Header tone="media"`, `IconButton tone="media"` | Snap, story, camera |
 
-Profile is a tab, but it keeps its banner and uses `Header leading="none"` for its bar.
+Profile is a tab, but it keeps its banner and has no top bar: the banner runs to the top of the screen, and the back and menu buttons float on it (`IconButton tone="media"`).
 
 ## Decisions
 
