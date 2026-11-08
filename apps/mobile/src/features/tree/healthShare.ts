@@ -20,7 +20,12 @@ export interface HealthShare extends HealthMember {
   dragging: boolean
 }
 
-export function shareHealth(members: HealthMember[]): HealthShare[] {
+/**
+ * `hp` (0–1, the tree's hp ÷ max hp) scales everything, so the total matches the tree's real health:
+ * a tree at 20 HP never shows 100 just because everyone's streaks are level. Colours compare each
+ * share to its own fair part, so they don't change with it.
+ */
+export function shareHealth(members: HealthMember[], hp = 1): HealthShare[] {
   const n = members.length
   if (n === 0) return []
   const fair = Math.floor(100 / n)
@@ -46,7 +51,9 @@ export function shareHealth(members: HealthMember[]): HealthShare[] {
       leftover -= 1
     }
   }
-  return rows
+  if (hp >= 1) return rows
+  const k = Math.max(0, hp)
+  return rows.map((r) => ({ ...r, share: Math.round(r.share * k), fair: Math.round(r.fair * k) }))
 }
 
 export const healthTotal = (shares: HealthShare[]) => shares.reduce((n, s) => n + s.share, 0)

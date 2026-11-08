@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast } from '@podmates/tree-engine'
+import { forecast, healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
@@ -38,7 +38,8 @@ export default function TreeScreen() {
   const f = forecast(tree, pod.contributedToday, counted)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
-  const shares = shareHealth(members.data ?? [])
+  // Each person's points, scaled by the tree's real HP so the % matches the HP shown in the pod's header.
+  const shares = shareHealth(members.data ?? [], healthRatio(tree))
   const shown = dead ? 0 : healthTotal(shares)
   const ratio = shown / 100
 

@@ -141,3 +141,12 @@ describe('rest days', () => {
     expect(r.summary).toBe('Everyone rested. The tree held steady.')
   })
 })
+
+describe('perfect streak and rest days', () => {
+  it('holds when everyone rested, grows on a perfect day, resets otherwise', () => {
+    expect(perfectStreak(4, 'steady', 0)).toBe(4)
+    expect(perfectStreak(4, 'thrive', 1)).toBe(5) // one rested, the other snapped
+    expect(perfectStreak(4, 'wilt', 2)).toBe(0)
+    expect(perfectStreak(4, 'dormant', 0)).toBe(0)
+  })
+})

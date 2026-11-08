@@ -1,5 +1,5 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast } from '@podmates/tree-engine'
+import { forecast, healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
@@ -58,7 +58,7 @@ export default function PairTreeScreen() {
     { ...mine.data, contributedToday: !!today.data?.me, streak: pair.streak },
     { ...other.data, contributedToday: !!today.data?.other, streak: pair.streak },
   ]
-  const shares = shareHealth(members)
+  const shares = shareHealth(members, healthRatio(pair))
   const shown = dead ? 0 : healthTotal(shares)
   const ratio = shown / 100
 
