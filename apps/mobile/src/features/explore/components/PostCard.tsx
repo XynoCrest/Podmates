@@ -1,12 +1,12 @@
 import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import { View } from 'react-native'
-import { Avatar, Icon, PressableScale, Text } from '@/components/ui'
+import { Share, View } from 'react-native'
+import { Avatar, Icon, PressableScale, Text, type IconName } from '@/components/ui'
 import { compact, timeAgo } from '@/lib/format'
 import { haptics } from '@/lib/haptics'
 import { COMMUNITY_ICONS } from '../communityIcons'
-import { useVote, type Post } from '../hooks'
+import { useSharePost, useVote, type Post } from '../hooks'
 
 /** Card: author header (photo, name, community underneath), media full-bleed, caption (title + body), then stats and vote arrows. */
 export function PostCard({ post, full }: { post: Post; full?: boolean }) {
@@ -25,7 +25,7 @@ export function PostCard({ post, full }: { post: Post; full?: boolean }) {
           <Caption post={post} full={full} />
         )}
       </PressableScale>
-      <PostMeta post={post} />
+      <PostMeta post={post} full={full} />
     </View>
   )
 }
@@ -80,44 +80,55 @@ export function CommunityIcon({ name, color, size = 26 }: { name: string; color:
   )
 }
 
-function PostMeta({ post }: { post: Post }) {
+/**
+ * The action bar under a post, X-style: thumbs up (green) and thumbs down (red), each with its
+ * count, comments with their count, share with its count; how long ago on the right. Outline
+ * icons, filled when it's my vote.
+ */
+function PostMeta({ post, full }: { post: Post; full?: boolean }) {
   const vote = useVote()
+  const sharePost = useSharePost()
   const cast = (value: -1 | 1) => {
     haptics.select()
     vote.mutate({ post, value })
   }
-  const scoreColor = post.myVote === 1 ? colors.flame.DEFAULT : post.myVote === -1 ? colors.sky.DEFAULT : colors.ink.subtle
+  const share = async () => {
+    const result = await Share.share({ message: `${post.title} — on Podmates, in ${post.community.name}` })
+    // Count it only if the sheet wasn't dismissed (Android always reports a share).
+    if (result.action === Share.sharedAction) sharePost.mutate(post.id)
+  }
+  const up = post.myVote === 1
+  const down = post.myVote === -1
+  const ups = Math.max(0, post.score + post.downCount)
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Meta icon="arrowUp" label={compact(post.score)} color={scoreColor} />
-          <Meta icon="comment" label={compact(post.commentCount)} />
-          <Meta icon="clock" label={timeAgo(post.createdAt)} />
-        </View>
-      </View>
-      <Arrow icon="arrowUp" label="Upvote" onPress={() => cast(1)} color={post.myVote === 1 ? colors.flame.DEFAULT : colors.ink.subtle} active={post.myVote === 1} />
-      <Arrow icon="arrowDown" label="Downvote" onPress={() => cast(-1)} color={post.myVote === -1 ? colors.sky.DEFAULT : colors.ink.subtle} active={post.myVote === -1} />
-    </View>
-  )
-}
-
-function Meta({ icon, label, color = colors.ink.subtle }: { icon: 'arrowUp' | 'comment' | 'clock'; label: string; color?: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Icon name={icon} size={14} color={color} weight="medium" />
-      <Text numeric style={{ fontSize: 15, color }}>
-        {label}
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, gap: 2 }}>
+      <Action icon={up ? 'thumbsUpFill' : 'thumbsUp'} label={`Thumbs up, ${ups}`} count={compact(ups)} color={colors.leaf.DEFAULT} active={up} onPress={() => cast(1)} />
+      <Action icon={down ? 'thumbsDownFill' : 'thumbsDown'} label={`Thumbs down, ${post.downCount}`} count={compact(post.downCount)} color={colors.danger.DEFAULT} active={down} onPress={() => cast(-1)} />
+      <Action
+        icon="bubble"
+        label={`${post.commentCount} comments`}
+        count={compact(post.commentCount)}
+        color={colors.ink.DEFAULT}
+        onPress={full ? undefined : () => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+      />
+      <Action icon="sendPlane" label={`Share, ${post.shareCount} shares`} count={compact(post.shareCount)} color={colors.ink.DEFAULT} onPress={() => void share()} />
+      <Text variant="caption" numeric style={{ marginLeft: 'auto', paddingRight: 8, color: colors.ink.subtle }}>
+        {timeAgo(post.createdAt)}
       </Text>
     </View>
   )
 }
 
-function Arrow({ icon, label, onPress, color, active }: { icon: 'arrowUp' | 'arrowDown'; label: string; onPress: () => void; color: string; active?: boolean }) {
+function Action({ icon, label, count, color, active, onPress }: { icon: IconName; label: string; count?: string; color: string; active?: boolean; onPress?: () => void }) {
   return (
-    <PressableScale onPress={onPress} scaleTo={0.85} accessibilityLabel={label} accessibilityState={{ selected: !!active }} hitSlop={4}>
-      <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? colors.raised : 'transparent' }}>
-        <Icon name={icon} size={20} color={color} weight={active ? 'bold' : 'regular'} />
+    <PressableScale onPress={onPress} disabled={!onPress} scaleTo={0.85} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: !!active }} hitSlop={4}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, height: 40, paddingHorizontal: 7 }}>
+        <Icon name={icon} size={21} color={color} weight={active ? 'semibold' : 'regular'} />
+        {count !== undefined ? (
+          <Text numeric style={{ fontSize: 15, fontWeight: '600', color }}>
+            {count}
+          </Text>
+        ) : null}
       </View>
     </PressableScale>
   )

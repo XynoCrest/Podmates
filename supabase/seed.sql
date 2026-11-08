@@ -289,3 +289,8 @@ from public.pod_members a
 join public.pod_members b on b.pod_id = a.pod_id and a.user_id < b.user_id
 join public.pods p on p.id = a.pod_id
 group by a.user_id, b.user_id;
+
+-- ─── Post shares ──────────────────────────────────────────────────────────────
+
+-- A share count to go with the demo scores above (about one share per twelve points).
+update public.posts set share_count = greatest(0, score / 12);

@@ -405,6 +405,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"post_shares": {
+                  Row: {
+                    "post_id": string,"shared_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "post_id": string,"shared_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "post_id"?: string,"shared_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "post_shares_post_id_fkey"
+      columns: ["post_id"]
+isOneToOne: false
+      referencedRelation: "posts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "post_shares_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"post_votes": {
                   Row: {
                     "post_id": string,"user_id": string,"value": number
@@ -433,14 +459,14 @@ isOneToOne: false
                   ]
                 },"posts": {
                   Row: {
-                    "body": string,"comment_count": number,"community_id": string,"created_at": string,"id": string,"image_url": string | null,"score": number,"title": string,"user_id": string
+                    "body": string,"comment_count": number,"community_id": string,"created_at": string,"down_count": number,"id": string,"image_url": string | null,"score": number,"share_count": number,"title": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body"?: string,"comment_count"?: number,"community_id": string,"created_at"?: string,"id"?: string,"image_url"?: string | null,"score"?: number,"title": string,"user_id"?: string
+                    "body"?: string,"comment_count"?: number,"community_id": string,"created_at"?: string,"down_count"?: number,"id"?: string,"image_url"?: string | null,"score"?: number,"share_count"?: number,"title": string,"user_id"?: string
                   }
                   Update: {
-                    "body"?: string,"comment_count"?: number,"community_id"?: string,"created_at"?: string,"id"?: string,"image_url"?: string | null,"score"?: number,"title"?: string,"user_id"?: string
+                    "body"?: string,"comment_count"?: number,"community_id"?: string,"created_at"?: string,"down_count"?: number,"id"?: string,"image_url"?: string | null,"score"?: number,"share_count"?: number,"title"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -677,6 +703,9 @@ isOneToOne: false
                            },
 "rest_today":
 { Args: { "p_pod_id": string }; Returns: string
+                           },
+"share_post":
+{ Args: { "p_post": string }; Returns: number
                            },
 "shares_pod_with":
 { Args: { "p_user_id": string }; Returns: boolean
