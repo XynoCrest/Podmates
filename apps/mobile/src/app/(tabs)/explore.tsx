@@ -54,7 +54,7 @@ export default function ExploreScreen() {
         scrollEventThrottle={32}
         ListHeaderComponent={
           <View>
-            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="people." oneLine />}>
+            <TabHero topInset={insets.top} heading={<HeroHeading lead="Find your" bright="podmates." oneLine />}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <SearchBar value={query} onChange={setQuery} placeholder="Search posts" />
                 <Image

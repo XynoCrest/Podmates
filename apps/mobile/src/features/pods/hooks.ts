@@ -108,8 +108,7 @@ export function useMyPods() {
       }))
     },
   })
-  // Chat previews and "snapped today" counts change whenever anyone posts.
-  useRealtimeInvalidate('messages', undefined, [qk.pods])
+  // Live updates for the pod list come from one app-wide subscription (src/lib/liveSync.tsx).
   return query
 }
 

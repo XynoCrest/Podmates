@@ -171,9 +171,11 @@ function summarize(outcome: DayOutcome, contributors: number, members: number, h
 
 /**
  * Perfect-day streak for a group (a podmate pair's 🔥): consecutive days everyone
- * snapped. Any other day, including a dead tree's dormant days, resets it.
+ * snapped. A day when everyone rested (`counted` = 0) holds it, like a rest day holds a
+ * personal streak. Any other day, including a dead tree's dormant days, resets it.
  */
-export function perfectStreak(previous: number, outcome: DayOutcome): number {
+export function perfectStreak(previous: number, outcome: DayOutcome, counted?: number): number {
+  if (counted === 0 && outcome !== 'dormant') return previous
   return outcome === 'thrive' ? previous + 1 : 0
 }
 

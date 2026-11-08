@@ -47,7 +47,7 @@ export default function PodsScreen() {
   const stories = useStories(habitId)
   const due = useMemo(() => new Set(pods.data?.filter((p) => needsSnap(p, now)).map((p) => p.habitId)), [pods.data, now])
   const hasPods = !!pods.data?.length
-  const inHabit = pods.data?.filter((p) => p.habitId === habitId) ?? []
+  const inHabit = useMemo(() => pods.data?.filter((p) => p.habitId === habitId) ?? [], [pods.data, habitId])
   // The hero speaks for the selected habit tab: my best current streak among that habit's pods.
   const habitStreak = inHabit.length ? Math.max(...inHabit.map((p) => p.myStreak)) : (profile.data?.streak ?? 0)
   const habitName = myHabits.data.find((h) => h.id === habitId)?.name

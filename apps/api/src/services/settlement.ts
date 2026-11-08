@@ -3,13 +3,13 @@
  * gathers inputs and persists outputs (atomically, via apply_day_settlement).
  */
 import type { DbClient } from '@podmates/db'
-import { podDate, type SettledDay } from '@podmates/shared'
+import { parseSnapTime, podDate, zonedParts, type SettledDay } from '@podmates/shared'
 import { settleDay, type MemberDay, type TreeState } from '@podmates/tree-engine'
 import { addDays, daysToSettle, endOfLocalDay } from './dates'
 import type { SettleOptions } from './types'
 
-export async function settleDue(db: DbClient, { podId, throughToday = false, now = new Date() }: SettleOptions = {}) {
-  let query = db.from('pods').select('id, timezone, trees!inner(hp, max_hp, growth, status, last_settled_date)')
+export async function settleDue(db: DbClient, { podId, throughToday = false, now = new Date(), onError }: SettleOptions = {}) {
+  let query = db.from('pods').select('id, timezone, snap_time, window_minutes, trees!inner(hp, max_hp, growth, status, last_settled_date)')
   if (podId) query = query.eq('id', podId)
   const { data: pods, error } = await query
   if (error) throw error
@@ -17,13 +17,31 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
   const settled: SettledDay[] = []
   const touchedUsers = new Set<string>()
 
-  for (const pod of pods ?? []) {
+  try {
+    for (const pod of pods ?? []) {
+      try {
+        await settlePod(pod)
+      } catch (err) {
+        if (!onError) throw err
+        onError(pod.id, err)
+      }
+    }
+  } finally {
+    // Even if a pod failed, refresh the profiles of everyone whose streak already changed.
+    if (touchedUsers.size) {
+      const { error: pErr } = await db.rpc('refresh_profile_stats', { p_user_ids: [...touchedUsers] })
+      if (pErr) throw pErr
+    }
+  }
+  return settled
+
+  async function settlePod(pod: NonNullable<typeof pods>[number]) {
     const t = pod.trees
-    if (!t) continue
+    if (!t) return
     const today = podDate(now, pod.timezone)
     const through = throughToday ? today : addDays(today, -1)
     const days = daysToSettle(t.last_settled_date, through)
-    if (!days.length) continue
+    if (!days.length) return
 
     const { data: members, error: mErr } = await db
       .from('pod_members')
@@ -51,8 +69,13 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
     let last = t.last_settled_date
 
     for (const day of days) {
-      // Only people who had joined by the end of that day count towards it.
-      const active = (members ?? []).filter((m) => podDate(new Date(m.joined_at), pod.timezone) <= day)
+      // A member counts towards a day if they had joined before that day's window closed: someone who
+      // joins after it can't snap on time, so counting them would cost the pod HP for nothing.
+      const windowEnd = parseSnapTime(pod.snap_time) + pod.window_minutes
+      const active = (members ?? []).filter((m) => {
+        const joined = zonedParts(new Date(m.joined_at), pod.timezone)
+        return joined.date < day || (joined.date === day && joined.minuteOfDay < windowEnd)
+      })
       const contributed = new Set((contributions ?? []).filter((c) => c.pod_date === day).map((c) => c.user_id))
       const rested = new Set((rests ?? []).filter((r) => r.pod_date === day).map((r) => r.user_id))
       const memberDays: MemberDay[] = active.map((m) => ({
@@ -101,10 +124,4 @@ export async function settleDue(db: DbClient, { podId, throughToday = false, now
       })
     }
   }
-
-  if (touchedUsers.size) {
-    const { error: pErr } = await db.rpc('refresh_profile_stats', { p_user_ids: [...touchedUsers] })
-    if (pErr) throw pErr
-  }
-  return settled
 }

@@ -29,7 +29,7 @@ export default function PostScreen() {
           right={post.data && !mine ? <IconButton icon="more" label="Report post" onPress={() => reportFlow('post', id, 'post', goBack)} /> : null}
         />
       }
-      composer={<Composer placeholder="Add a comment" onSend={(t) => add.mutate(t)} sending={add.isPending} />}
+      composer={<Composer placeholder="Add a comment" onSend={(t) => add.mutateAsync(t)} sending={add.isPending} />}
     >
       <FlatList
         data={comments.data}

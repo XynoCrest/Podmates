@@ -1,9 +1,10 @@
 import { formatSnapTime } from '@podmates/shared'
-import { forecast } from '@podmates/tree-engine'
+import { forecast, healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { View } from 'react-native'
-import { Chip, ChunkyButton, ScreenState, StageScreen } from '@/components/ui'
+import { Alert, View } from 'react-native'
+import { Button, Chip, ChunkyButton, ScreenState, StageScreen } from '@/components/ui'
+import { goBack } from '@/lib/nav'
 import { useMe } from '@/ctx/session'
 import { podWindow, usePod, usePodMembers } from '@/features/pods/hooks'
 import { TreeArt } from '@/features/tree/TreeArt'
@@ -22,14 +23,28 @@ export default function TreeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const me = useMe()
   const now = useNow(15_000)
-  const { data: pod } = usePod(id)
+  const podQuery = usePod(id)
+  const pod = podQuery.data
   const members = usePodMembers(pod)
   const history = useTreeHistory(id)
   const replant = useReplant(id)
   const endDay = useEndDay(id)
   const openWindow = useOpenWindow(id)
 
-  if (!pod) return <View style={{ flex: 1, backgroundColor: colors.canvas }}><ScreenState fill loading /></View>
+  if (!pod) {
+    // Loaded but not in my pods: I left, was removed, or the link is old. Say so instead of spinning forever.
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+        <ScreenState
+          fill
+          loading={podQuery.isLoading}
+          error={podQuery.error}
+          onRetry={() => void podQuery.refetch()}
+          empty={{ icon: 'tree', title: 'This pod isn’t available', body: 'You may have left it or been removed.', action: <Button label="Close" variant="secondary" size="sm" onPress={goBack} /> }}
+        />
+      </View>
+    )
+  }
 
   const dead = pod.treeStatus === 'dead'
   const tree = { hp: pod.hp, maxHp: pod.maxHp, growth: pod.growth, status: pod.treeStatus }
@@ -38,12 +53,13 @@ export default function TreeScreen() {
   const f = forecast(tree, pod.contributedToday, counted)
   const w = podWindow(pod, now)
   const myStats = members.data?.find((m) => m.id === me)
-  const shares = shareHealth(members.data ?? [])
+  // Each person's points, scaled by the tree's real HP so the % matches the HP shown in the pod's header.
+  const shares = shareHealth(members.data ?? [], healthRatio(tree))
   const shown = dead ? 0 : healthTotal(shares)
   const ratio = shown / 100
 
   const cta = dead
-    ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success() }), loading: replant.isPending }
+    ? { label: 'Replant', onPress: () => replant.mutate(undefined, { onSuccess: () => haptics.success(), onError: (e) => Alert.alert('Couldn’t replant', e.message) }), loading: replant.isPending }
     : pod.meContributedToday
       ? { label: "You're done today", disabled: true }
       : w.status === 'open'

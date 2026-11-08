@@ -1,7 +1,8 @@
 /**
  * Pair settlement: a podmate pair's tree and streak, settled like a pod of two.
  * A person counts as "snapped" on a day if they made an on-time contribution in
- * any pod the two share. Every number comes from @podmates/tree-engine; this
+ * any pod the two share, and as "resting" if they took a rest day in one of those pods
+ * (and didn't snap). Days before the two shared a pod again (after a break) aren't scored. Every number comes from @podmates/tree-engine; this
  * module only gathers inputs and persists outputs (via apply_pair_settlement).
  */
 import type { DbClient } from '@podmates/db'
@@ -15,6 +16,8 @@ export interface PairSettleOptions {
   /** Also close today (local demo "end the day now"). */
   throughToday?: boolean
   now?: Date
+  /** Report a failing pair and carry on with the rest (default: throw). */
+  onError?: (pair: string, err: unknown) => void
 }
 
 interface SharedPod {
@@ -60,13 +63,24 @@ export async function pairToday(db: DbClient, x: string, y: string, now = new Da
 }
 
 /** Settles every pair-day that has ended. Returns how many pair-days were written. */
-export async function settlePairsDue(db: DbClient, { pair, throughToday = false, now = new Date() }: PairSettleOptions = {}) {
+export async function settlePairsDue(db: DbClient, { pair, throughToday = false, now = new Date(), onError }: PairSettleOptions = {}) {
   const only = pair ? pairKey(...pair) : undefined
   const pairs = await sharedPods(db, only)
   let settledDays = 0
 
   for (const { a, b, pods } of pairs) {
     if (only && (a !== only[0] || b !== only[1])) continue
+    try {
+      settledDays += await settlePair(a, b, pods)
+    } catch (err) {
+      if (!onError) throw err
+      onError(`${a}:${b}`, err)
+    }
+  }
+  return settledDays
+
+  async function settlePair(a: string, b: string, pods: SharedPod[]): Promise<number> {
+    let settledDays = 0
     // A pair-day ends once it has ended in every pod they share.
     const today = pods.map((p) => podDate(now, p.timeZone)).sort()[0]!
     const through = throughToday ? today : addDays(today, -1)
@@ -97,8 +111,17 @@ export async function settlePairsDue(db: DbClient, { pair, throughToday = false,
       if (error) throw error
     }
 
+    // Back together after a break (they shared no pod for a while): the gap isn't theirs to lose.
+    // Like a new pair, scoring restarts the day after they started sharing again.
+    const resumed = pods.map((p) => podDate(new Date(p.since), p.timeZone)).sort()[0]!
+    if (existing && last < resumed) {
+      const { error } = await db.from('pair_trees').update({ last_settled_date: resumed }).eq('user_a', a).eq('user_b', b).eq('last_settled_date', last)
+      if (error) throw error
+      last = resumed
+    }
+
     const days = daysToSettle(last, through)
-    if (!days.length) continue
+    if (!days.length) return 0
 
     const { data: contributions, error: cErr } = await db
       .from('contributions')
@@ -108,11 +131,20 @@ export async function settlePairsDue(db: DbClient, { pair, throughToday = false,
       .gte('pod_date', days[0]!)
       .lte('pod_date', days[days.length - 1]!)
     if (cErr) throw cErr
+    const { data: rests, error: rErr } = await db
+      .from('rest_days')
+      .select('user_id, pod_date')
+      .in('pod_id', pods.map((p) => p.id))
+      .in('user_id', [a, b])
+      .gte('pod_date', days[0]!)
+      .lte('pod_date', days[days.length - 1]!)
+    if (rErr) throw rErr
 
     for (const day of days) {
       const snapped = new Set((contributions ?? []).filter((c) => c.pod_date === day).map((c) => c.user_id))
-      const r = settleDay(tree, [a, b].map((userId) => ({ userId, streak: 0, contributed: snapped.has(userId) })))
-      const nextStreak = perfectStreak(streak, r.outcome)
+      const rested = new Set((rests ?? []).filter((r) => r.pod_date === day).map((r) => r.user_id))
+      const r = settleDay(tree, [a, b].map((userId) => ({ userId, streak: 0, contributed: snapped.has(userId), rested: rested.has(userId) })))
+      const nextStreak = perfectStreak(streak, r.outcome, r.members)
 
       const { data: applied, error: aErr } = await db.rpc('apply_pair_settlement', {
         p_user_a: a,
@@ -130,6 +162,6 @@ export async function settlePairsDue(db: DbClient, { pair, throughToday = false,
       last = day
       settledDays++
     }
+    return settledDays
   }
-  return settledDays
 }

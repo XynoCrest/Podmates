@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 
 /** Everything that shows people's content: refreshed after a block or report hides something. */
 function refreshContent(queryClient: QueryClient) {
-  for (const key of [['messages'], ['stories'], ['feed'], ['post'], ['comments'], ['dm'], ['dmThreads'], ['podmates'], ['profileBoard'], ['snap'], ['community'], qk.pods]) {
+  for (const key of [['messages'], ['stories'], ['feed'], ['post'], ['comments'], ['dm'], ['dmThreads'], ['podmates'], ['profileBoard'], ['profileStory'], ['profileSnaps'], ['daySnaps'], ['snap'], ['community'], qk.pods]) {
     void queryClient.invalidateQueries({ queryKey: key })
   }
 }
@@ -60,8 +60,8 @@ export function useLeavePod(podId: string) {
     },
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: qk.messages(podId) })
-      void queryClient.invalidateQueries({ queryKey: qk.pods })
-      void queryClient.invalidateQueries({ queryKey: ['podmates'] })
+      // Its stories, shared-pod lines and habit cards go too.
+      for (const key of [qk.pods, ['podmates'], ['stories'], ['sharedPods'], ['habitCards'], ['profileHabits'], qk.pairTrees]) void queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }
@@ -137,7 +137,8 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: async () => {
       await api.deleteAccount()
-      await auth.signOut()
+      // The account is gone: if the local sign-out hiccups, that's not a failed deletion.
+      await auth.signOut().catch(() => {})
     },
   })
 }

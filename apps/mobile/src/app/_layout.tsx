@@ -9,6 +9,7 @@ import { ActionSheetHost } from '@/lib/actionSheet'
 import { ConfigError } from '@/components/system/SetupScreens'
 import { SessionProvider, useSession } from '@/ctx/session'
 import { env } from '@/lib/env'
+import { LiveSync } from '@/lib/liveSync'
 import { useSnapReminders } from '@/lib/notifications'
 import { queryClient } from '@/lib/queryClient'
 
@@ -51,7 +52,12 @@ function SessionGate() {
   const signedIn = session.status === 'ready'
   return (
     <HideSplash>
-      {signedIn ? <Reminders /> : null}
+      {signedIn ? (
+        <>
+          <Reminders />
+          <LiveSync />
+        </>
+      ) : null}
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
         <Stack.Protected guard={signedIn} redirectTo="/sign-in">
           <Stack.Screen name="(tabs)" />

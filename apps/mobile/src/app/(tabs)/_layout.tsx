@@ -23,7 +23,7 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: 'safari', selected: 'safari.fill' }} md="explore" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="camera">
-        <NativeTabs.Trigger.Label>Snap</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Peacture</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'camera', selected: 'camera.fill' }} md="photo_camera" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">

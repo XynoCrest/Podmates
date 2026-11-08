@@ -38,7 +38,8 @@ const GIFS = {
   habits: { src: require('../../assets/onboarding/habits.gif'), aspect: 1 },
   peas: { src: require('../../assets/onboarding/peas.gif'), aspect: 800 / 533 },
 }
-type Figure = (typeof GIFS)[keyof typeof GIFS]
+// Spelled out (not typeof GIFS) so the optional `scale` is allowed on every figure.
+type Figure = { src: number; aspect: number; scale?: number }
 /** Onboarding's hero: intro black ground, brand green ink. */
 const GREEN = intro.ink
 const TONE = intro

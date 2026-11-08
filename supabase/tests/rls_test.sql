@@ -1,6 +1,6 @@
 -- RLS tests (pgTAP). Run with `npm run db:test` against a freshly reset local DB.
 begin;
-select plan(43);
+select plan(51);
 
 -- A private thread Ben is not part of.
 insert into public.direct_messages (sender_id, recipient_id, body)
@@ -133,6 +133,38 @@ select set_config('request.jwt.claims', json_build_object('sub', (select author 
 set local role authenticated;
 select is((select count(*)::int from public.snaps where id = (select target_id from reported)), 1, 'The snap''s author still sees it');
 select is((select count(*)::int from public.reports), 0, 'Nobody can read someone else''s reports');
+
+-- ─── Abuse guards ─────────────────────────────────────────────────────────────
+-- Back to Ben, and a copy of Atomic Habits Club's code for Theo (who was removed above).
+reset role;
+create temp table p1_code as select invite_code from public.pods where id = 'b0000000-0000-4000-8000-000000000001';
+grant select on p1_code to authenticated;
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
+
+insert into public.messages (pod_id, body, created_at) values ('b0000000-0000-4000-8000-000000000002', 'from the future', '2099-01-01');
+select ok((select created_at <= now() from public.messages where body = 'from the future'), 'Clients can''t backdate or future-date chat messages');
+insert into public.direct_messages (recipient_id, body, read_at) values ('a0000000-0000-4000-8000-000000000005', 'pre-read', now());
+select is((select read_at from public.direct_messages where body = 'pre-read'), null, 'Clients can''t send a DM already marked read');
+insert into public.posts (community_id, title, body, score, comment_count)
+select community_id, 'Inflated', 'x', 99999, 500 from public.community_members where user_id = 'a0000000-0000-4000-8000-000000000001' limit 1;
+select is((select score + comment_count from public.posts where title = 'Inflated'), 0, 'Clients can''t set a post''s score or comment count');
+select throws_ok(
+  $$ update public.post_votes set post_id = post_id where user_id = 'a0000000-0000-4000-8000-000000000001' $$,
+  '42501', null, 'A vote can''t be moved to another post'
+);
+select throws_ok(
+  $$ select public.create_pod('Odd zone', 'reading', 'x', '08:00', 'Factory', 20) $$,
+  '22023', null, 'Timezones must be region names the app can use'
+);
+select lives_ok($$ select public.create_pod('Seconds', 'reading', 'x', '08:00:30', 'America/Edmonton', 20) $$, 'A pod can be created with a region timezone');
+select is((select snap_time from public.pods where name = 'Seconds'), '08:00:00'::time, 'Snap times are stored as whole minutes');
+
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.join_pod((select invite_code from p1_code)) $$,
+  '42501', null, 'Someone removed from a pod can''t rejoin with its code'
+);
 
 select * from finish();
 rollback;
