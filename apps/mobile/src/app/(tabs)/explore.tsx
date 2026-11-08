@@ -64,7 +64,7 @@ export default function ExploreScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View style={{ marginBottom: 8 }}>
+          <View>
             {shownCommunities?.length ? <CommunityCircles communities={shownCommunities} /> : null}
             <UnderlineTabs tabs={SORTS} value={sort} onChange={setSort} />
           </View>

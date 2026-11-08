@@ -1,19 +1,10 @@
 import { avatar as avatarColors, colors } from '@podmates/ui-tokens'
 import { router } from 'expo-router'
 import { ScrollView, TextInput, View } from 'react-native'
-import { Icon, PressableScale, SlideIndicator, Text, useOptionLayouts, type IconName } from '@/components/ui'
+import { Icon, PressableScale, SlideIndicator, Text, useOptionLayouts } from '@/components/ui'
 import { haptics } from '@/lib/haptics'
+import { COMMUNITY_ICONS } from '../communityIcons'
 import type { Community } from '../hooks'
-
-/** A glyph per seeded community; any other community shows its initial. */
-const COMMUNITY_ICONS: Record<string, IconName> = {
-  bookworms: 'book',
-  runclub: 'run',
-  swimmers: 'swim',
-  mindful: 'mindful',
-  gymrats: 'dumbbell',
-  habitscience: 'brain',
-}
 
 /** Rounded search field. */
 export function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (text: string) => void; placeholder: string }) {
@@ -62,11 +53,11 @@ export function CommunityCircles({ communities }: { communities: Community[] }) 
   )
 }
 
-/** Text tabs with a sliding underline. */
+/** Evenly spaced text tabs with a sliding underline, styled like the home screen's habit tabs. */
 export function UnderlineTabs<K extends string>({ tabs, value, onChange }: { tabs: { key: K; label: string }[]; value: K; onChange: (key: K) => void }) {
   const { layouts, onLayoutFor } = useOptionLayouts<K>()
   return (
-    <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 28, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', marginTop: 12, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: colors.line }}>
       {tabs.map((t) => {
         const active = t.key === value
         return (
@@ -80,12 +71,15 @@ export function UnderlineTabs<K extends string>({ tabs, value, onChange }: { tab
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             scaleTo={1}
+            flex
           >
-            <Text style={{ paddingVertical: 12, fontSize: 17, fontWeight: '600', color: active ? colors.ink.DEFAULT : colors.ink.muted }}>{t.label}</Text>
+            <Text center style={{ paddingTop: 10, paddingBottom: 14, fontSize: 17, lineHeight: 22, fontWeight: active ? '700' : '500', letterSpacing: -0.3, color: active ? colors.ink.DEFAULT : colors.ink.subtle }}>
+              {t.label}
+            </Text>
           </PressableScale>
         )
       })}
-      <SlideIndicator at={layouts[value]} style={{ bottom: -0.5, height: 2.5, borderRadius: 2, backgroundColor: colors.ink.DEFAULT }} />
+      <SlideIndicator at={layouts[value]} inset={8} style={{ bottom: 0, height: 3, borderRadius: 2, backgroundColor: colors.ink.DEFAULT }} />
     </View>
   )
 }
