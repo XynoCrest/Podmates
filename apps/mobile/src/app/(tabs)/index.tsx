@@ -155,7 +155,12 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
       ? ['Start your', 'first streak!', 'Snap today and show up for a healthier, happier you.']
       : ["You're on a", `${streak}-day streak!`, "You're showing up for a healthier, happier you."]
   return (
-    <View style={{ height: topInset + HERO_H, paddingTop: topInset + 16, paddingLeft: 20, paddingBottom: OVERLAP + 12, flexDirection: 'row', alignItems: 'center' }}>
+    <View style={{ height: topInset + HERO_H, paddingTop: topInset + 16, paddingLeft: 28, paddingBottom: OVERLAP + 12, flexDirection: 'row', alignItems: 'center' }}>
+      {/* The tree grows in from the screen's right edge, just above where the sheet overlaps the band.
+          Drawn first, so leaves reaching left sit behind the text. */}
+      <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: OVERLAP - 4 }}>
+        <LeafTree height={HERO_H - OVERLAP - 8} />
+      </View>
       <View style={{ width: 196, gap: 8 }} accessible accessibilityLabel={`${lead} ${count} ${sub}`}>
         <View>
           <Text style={{ fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -0.8, color: HERO.ink }}>{lead}</Text>
@@ -164,9 +169,6 @@ function StreakHero({ streak, topInset }: { streak: number; topInset: number }) 
           </Text>
         </View>
         <Text style={{ fontSize: 14, lineHeight: 19, color: HERO.soft }} numberOfLines={3}>{sub}</Text>
-      </View>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingRight: 64 }}>
-        <LeafTree height={HERO_H - OVERLAP - 40} />
       </View>
     </View>
   )
