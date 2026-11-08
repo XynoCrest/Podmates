@@ -1,6 +1,6 @@
 # Podmates product spec: kind accountability
 
-**Status:** proposed, for team review. Nothing below is built yet.
+**Status:** built on `feature/maria_spec` (phases 1–5 of the build plan below). Docs rewrite (phase 6) not done yet.
 **Base:** `feat/ui-rework-og` (dark theme; tabs Home, Explore, Snap, Profile; green streak hero on Home).
 **Owner:** Maria. Decisions come from a product interview on 2026-11-07.
 

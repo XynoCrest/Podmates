@@ -6,7 +6,9 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ConfigError } from '@/components/system/SetupScreens'
-import { SessionProvider, useSession } from '@/ctx/session'
+import { SessionProvider, useMe, useSession } from '@/ctx/session'
+import { syncTimezone } from '@/features/profile/hooks'
+import { deviceTimeZone } from '@/lib/format'
 import { env } from '@/lib/env'
 import { useSnapReminders } from '@/lib/notifications'
 import { queryClient } from '@/lib/queryClient'
@@ -66,6 +68,7 @@ function SessionGate() {
           <Stack.Screen name="post/new" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
           <Stack.Screen name="user/[id]" />
           <Stack.Screen name="admin/flagged" />
+          <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
           <Stack.Screen name="post/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn} redirectTo="/">
@@ -76,8 +79,13 @@ function SessionGate() {
   )
 }
 
+/** Signed-in background work: reminders, and keeping my profile's timezone in step with the device. */
 function Reminders() {
+  const me = useMe()
   useSnapReminders()
+  useEffect(() => {
+    void syncTimezone(me, deviceTimeZone())
+  }, [me])
   return null
 }
 

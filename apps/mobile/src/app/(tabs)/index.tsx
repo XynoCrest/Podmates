@@ -1,6 +1,6 @@
 import { stageFor } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
-import { router, useFocusEffect } from 'expo-router'
+import { Redirect, router, useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, RefreshControl, View } from 'react-native'
@@ -56,6 +56,9 @@ export default function HomeScreen() {
   const podmates = usePodmates()
   const rows: PodmateThread[] = list === 'podmates' ? podmates.data : []
   const heroTotal = insets.top + HERO_H
+
+  // First run (or every habit removed): pick habits before anything else.
+  if (!myHabits.isLoading && !habits.length) return <Redirect href="/onboarding" />
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
