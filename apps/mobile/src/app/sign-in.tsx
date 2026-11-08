@@ -1,4 +1,5 @@
 import { colors, intro, space } from '@podmates/ui-tokens'
+import { Image } from 'expo-image'
 import { useLocalSearchParams } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
@@ -6,8 +7,6 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button, HERO_OVERLAP, IntroSheet, Segmented, Text, TextField } from '@/components/ui'
 import { auth } from '@/ctx/session'
-import { HairlineFigure } from '@/features/tree/GroveFigure'
-import { ONBOARDING_FIGURES } from '@/features/tree/onboardingPaths'
 import { isLocal } from '@/lib/env'
 import { supabase } from '@/lib/supabase'
 import { haptics } from '@/lib/haptics'
@@ -67,10 +66,10 @@ export default function SignIn() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: intro.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
-        {/* The intro: the pea pod in green lines, then a thin title and a soft line under it. */}
+        {/* The intro: the pea pod, then a thin title and a soft line under it. */}
         <View style={{ paddingTop: insets.top + space.lg, paddingHorizontal: space.gutter, paddingBottom: HERO_OVERLAP + space.xl, gap: space.lg }}>
           <View accessible={false} style={{ alignItems: 'center' }}>
-            <HairlineFigure drawing={ONBOARDING_FIGURES.peapod} height={170} ground={intro.bg} ink={intro.ink} />
+            <Image source={require('../../assets/images/sign-in-peas.png')} style={{ width: 260, height: 170 }} contentFit="contain" />
           </View>
           <View style={{ gap: space.md }}>
             <Text style={[TITLE, { color: intro.ink }]} center accessibilityRole="header">
