@@ -4,7 +4,7 @@ import { BlurTargetView, BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react'
-import { Animated, Modal, StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import { Button, Icon, ListRow, ScreenState, Section, SheetScreen, Text, TextField } from '@/components/ui'
 import { podWindow, useHabits, useMyPods, type PodSummary } from '@/features/pods/hooks'
 import { useSendSnap } from '@/features/snaps/hooks'
@@ -75,7 +75,7 @@ export default function SendSheet() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-    <BlurTargetView ref={blurTarget} style={{ flex: 1 }}>
+    <BlurTargetView ref={blurTarget} collapsable={false} style={StyleSheet.absoluteFill}>
     <SheetScreen
       title="Send to"
       subtitle={noPods ? undefined : 'Pods with an open window are picked for you.'}
@@ -129,9 +129,10 @@ export default function SendSheet() {
   )
 }
 
-/** Full-screen firework after a snap: blur the screen, play once, then fade out. */
+/** Firework after a snap. Blur stays on this screen — a nested modal blanks the sheet and sticks on iPhone. */
 const BURST_MS = 2440
-const FADE_MS = 420
+const GIF_W = 250
+const GIF_H = 364
 
 function StreakBurst({
   blurTarget,
@@ -140,48 +141,40 @@ function StreakBurst({
   blurTarget: RefObject<ComponentRef<typeof View> | null>
   onDone: () => void
 }) {
-  const opacity = useRef(new Animated.Value(0)).current
   const done = useRef(onDone)
   done.current = onDone
+  const [box, setBox] = useState({ w: 0, h: 0 })
 
   useEffect(() => {
-    Animated.timing(opacity, { toValue: 1, duration: 160, useNativeDriver: false }).start()
-    const hold = setTimeout(() => {
-      Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: false }).start(({ finished }) => {
-        if (finished) done.current()
-      })
-    }, BURST_MS)
+    const hold = setTimeout(() => done.current(), BURST_MS)
     return () => clearTimeout(hold)
-  }, [opacity])
+  }, [])
 
   return (
-    <>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 20, opacity }]}>
-        <BlurView
-          blurTarget={blurTarget}
-          blurMethod="dimezisBlurView"
-          blurReductionFactor={1}
-          intensity={80}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
+    <View
+      accessibilityViewIsModal
+      accessibilityLabel="Streak sent"
+      pointerEvents="auto"
+      onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      style={[StyleSheet.absoluteFill, { zIndex: 20 }]}
+    >
+      <BlurView
+        blurTarget={blurTarget}
+        {...(Platform.OS === 'android' ? { blurMethod: 'dimezisBlurView' as const } : {})}
+        intensity={40}
+        tint="systemThinMaterialDark"
+        style={StyleSheet.absoluteFill}
+      />
+      {box.w > 0 ? (
+        <Image
+          source={require('../../assets/images/streak-firework.gif')}
+          style={{ position: 'absolute', width: GIF_W, height: GIF_H, left: (box.w - GIF_W) / 2, top: (box.h - GIF_H) / 2 }}
+          contentFit="contain"
+          contentPosition="center"
+          autoplay
         />
-      </Animated.View>
-      <Modal visible transparent animationType="none" presentationStyle="overFullScreen" statusBarTranslucent>
-        <Animated.View
-          accessibilityViewIsModal
-          accessibilityLabel="Streak sent"
-          pointerEvents="none"
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', opacity }}
-        >
-          <Image
-            source={require('../../assets/images/streak-firework.gif')}
-            style={{ width: 280, height: 323 }}
-            contentFit="contain"
-            autoplay
-          />
-        </Animated.View>
-      </Modal>
-    </>
+      ) : null}
+    </View>
   )
 }
 

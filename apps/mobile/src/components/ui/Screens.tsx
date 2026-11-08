@@ -65,7 +65,7 @@ export function SheetScreen({
   const insets = useSafeAreaInsets()
   return (
     <ScrollView
-      style={{ backgroundColor: colors.surface }}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingHorizontal: space.gutter, paddingTop: space.xxl, paddingBottom: insets.bottom + space.xxl, gap: space.xl }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
