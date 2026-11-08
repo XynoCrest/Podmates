@@ -2,7 +2,7 @@ import { formatSnapTime } from '@podmates/shared'
 import { healthRatio } from '@podmates/tree-engine'
 import { colors } from '@podmates/ui-tokens'
 import { router, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native'
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Share, View } from 'react-native'
 import { Header, Icon, PressableScale, Text } from '@/components/ui'
 import { useMe } from '@/ctx/session'
 import { Composer } from '@/features/pods/components/Composer'
@@ -32,9 +32,17 @@ export default function PodChat() {
           </PressableScale>
         }
         subtitle={p ? `${p.memberCount} members · snaps at ${formatSnapTime(p.snapTime)}` : undefined}
-        right={p ? <TreeButton pod={p} onPress={openTree} /> : null}
+        right={
+          p ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 8 }}>
+              <InviteButton pod={p} />
+              <TreeButton pod={p} onPress={openTree} />
+            </View>
+          ) : null
+        }
       />
       {p ? <WindowStrip pod={p} /> : null}
+      {p && p.memberCount < 2 ? <InviteCard pod={p} /> : null}
       {messages.isLoading ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.ink.muted} />
       ) : (
@@ -57,13 +65,48 @@ export default function PodChat() {
   )
 }
 
+/** Opens the system share sheet with the pod's invite code (it also offers Copy). */
+const shareInvite = (pod: PodSummary) =>
+  void Share.share({ message: `Join my pod "${pod.name}" on Podmates. Open the app, tap + then "Join with code" and enter ${pod.inviteCode}.` })
+
+/** Header invite chip: share the pod's code. */
+function InviteButton({ pod }: { pod: PodSummary }) {
+  return (
+    <PressableScale onPress={() => shareInvite(pod)} accessibilityLabel={`Invite friends, code ${pod.inviteCode}`} scaleTo={0.92}>
+      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="personAdd" size={16} color={colors.ink.DEFAULT} />
+      </View>
+    </PressableScale>
+  )
+}
+
+/** While you're the only member: the invite code, big, with a share button. */
+function InviteCard({ pod }: { pod: PodSummary }) {
+  return (
+    <View style={{ margin: 12, marginBottom: 0, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="caption">Invite friends with this code</Text>
+        <Text numeric selectable style={{ fontSize: 26, fontWeight: '700', letterSpacing: 4 }}>
+          {pod.inviteCode}
+        </Text>
+      </View>
+      <PressableScale onPress={() => shareInvite(pod)} accessibilityLabel="Share invite code" scaleTo={0.94}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.ink.DEFAULT }}>
+          <Icon name="share" size={15} color={colors.ink.inverse} weight="semibold" />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink.inverse }}>Share</Text>
+        </View>
+      </PressableScale>
+    </View>
+  )
+}
+
 /** Header tree chip: the tree's health at a glance, tap for the full tree screen. */
 function TreeButton({ pod, onPress }: { pod: PodSummary; onPress: () => void }) {
   const ratio = healthRatio(pod)
   const color = pod.treeStatus === 'dead' ? colors.danger.DEFAULT : ratio > 0.5 ? colors.leaf.DEFAULT : ratio > 0.25 ? colors.energy.DEFAULT : colors.danger.DEFAULT
   return (
     <PressableScale onPress={onPress} accessibilityLabel="Tree" scaleTo={0.92}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginRight: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}>
         <Icon name="tree" size={16} color={color} />
         <Text numeric style={{ color, fontWeight: '600', fontSize: 14 }}>
           {pod.treeStatus === 'dead' ? '0' : pod.hp}
